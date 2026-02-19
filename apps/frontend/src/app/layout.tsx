@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { DM_Sans, Syne } from "next/font/google";
+import { Outfit } from "next/font/google";
 import "./globals.css";
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
-});
-
-const syne = Syne({
-  variable: "--font-syne",
-  subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: ["300", "400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -26,9 +20,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body
-        className={`${dmSans.variable} ${syne.variable} antialiased`}
-      >
+      <head>
+        <link
+          href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600,700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className={`${outfit.variable} antialiased`}>
         {children}
       </body>
     </html>
