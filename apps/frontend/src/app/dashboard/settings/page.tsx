@@ -200,12 +200,51 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <section className="grid gap-6 lg:grid-cols-[1fr,0.8fr]">
+      <section className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
         <div className="space-y-6">
+          {/* TIPO DE NEGOCIO */}
           <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
             <div className="border-b border-[var(--border)] px-6 py-5">
               <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
-                Mi negocio
+                🏪 Tipo de Negocio
+              </h2>
+              <p className="text-xs text-[var(--muted)]">
+                Define tu ramo para activar funciones específicas.
+              </p>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {[
+                  { id: 'FASHION', name: 'Moda y Ropa', icon: '👗' },
+                  { id: 'FOOD', name: 'Comida', icon: '🍔' },
+                  { id: 'BEAUTY', name: 'Belleza', icon: '💄' },
+                  { id: 'TECH', name: 'Tecnología', icon: '📱' },
+                  { id: 'GROCERY', name: 'Abastos', icon: '🛒' },
+                  { id: 'HOME', name: 'Hogar', icon: '🏠' },
+                  { id: 'HEALTH', name: 'Salud', icon: '🌿' },
+                  { id: 'EDUCATION', name: 'Educación', icon: '📚' },
+                  { id: 'AUTO', name: 'Automotriz', icon: '🚗' },
+                  { id: 'SERVICE', name: 'Servicios', icon: '🔧' },
+                  { id: 'PET', name: 'Mascotas', icon: '🐾' },
+                  { id: 'OTHER', name: 'Otro', icon: '⚡' },
+                ].map(ramo => (
+                  <button
+                    key={ramo.id}
+                    onClick={() => setBusiness(prev => ({ ...prev, type: ramo.id as any }))}
+                    className={`p-4 rounded-2xl border-2 transition-all text-center flex flex-col items-center gap-2 active:scale-95 ${business.type === ramo.id ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--background)]/40 hover:border-[var(--muted)]'}`}
+                  >
+                    <span className="text-2xl">{ramo.icon}</span>
+                    <div className="text-[10px] font-bold uppercase tracking-tight text-[var(--foreground)]">{ramo.name}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-[var(--border)] px-6 py-5">
+              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
+                🏷️ Datos de la Tienda
               </h2>
               <p className="text-xs text-[var(--muted)]">
                 Datos que verán tus clientes en el catálogo público.
@@ -436,6 +475,92 @@ export default function SettingsPage() {
         </div>
 
         <div className="space-y-6">
+          {/* ENVÍOS */}
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-[var(--border)] px-6 py-5">
+              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
+                🚚 Zonas de Envío
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+               {[
+                 { name: 'Caracas (mismo día)', price: '$2.00', free: '>$20' },
+                 { name: 'Interior del país', price: '$6.00', free: 'MRW/Zoom' }
+               ].map(zone => (
+                 <div key={zone.name} className="flex items-center justify-between p-4 rounded-xl bg-[var(--background)]/40 border border-[var(--border)]">
+                    <div className="flex-1">
+                        <div className="text-sm font-bold text-[var(--foreground)]">{zone.name}</div>
+                        <div className="text-[10px] font-bold text-emerald-500 uppercase">Envío: {zone.price} · {zone.free}</div>
+                    </div>
+                    <button className="text-[10px] font-bold text-[var(--accent)] border border-[var(--accent)]/30 px-3 py-1.5 rounded-lg uppercase">Editar</button>
+                 </div>
+               ))}
+               <button className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-xs font-bold text-[var(--muted)] uppercase hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all">
+                 + Agregar nueva zona
+               </button>
+            </div>
+          </div>
+
+          {/* CHATBOT FLOW BUILDER */}
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-[var(--border)] px-6 py-5 flex items-center justify-between">
+              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
+                🤖 Flujo de ChatBot
+              </h2>
+              <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[9px] font-bold text-emerald-500 border border-emerald-500/20 uppercase tracking-widest">Activo</span>
+            </div>
+            <div className="p-6 space-y-3">
+               {[
+                 { step: 1, title: 'Saludo y menú', type: 'MENÚ', color: 'bg-purple-500' },
+                 { step: 2, title: 'Enviar link catálogo', type: 'AUTO', color: 'bg-blue-500' },
+                 { step: 3, title: 'Capturar pedido', type: 'MSJ', color: 'bg-emerald-500' },
+               ].map(flow => (
+                 <div key={flow.step} className="flex items-center gap-4 p-4 rounded-xl bg-[var(--background)]/40 border border-[var(--border)] cursor-grab active:cursor-grabbing">
+                    <div className="h-8 w-8 rounded-lg bg-[var(--accent)] flex items-center justify-center font-heading font-black text-black text-xs">{flow.step}</div>
+                    <div className="flex-1 text-sm font-bold text-[var(--foreground)]">{flow.title}</div>
+                    <div className={`px-2 py-1 rounded text-[9px] font-bold text-white ${flow.color}`}>{flow.type}</div>
+                    <div className="text-[var(--muted)] opacity-30">⋮⋮</div>
+                 </div>
+               ))}
+               <button className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-xs font-bold text-[var(--muted)] uppercase hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all">
+                 + Nuevo paso
+               </button>
+            </div>
+          </div>
+
+          {/* MÓDULOS */}
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-[var(--border)] px-6 py-5">
+              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
+                🧩 Módulos Activos
+              </h2>
+            </div>
+            <div className="p-6 grid grid-cols-2 gap-4">
+               {[
+                 { name: 'Gestión Pedidos', plan: 'FREE', icon: '📦', active: true },
+                 { name: 'Catálogo Online', plan: 'FREE', icon: '🛍️', active: true },
+                 { name: 'Inbox Unificado', plan: 'PRO', icon: '💬', active: true },
+                 { name: 'ChatBot IA', plan: 'PRO', icon: '🤖', active: true },
+                 { name: 'Reportes Pro', plan: 'BIZ', icon: '📊', active: false },
+                 { name: 'Marketing', plan: 'BIZ', icon: '🎁', active: false },
+               ].map(mod => (
+                 <div key={mod.name} className={`p-4 rounded-2xl border-2 transition-all flex flex-col gap-3 ${mod.active ? 'border-[var(--accent)]/30 bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--background)]/20 opacity-60'}`}>
+                    <div className="flex justify-between items-start">
+                        <span className="text-2xl">{mod.icon}</span>
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black tracking-widest ${mod.plan === 'FREE' ? 'bg-emerald-500/20 text-emerald-500' : mod.plan === 'PRO' ? 'bg-orange-500/20 text-orange-500' : 'bg-red-500/20 text-red-500'}`}>{mod.plan}</span>
+                    </div>
+                    <div className="text-[11px] font-bold text-[var(--foreground)] uppercase truncate">{mod.name}</div>
+                    <div className="flex justify-between items-center mt-2">
+                        <span className="text-[9px] font-bold text-[var(--muted)] uppercase">{mod.active ? 'Activo' : 'Inactivo'}</span>
+                        <div className={`w-8 h-4 rounded-full relative transition-colors ${mod.active ? 'bg-emerald-500' : 'bg-zinc-700'}`}>
+                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${mod.active ? 'right-0.5' : 'left-0.5'}`} />
+                        </div>
+                    </div>
+                 </div>
+               ))}
+            </div>
+          </div>
+
           <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-xl">
             <div className="border-b border-zinc-800 px-6 py-5">
               <h2 className="font-heading text-lg font-bold text-zinc-50">
@@ -474,36 +599,40 @@ export default function SettingsPage() {
               </div>
 
               {!whatsappStatus?.connected && whatsappStatus?.qr && (
-                <div className="space-y-4 rounded-2xl border-2 border-dashed border-zinc-800 bg-zinc-950/20 p-6 text-center">
-                  <div className="space-y-1">
-                    <div className="text-xs font-bold text-zinc-100">
+                <div className="space-y-6 rounded-[28px] border-2 border-dashed border-[var(--border)] bg-[var(--background)]/20 p-8 text-center transition-all hover:border-[var(--accent)]/50">
+                  <div className="space-y-2">
+                    <div className="text-sm font-bold text-[var(--foreground)] font-heading">
                       Escanea el código QR
                     </div>
-                    <p className="text-[10px] text-zinc-500 leading-normal">
-                      Abre WhatsApp &gt; Dispositivos vinculados y escanea este QR.
+                    <p className="text-[10px] text-[var(--muted)] leading-relaxed max-w-[200px] mx-auto">
+                      Abre WhatsApp en tu teléfono &gt; Dispositivos vinculados &gt; Vincular un dispositivo.
                     </p>
                   </div>
-                  <div className="mx-auto inline-block rounded-2xl bg-white p-4 shadow-2xl shadow-zinc-950">
-                    <Image
-                      src={whatsappStatus.qr}
-                      alt="Código QR de WhatsApp"
-                      width={180}
-                      height={180}
-                      className="h-44 w-44"
-                      unoptimized
-                    />
+                  <div className="relative mx-auto inline-block">
+                    <div className="absolute -inset-4 rounded-[32px] border-2 border-dashed border-[var(--accent)]/20 animate-[spin_10s_linear_infinite]" />
+                    <div className="relative rounded-2xl bg-white p-4 shadow-2xl">
+                      <Image
+                        src={whatsappStatus.qr}
+                        alt="Código QR de WhatsApp"
+                        width={180}
+                        height={180}
+                        className="h-40 w-40"
+                        unoptimized
+                      />
+                    </div>
                   </div>
+                  <button className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest mt-4">Actualizar QR</button>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-zinc-800 px-6 py-5">
-              <h2 className="font-heading text-lg font-bold text-zinc-50">
-                Catálogo público
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-[var(--border)] px-6 py-5">
+              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
+                🛍️ Catálogo público
               </h2>
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-[var(--muted)]">
                 Preferencias básicas del catálogo.
               </p>
             </div>

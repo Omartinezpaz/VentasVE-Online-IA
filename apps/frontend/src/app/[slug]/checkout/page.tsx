@@ -39,6 +39,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [orderId, setOrderId] = useState<string | null>(null);
 
   if (items.length === 0 && !success) {
     return (
@@ -104,7 +105,8 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
     };
 
     try {
-      await catalogApi.createOrder(slug, payload);
+      const res = await catalogApi.createOrder(slug, payload);
+      setOrderId(res.data.id);
       clearCart();
       setSuccess(true);
     } catch {
@@ -116,71 +118,62 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_20%_0%,_rgba(245,200,66,0.07),_transparent_55%),_radial-gradient(ellipse_at_80%_100%,_rgba(79,142,247,0.06),_transparent_55%),_#050712] text-zinc-50">
-        <div className="mx-auto max-w-4xl px-4 pb-16 pt-20">
-          <div className="mb-6 rounded-2xl border border-emerald-400/30 bg-zinc-950/60 px-6 py-5 shadow-[0_20px_60px_rgba(0,0,0,0.8)]">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="success-ring flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/60 bg-emerald-500/10 text-2xl text-emerald-400">
+      <div className="min-h-screen bg-[var(--bg-light)] text-[var(--dark)]">
+        <div className="mx-auto max-w-lg px-4 pb-24 pt-12">
+          <div className="text-center mb-10">
+             <div className="mx-auto w-20 h-20 rounded-full bg-emerald-500 flex items-center justify-center text-4xl text-white shadow-xl shadow-emerald-500/20 mb-6 scale-animation">
                 ✓
-              </div>
-              <div className="flex-1">
-                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Pedido recibido
-                </div>
-                <h1 className="mt-2 font-heading text-2xl font-semibold tracking-tight">
-                  Gracias por tu pedido
-                </h1>
-                <p className="mt-1 text-xs text-zinc-400">
-                  Hemos registrado tu pedido. El negocio se pondrá en contacto contigo por WhatsApp para confirmar el pago.
-                </p>
-              </div>
-            </div>
+             </div>
+             <h1 className="font-heading text-3xl font-bold tracking-tight mb-2">¡Pedido enviado!</h1>
+             <p className="text-zinc-500 text-sm font-medium">Hemos recibido tu solicitud correctamente.</p>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-[2.1fr,1.4fr]">
-            <section className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-950/80">
-              <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
-                <div>
-                  <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                    Resumen de tu pedido
-                  </h2>
-                  <p className="text-xs text-zinc-500">
-                    Guarda esta información para enviar tu comprobante de pago.
-                  </p>
-                </div>
-                <div className="text-right text-xs text-zinc-400">
-                  <div>Total aprobado</div>
-                  <div className="mt-0.5 font-heading text-lg font-semibold text-[var(--accent)]">
-                    <DualPrice usdCents={totalCents} showBoth />
-                  </div>
-                </div>
-              </div>
-              <div className="px-5 py-4 text-xs text-zinc-400">
-                <p>
-                  Revisa WhatsApp: recibirás un mensaje con los datos para pagar y el estado de tu pedido.
-                </p>
-              </div>
-            </section>
+          <div className="space-y-4">
+             <div className="bg-white rounded-[24px] p-6 shadow-xl ring-1 ring-black/5">
+                <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Estado del pedido</div>
+                <div className="space-y-6 relative">
+                    <div className="absolute left-[15px] top-2 bottom-2 w-0.5 bg-zinc-100" />
 
-            <section className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-950/80 px-5 py-4">
-              <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                ¿Qué sigue?
-              </h2>
-              <ol className="mt-3 space-y-2 text-xs text-zinc-400">
-                <li>1. El negocio revisa tu pedido.</li>
-                <li>2. Te envían los datos de pago por WhatsApp.</li>
-                <li>3. Envías comprobante con referencia.</li>
-                <li>4. Te confirman cuando el pago esté verificado.</li>
-              </ol>
-              <button
-                type="button"
-                onClick={() => router.push(`/${slug}`)}
-                className="mt-4 w-full rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-black shadow-md shadow-[rgba(0,0,0,0.6)]"
-              >
-                Volver al catálogo
-              </button>
-            </section>
+                    <div className="relative flex gap-4">
+                        <div className="w-8 h-8 rounded-full bg-emerald-500 flex-shrink-0 z-10 border-4 border-white flex items-center justify-center text-[10px] text-white font-bold">1</div>
+                        <div>
+                            <div className="text-sm font-bold">Pedido Recibido</div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5 font-medium">ID: #{orderId?.slice(-6).toUpperCase() || 'ABC123'} · Hace 1 min</div>
+                        </div>
+                    </div>
+
+                    <div className="relative flex gap-4">
+                        <div className="w-8 h-8 rounded-full bg-zinc-100 flex-shrink-0 z-10 border-4 border-white flex items-center justify-center text-[10px] text-zinc-400 font-bold">2</div>
+                        <div>
+                            <div className="text-sm font-bold text-zinc-400">Verificación de Pago</div>
+                            <div className="text-[11px] text-zinc-500 mt-0.5 font-medium italic">Esperando comprobante por WhatsApp...</div>
+                        </div>
+                    </div>
+
+                    <div className="relative flex gap-4">
+                        <div className="w-8 h-8 rounded-full bg-zinc-100 flex-shrink-0 z-10 border-4 border-white flex items-center justify-center text-[10px] text-zinc-400 font-bold">3</div>
+                        <div>
+                            <div className="text-sm font-bold text-zinc-400">Preparación y Envío</div>
+                        </div>
+                    </div>
+                </div>
+             </div>
+
+             <div className="bg-[var(--dark)] rounded-[24px] p-8 text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-[var(--accent)]/20 rounded-full blur-3xl" />
+                <h3 className="font-heading text-xl font-bold mb-2">Siguiente paso:</h3>
+                <p className="text-white/60 text-sm mb-6 leading-relaxed">Envía el capture de tu pago al WhatsApp del negocio para agilizar la entrega.</p>
+
+                <div className="flex flex-col gap-3">
+                    <button className="w-full bg-[#25D366] hover:bg-[#20ba5a] py-4 rounded-2xl font-heading font-bold flex items-center justify-center gap-3 shadow-lg shadow-[#25D366]/20 transition-all active:scale-95">
+                        <span className="text-xl">💬</span>
+                        Enviar comprobante
+                    </button>
+                    <button onClick={() => router.push(`/${slug}`)} className="w-full bg-white/10 hover:bg-white/20 py-4 rounded-2xl font-heading font-bold text-sm transition-all">
+                        Seguir comprando
+                    </button>
+                </div>
+             </div>
           </div>
         </div>
       </div>

@@ -9,6 +9,7 @@ export type BusinessSettings = {
   instagram?: string;
   schedule?: string;
   description?: string;
+  type?: string;
   paymentMethods?: Record<string, unknown>;
   catalogOptions?: Record<string, boolean>;
 };
