@@ -12,8 +12,18 @@ export default function NewProductPage() {
   const [priceUsd, setPriceUsd] = useState('');
   const [stock, setStock] = useState('0');
   const [isPublished, setIsPublished] = useState(true);
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,13 +34,17 @@ export default function NewProductPage() {
       const priceUsdCents = Math.round(parseFloat(priceUsd) * 100);
       if (isNaN(priceUsdCents)) throw new Error('Precio inválido');
 
-      await productsApi.create({
+      const res = await productsApi.create({
         name,
         description,
         priceUsdCents,
         stock: parseInt(stock),
         isPublished
       });
+
+      if (image && res.data.id) {
+        await productsApi.uploadImages(res.data.id, [image]);
+      }
       router.push('/dashboard/products');
     } catch (err: any) {
       setError(err.message || 'Error al crear el producto');
@@ -50,6 +64,30 @@ export default function NewProductPage() {
 
       <form onSubmit={handleSubmit} className="card-elevated rounded-[32px] border border-[var(--border)] bg-[var(--surface)] p-8 shadow-2xl space-y-6">
         <div className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest">Imagen del Producto</label>
+            <div
+              onClick={() => document.getElementById('image-upload')?.click()}
+              className="relative aspect-square w-32 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background)] flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-[var(--accent)] transition-all"
+            >
+              {imagePreview ? (
+                <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
+              ) : (
+                <>
+                  <span className="text-2xl opacity-30 group-hover:scale-110 transition-transform">📸</span>
+                  <span className="text-[9px] font-bold text-[var(--muted)] mt-2 uppercase">Subir</span>
+                </>
+              )}
+              <input
+                id="image-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
+            </div>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-wider">Nombre del Producto</label>
             <input

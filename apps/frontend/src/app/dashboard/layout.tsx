@@ -75,7 +75,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors">
       <div className="flex">
-        <aside className="hidden w-56 border-r border-[var(--border)] bg-[var(--bg-sidebar)] px-4 py-4 md:block">
+        <aside className="hidden w-[240px] h-screen border-r border-[var(--border)] bg-[var(--sidebar)] px-3 py-4 md:flex flex-col fixed left-0 top-0 z-50 transition-colors">
           <div className="mb-6">
             <div className="text-sm font-semibold tracking-tight">
               Ventas<span className="text-amber-400">VE</span>
@@ -86,102 +86,115 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
           <nav className="space-y-4 text-sm">
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] px-3">
                 Principal
               </div>
               <Link
                 href="/dashboard"
-                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+                className="flex items-center rounded-xl px-3 py-2 text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10 border-l-4 border-[var(--accent)]"
               >
-                Dashboard
+                <span className="mr-3 opacity-70">📊</span> Dashboard
               </Link>
-            </div>
-            <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Ventas
-              </div>
               <Link
                 href="/dashboard/orders"
-                className="flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
               >
-                <span>Órdenes</span>
-                {newOrdersCount > 0 && (
-                  <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-                    {newOrdersCount}
-                  </span>
-                )}
+                <div className="flex items-center">
+                    <span className="mr-3 opacity-50">📦</span> Pedidos
+                </div>
+                <span className="rounded-lg bg-[var(--accent-red)] px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">
+                    12
+                </span>
               </Link>
               <Link
                 href="/dashboard/products"
-                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
               >
-                Catálogo
+                <span className="mr-3 opacity-50">🛍️</span> Catálogo
               </Link>
-            </div>
-            <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Clientes
-              </div>
               <Link
-                href="/dashboard/customers"
-                className="flex items-center rounded-md bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-100"
+                href="/dashboard/categories"
+                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
               >
-                Clientes
+                <span className="mr-3 opacity-50">🏷️</span> Categorías
               </Link>
             </div>
+
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Mensajes
-              </div>
-              <Link
-                href="/dashboard/inbox"
-                className="flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
-              >
-                <span>WhatsApp</span>
-                {unreadCount > 0 && (
-                  <span className="rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-                    {unreadCount}
-                  </span>
-                )}
-              </Link>
-            </div>
-            <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] px-3">
                 Pagos
               </div>
               <Link
                 href="/dashboard/payments"
-                className="flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
               >
-                <span>Pagos</span>
-                {pendingPaymentsCount > 0 && (
-                  <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
-                    {pendingPaymentsCount}
-                  </span>
-                )}
+                <div className="flex items-center">
+                    <span className="mr-3 opacity-50">💳</span> Transacciones
+                </div>
               </Link>
-            </div>
-            <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Negocio
-              </div>
               <Link
-                href="/dashboard/settings"
-                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+                href="/dashboard/conciliation"
+                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
               >
-                Configuración
+                <div className="flex items-center">
+                    <span className="mr-3 opacity-50">🔄</span> Conciliación
+                </div>
+                <span className="rounded-lg bg-[var(--accent-secondary)] px-2 py-0.5 text-[10px] font-bold text-black shadow-lg">
+                    3
+                </span>
               </Link>
               <Link
                 href="/dashboard/exchange-rate"
-                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
               >
-                Tasa de Cambio
+                <span className="mr-3 opacity-50">💵</span> Tasa BCV
+              </Link>
+            </div>
+
+            <div>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] px-3">
+                Comunicación
+              </div>
+              <Link
+                href="/dashboard/inbox"
+                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+              >
+                <div className="flex items-center">
+                    <span className="mr-3 opacity-50">💬</span> Inbox Unificado
+                </div>
+                <span className="rounded-lg bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">
+                    7
+                </span>
+              </Link>
+              <Link
+                href="/dashboard/chatbot"
+                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+              >
+                <span className="mr-3 opacity-50">🤖</span> ChatBot IA
+              </Link>
+            </div>
+
+            <div>
+              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] px-3">
+                Negocio
+              </div>
+              <Link
+                href="/dashboard/customers"
+                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+              >
+                <span className="mr-3 opacity-50">👥</span> Clientes
               </Link>
               <Link
                 href="/dashboard/reports"
-                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
               >
-                Reportes
+                <span className="mr-3 opacity-50">📈</span> Reportes
+              </Link>
+              <Link
+                href="/dashboard/settings"
+                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+              >
+                <span className="mr-3 opacity-50">⚙️</span> Configuración
               </Link>
             </div>
             <div>
@@ -198,8 +211,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
           </nav>
         </aside>
-        <main className="flex-1">
-          <header className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-4 py-3 sticky top-0 z-30">
+        <main className="flex-1 ml-[240px] min-h-screen">
+          <header className="border-b border-[var(--border)] bg-[var(--sidebar)]/80 backdrop-blur-md px-8 py-4 sticky top-0 z-30">
             <div className="mx-auto flex max-w-6xl items-center justify-between">
               <div>
                 <h1 className="text-sm font-bold tracking-tight text-[var(--foreground)]">

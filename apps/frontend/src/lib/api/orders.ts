@@ -13,6 +13,7 @@ export type Order = {
   totalCents: number;
   createdAt: string;
   customer?: OrderCustomer | null;
+  paymentMethod?: string | null;
 };
 
 export type OrderItem = {
