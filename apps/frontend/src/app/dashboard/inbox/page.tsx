@@ -153,106 +153,92 @@ export default function InboxPage() {
     );
   }
 
+  const [filter, setFilter] = useState<'all' | 'unread' | 'bot' | 'human'>('all');
+
+  const filteredConversations = conversations.filter(c => {
+    if (filter === 'unread') return (c._count?.messages ?? 0) > (c.messages?.length ?? 0);
+    if (filter === 'bot') return c.status === 'BOT';
+    if (filter === 'human') return c.status === 'HUMAN';
+    return true;
+  });
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-zinc-50">
-            Inbox WhatsApp
-          </h2>
-          <p className="text-xs text-zinc-500">
-            Conversaciones recientes con tus clientes desde WhatsApp.
-          </p>
+          <h1 className="font-heading text-xl font-bold text-[var(--foreground)]">Inbox Unificado</h1>
+          <p className="text-xs text-[var(--muted)]">Gestiona tus conversaciones de WhatsApp, Instagram y Web.</p>
+        </div>
+        <div className="flex gap-1.5 p-1 rounded-xl bg-[var(--surface)] border border-[var(--border)]">
+           {(['all', 'unread', 'bot', 'human'] as const).map(f => (
+             <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === f ? 'bg-zinc-800 text-[var(--accent)] shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+             >
+                {f === 'all' ? 'Todos' : f === 'unread' ? 'Sin leer' : f === 'bot' ? 'Bot activo' : 'Humano'}
+             </button>
+           ))}
         </div>
       </div>
-      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/70">
-        <table className="min-w-full divide-y divide-zinc-800 text-xs">
-          <thead className="bg-zinc-900/80">
-            <tr>
-              <th className="px-3 py-2 text-left font-medium text-zinc-500">
-                Cliente
-              </th>
-              <th className="px-3 py-2 text-left font-medium text-zinc-500">
-                Último mensaje
-              </th>
-              <th className="px-3 py-2 text-left font-medium text-zinc-500">
-                Estado
-              </th>
-              <th className="px-3 py-2 text-left font-medium text-zinc-500">
-                Actualizado
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-zinc-800">
-            {conversations.map(conversation => {
+
+      <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+        <div className="divide-y divide-[var(--border)]">
+            {filteredConversations.map(conversation => {
               const lastMessage = conversation.messages?.[0];
               const hasUnread = (conversation._count?.messages ?? 0) > (conversation.messages?.length ?? 0);
               const customerName = conversation.customer?.name || 'Cliente WhatsApp';
               const customerPhone = conversation.customer?.phone || 'Sin teléfono';
 
-              const statusLabel =
-                conversation.status === 'BOT'
-                  ? 'Bot'
-                  : conversation.status === 'HUMAN'
-                    ? 'Humano'
-                    : conversation.status === 'CLOSED'
-                      ? 'Cerrada'
-                      : conversation.status;
-
               return (
-                <tr
+                <div
                   key={conversation.id}
-                  className="cursor-pointer hover:bg-zinc-900/80"
+                  className="group flex cursor-pointer items-center justify-between p-4 transition-colors hover:bg-[var(--background)]/40"
                   onClick={() => router.push(`/dashboard/inbox/${conversation.id}`)}
                 >
-                  <td className="px-3 py-2 text-zinc-200">
-                    <div className="flex flex-col">
-                      <span className="truncate">
-                        {customerName}
-                      </span>
-                      <span className="text-[10px] text-zinc-500">
-                        {customerPhone}
-                      </span>
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="relative">
+                        <div className="h-12 w-12 rounded-2xl bg-zinc-800 flex items-center justify-center font-heading text-lg font-bold text-zinc-400 group-hover:bg-zinc-700 transition-colors">
+                            {customerName.charAt(0)}
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-[var(--surface)] flex items-center justify-center text-[10px]">
+                            💬
+                        </div>
                     </div>
-                  </td>
-                  <td className="px-3 py-2 text-zinc-200">
-                    {lastMessage ? (
-                      <div className="flex flex-col">
-                        <span className="text-[10px] text-zinc-500">
-                          {lastMessage.role === 'CUSTOMER'
-                            ? 'Cliente'
-                            : lastMessage.role === 'AGENT'
-                              ? 'Tú'
-                              : 'Bot'}
+
+                    <div className="flex flex-col min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[var(--foreground)] truncate">
+                            {customerName}
                         </span>
-                        <span className="line-clamp-2">
-                          {lastMessage.content}
-                        </span>
+                        {hasUnread && <span className="h-2 w-2 rounded-full bg-[var(--accent)] animate-pulse" />}
                       </div>
-                    ) : (
-                      <span className="text-zinc-500">
-                        Sin mensajes
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-200">
-                        {statusLabel}
-                      </span>
-                      {hasUnread && (
-                        <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                      )}
+                      <div className="text-[11px] text-[var(--muted)] truncate mt-0.5">
+                        {lastMessage ? lastMessage.content : 'Sin mensajes'}
+                      </div>
                     </div>
-                  </td>
-                  <td className="px-3 py-2 text-zinc-400">
-                    {formatDateTime(conversation.updatedAt)}
-                  </td>
-                </tr>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2 ml-4">
+                    <span className="text-[10px] font-medium text-[var(--muted)]">
+                        {formatDateTime(conversation.updatedAt).split(',')[1]}
+                    </span>
+                    <span className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-tight ${conversation.status === 'BOT' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : 'bg-zinc-800 text-zinc-400'}`}>
+                      {conversation.status === 'BOT' ? '🤖 Bot' : '👤 Humano'}
+                    </span>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
+
+            {filteredConversations.length === 0 && (
+                <div className="p-20 text-center space-y-2">
+                    <div className="text-4xl opacity-20">💬</div>
+                    <div className="text-sm font-bold text-[var(--foreground)]">No hay conversaciones</div>
+                    <p className="text-xs text-[var(--muted)]">No se encontraron chats con el filtro seleccionado.</p>
+                </div>
+            )}
+        </div>
       </div>
     </div>
   );

@@ -87,11 +87,22 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           <nav className="space-y-4 text-sm">
             <div>
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-                Órdenes
+                Principal
+              </div>
+              <Link
+                href="/dashboard"
+                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+              >
+                Dashboard
+              </Link>
+            </div>
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                Ventas
               </div>
               <Link
                 href="/dashboard/orders"
-                className="flex items-center justify-between rounded-md bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-100"
+                className="flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
               >
                 <span>Órdenes</span>
                 {newOrdersCount > 0 && (
@@ -99,6 +110,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                     {newOrdersCount}
                   </span>
                 )}
+              </Link>
+              <Link
+                href="/dashboard/products"
+                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+              >
+                Catálogo
               </Link>
             </div>
             <div>
@@ -153,6 +170,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
               >
                 Configuración
+              </Link>
+              <Link
+                href="/dashboard/exchange-rate"
+                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+              >
+                Tasa de Cambio
+              </Link>
+              <Link
+                href="/dashboard/reports"
+                className="flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+              >
+                Reportes
               </Link>
             </div>
             <div>
