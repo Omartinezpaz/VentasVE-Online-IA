@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VentasVE · Arquitectura Técnica</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Figtree:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:      #07090f;
+  --bg2:     #0d1018;
+  --surface: #121620;
+  --s2:      #181e2c;
+  --s3:      #1f2638;
+  --border:  rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.11);
+  --text:    #dde2f0;
+  --text2:   #7e8aaa;
+  --muted:   #404860;
+  --accent:  #f5c842;
+  --green:   #22c55e;
+  --blue:    #4f8ef7;
+  --purple:  #9b6dff;
+  --red:     #e8360e;
+  --cyan:    #22d3ee;
+  --orange:  #fb923c;
+
+  /* syntax */
+  --syn-key:    #9b6dff;
+  --syn-str:    #22c55e;
+  --syn-num:    #fb923c;
+  --syn-type:   #4f8ef7;
+  --syn-com:    #404860;
+  --syn-field:  #f5c842;
+  --syn-rel:    #22d3ee;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Figtree',sans-serif;
+  min-height:100vh;
+}
+
+/* ── TOPBAR ────────────────────────── */
+.topbar{
+  position:sticky;top:0;z-index:100;
+  background:rgba(7,9,15,0.94);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  height:54px;display:flex;align-items:center;
+  padding:0 28px;gap:0;
+}
+.t-logo{
+  font-family:'Syne',sans-serif;font-weight:800;
+  font-size:17px;letter-spacing:-.5px;margin-right:28px;
+  white-space:nowrap;
+}
+.t-logo span{color:var(--accent);}
+.t-tabs{display:flex;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none;}
+.t-tabs::-webkit-scrollbar{display:none;}
+.ttab{
+  padding:7px 16px;border-radius:7px;
+  font-size:13px;font-weight:500;cursor:pointer;
+  color:var(--text2);transition:all .15s;
+  white-space:nowrap;display:flex;align-items:center;gap:6px;
+  border:1px solid transparent;
+}
+.ttab:hover{color:var(--text);background:var(--surface);}
+.ttab.active{background:var(--s2);color:var(--text);border-color:var(--border2);}
+.ttab.active .ttab-dot{background:var(--accent);}
+.ttab-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);transition:background .15s;}
+
+/* ── LAYOUT ────────────────────────── */
+.page{display:none;min-height:calc(100vh - 54px);}
+.page.active{display:block;}
+
+/* ── SECTION HERO ──────────────────── */
+.sec-hero{
+  padding:44px 40px 32px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,var(--bg2),var(--bg));
+}
+.sec-eyebrow{
+  font-size:11px;font-weight:700;letter-spacing:.1em;
+  color:var(--accent);text-transform:uppercase;margin-bottom:8px;
+}
+.sec-title{
+  font-family:'Syne',sans-serif;font-size:30px;font-weight:800;
+  line-height:1.1;margin-bottom:10px;
+}
+.sec-sub{font-size:15px;color:var(--text2);line-height:1.6;max-width:620px;}
+
+/* ── CONTENT WRAP ──────────────────── */
+.content-wrap{padding:32px 40px 80px;}
+
+/* ── SECTION LABEL ─────────────────── */
+.sec-label{
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:700;
+  letter-spacing:.08em;color:var(--text2);text-transform:uppercase;
+  margin-bottom:14px;margin-top:36px;
+  display:flex;align-items:center;gap:8px;
+}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.sec-label:first-child{margin-top:0;}
+
+/* ── CODE BLOCK ────────────────────── */
+.code-wrap{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;
+  margin-bottom:20px;
+}
+.code-header{
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface);
+}
+.ch-dots{display:flex;gap:5px;}
+.ch-dot{width:10px;height:10px;border-radius:50%;}
+.ch-lang{
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--text2);font-weight:500;
+  margin-left:4px;
+}
+.ch-file{
+  margin-left:auto;font-family:'JetBrains Mono',monospace;
+  font-size:11px;color:var(--text2);
+}
+.ch-copy{
+  font-size:11px;padding:3px 10px;
+  background:var(--s2);border:1px solid var(--border2);
+  border-radius:5px;cursor:pointer;color:var(--text2);
+  transition:all .15s;font-family:'Figtree',sans-serif;
+}
+.ch-copy:hover{color:var(--accent);border-color:var(--accent);}
+.ch-copy.copied{color:var(--green);border-color:var(--green);}
+pre{
+  padding:20px;overflow-x:auto;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12.5px;line-height:1.7;
+}
+pre::-webkit-scrollbar{height:4px;}
+pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* ── SYNTAX COLORS ─────────────────── */
+.k{color:var(--syn-key);}      /* keywords */
+.s{color:var(--syn-str);}      /* strings */
+.n{color:var(--syn-num);}      /* numbers/enums */
+.t{color:var(--syn-type);}     /* types */
+.c{color:var(--syn-com);}      /* comments */
+.f{color:var(--syn-field);}    /* fields */
+.r{color:var(--syn-rel);}      /* relations */
+.p{color:var(--text);}         /* plain */
+.accent{color:var(--accent);}
+
+/* ── INFO CARDS ────────────────────── */
+.info-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:24px;}
+.info-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;padding:16px;
+}
+.ic-icon{font-size:22px;margin-bottom:8px;}
+.ic-title{font-size:13px;font-weight:700;margin-bottom:4px;}
+.ic-desc{font-size:12px;color:var(--text2);line-height:1.6;}
+
+/* ── TABLE ──────────────────────────── */
+.db-table{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:14px;overflow:hidden;margin-bottom:20px;
+}
+.dbt-head{
+  padding:12px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+  background:var(--s2);
+}
+.dbt-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px;}
+.dbt-badge{
+  font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;
+}
+.tb-core{background:rgba(245,200,66,.12);color:var(--accent);}
+.tb-rel{background:rgba(79,142,247,.12);color:var(--blue);}
+.tb-cfg{background:rgba(155,109,255,.12);color:var(--purple);}
+.tb-log{background:rgba(34,197,94,.12);color:var(--green);}
+.dbt-desc{font-size:12px;color:var(--text2);margin-left:auto;}
+table{width:100%;border-collapse:collapse;}
+th{
+  padding:9px 14px;text-align:left;
+  font-size:10px;font-weight:700;letter-spacing:.07em;
+  color:var(--muted);text-transform:uppercase;
+  border-bottom:1px solid var(--border);background:var(--bg2);
+}
+td{
+  padding:9px 14px;font-size:12px;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  font-family:'JetBrains Mono',monospace;
+}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,.02);}
+.td-field{color:var(--syn-field);}
+.td-type{color:var(--syn-type);}
+.td-pk{color:var(--accent);font-size:10px;font-weight:700;}
+.td-fk{color:var(--cyan);font-size:10px;font-weight:700;}
+.td-idx{color:var(--purple);font-size:10px;font-weight:700;}
+.td-unique{color:var(--orange);font-size:10px;font-weight:700;}
+.td-note{color:var(--text2);font-family:'Figtree',sans-serif;font-size:11px;}
+
+/* ── RELATION DIAGRAM ──────────────── */
+.erd-wrap{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:14px;padding:24px;margin-bottom:20px;
+  overflow-x:auto;
+}
+.erd{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;}
+.erd-node{
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:10px;min-width:160px;overflow:hidden;
+  transition:border-color .2s;cursor:default;
+}
+.erd-node:hover{border-color:var(--accent);}
+.erd-node-head{
+  padding:8px 12px;font-family:'Syne',sans-serif;
+  font-size:12px;font-weight:700;
+  border-bottom:1px solid var(--border);
+}
+.erd-node-head.yellow{background:rgba(245,200,66,.1);color:var(--accent);}
+.erd-node-head.blue{background:rgba(79,142,247,.1);color:var(--blue);}
+.erd-node-head.green{background:rgba(34,197,94,.1);color:var(--green);}
+.erd-node-head.purple{background:rgba(155,109,255,.1);color:var(--purple);}
+.erd-node-head.cyan{background:rgba(34,211,238,.1);color:var(--cyan);}
+.erd-node-head.orange{background:rgba(251,146,60,.1);color:var(--orange);}
+.erd-field{
+  padding:5px 12px;font-family:'JetBrains Mono',monospace;
+  font-size:11px;display:flex;gap:8px;align-items:center;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+}
+.erd-field:last-child{border-bottom:none;}
+.ef-name{color:var(--syn-field);flex:1;}
+.ef-type{color:var(--text2);font-size:10px;}
+.ef-pk{color:var(--accent);font-size:9px;font-weight:700;}
+.ef-fk{color:var(--cyan);font-size:9px;font-weight:700;}
+.erd-arrows{
+  display:flex;flex-direction:column;justify-content:center;
+  gap:6px;padding:0 8px;
+}
+.arrow{
+  font-size:12px;color:var(--muted);
+  display:flex;align-items:center;gap:4px;
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+}
+.arrow.one-many{color:var(--blue);}
+.arrow.many-many{color:var(--purple);}
+.arrow.one-one{color:var(--green);}
+
+/* ── AUTH FLOW ──────────────────────── */
+.flow-wrap{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:14px;padding:28px;margin-bottom:20px;overflow-x:auto;
+}
+.flow{display:flex;flex-direction:column;gap:0;}
+.flow-row{
+  display:flex;align-items:stretch;gap:0;
+  min-height:64px;
+}
+.flow-actor{
+  width:120px;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;text-align:center;
+  font-size:11px;font-weight:700;letter-spacing:.04em;
+  color:var(--text2);padding:0 8px;
+}
+.flow-timeline{
+  flex:1;display:flex;align-items:center;
+  padding:8px 0;position:relative;
+}
+.flow-arrow{
+  display:flex;align-items:center;gap:0;flex:1;
+  position:relative;
+}
+.flow-line{height:2px;flex:1;background:var(--border2);}
+.flow-arrowhead{font-size:12px;color:var(--text2);}
+.flow-label{
+  position:absolute;top:-20px;left:50%;transform:translateX(-50%);
+  font-size:11px;font-weight:600;color:var(--text);
+  background:var(--s2);padding:2px 8px;border-radius:5px;
+  border:1px solid var(--border2);white-space:nowrap;
+  font-family:'JetBrains Mono',monospace;
+}
+.flow-note{
+  font-size:11px;color:var(--text2);
+  background:var(--s3);padding:6px 12px;border-radius:8px;
+  border:1px solid var(--border);white-space:nowrap;
+  max-width:300px;
+}
+
+/* Vertical line between rows */
+.flow-vline{
+  width:120px;flex-shrink:0;display:flex;
+  justify-content:center;
+}
+.vl{width:2px;background:var(--border2);}
+.flow-step-card{
+  flex:1;padding:10px 16px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;margin:4px 0;
+  display:flex;align-items:center;gap:12px;
+}
+.step-num-s{
+  width:26px;height:26px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Syne',sans-serif;font-size:12px;font-weight:800;
+  flex-shrink:0;
+}
+.sn-y{background:rgba(245,200,66,.15);color:var(--accent);}
+.sn-g{background:rgba(34,197,94,.15);color:var(--green);}
+.sn-b{background:rgba(79,142,247,.15);color:var(--blue);}
+.sn-p{background:rgba(155,109,255,.15);color:var(--purple);}
+.sn-r{background:rgba(232,54,14,.15);color:var(--red);}
+.sn-c{background:rgba(34,211,238,.15);color:var(--cyan);}
+.step-content-s{flex:1;}
+.scs-title{font-size:13px;font-weight:600;margin-bottom:2px;}
+.scs-detail{font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;}
+.step-tag{
+  font-size:10px;padding:3px 8px;border-radius:5px;
+  font-weight:700;flex-shrink:0;
+}
+.st-api{background:rgba(79,142,247,.12);color:var(--blue);}
+.st-db{background:rgba(34,197,94,.12);color:var(--green);}
+.st-cache{background:rgba(155,109,255,.12);color:var(--purple);}
+.st-email{background:rgba(245,200,66,.12);color:var(--accent);}
+.st-client{background:rgba(34,211,238,.12);color:var(--cyan);}
+.st-err{background:rgba(232,54,14,.12);color:var(--red);}
+
+/* auth diagram */
+.auth-diagram{
+  display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr;
+  gap:0;align-items:start;margin-bottom:20px;
+}
+.auth-col{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:12px;overflow:hidden;
+}
+.auth-col-head{
+  padding:10px 14px;border-bottom:1px solid var(--border);
+  font-size:12px;font-weight:700;text-align:center;
+}
+.ach-client{background:rgba(34,211,238,.08);color:var(--cyan);}
+.ach-server{background:rgba(79,142,247,.08);color:var(--blue);}
+.ach-db{background:rgba(34,197,94,.08);color:var(--green);}
+.auth-step-list{padding:10px;}
+.auth-step{
+  padding:8px 10px;border-radius:8px;margin-bottom:4px;
+  font-size:11px;border:1px solid var(--border);
+  background:var(--s2);
+}
+.auth-step:last-child{margin-bottom:0;}
+.as-num{
+  font-family:'Syne',sans-serif;font-size:10px;font-weight:800;
+  color:var(--accent);margin-bottom:2px;
+}
+.as-text{color:var(--text);line-height:1.4;}
+.as-code{
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--text2);margin-top:3px;
+}
+.auth-arrow-col{
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding-top:44px;gap:8px;
+}
+.auth-arrow{
+  font-size:18px;color:var(--text2);
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+}
+.aa-label{font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+
+/* ── FOLDER TREE ────────────────────── */
+.folder-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+.folder-block{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+.fb-head{
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  background:var(--surface);
+  display:flex;align-items:center;gap:8px;
+}
+.fb-title{font-family:'Syne',sans-serif;font-size:13px;font-weight:700;}
+.fb-badge{
+  font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;
+}
+.fb-next{background:rgba(34,211,238,.12);color:var(--cyan);}
+.fb-node{background:rgba(34,197,94,.12);color:var(--green);}
+.fb-body{padding:14px 6px;}
+.tree{font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;padding:0 10px;}
+.t-dir{color:var(--blue);font-weight:600;}
+.t-file{color:var(--text);}
+.t-file.ts{color:var(--syn-type);}
+.t-file.config{color:var(--orange);}
+.t-file.env{color:var(--red);}
+.t-file.md{color:var(--text2);}
+.t-file.prisma{color:var(--purple);}
+.t-comment{color:var(--muted);font-size:11px;}
+.t-indent1{padding-left:20px;}
+.t-indent2{padding-left:40px;}
+.t-indent3{padding-left:60px;}
+.t-indent4{padding-left:80px;}
+.t-branch{color:var(--muted);}
+
+/* ── CHIP TAGS ──────────────────────── */
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.tag{
+  padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600;
+  border:1px solid;
+}
+.tag-y{border-color:rgba(245,200,66,.3);color:var(--accent);background:rgba(245,200,66,.06);}
+.tag-g{border-color:rgba(34,197,94,.3);color:var(--green);background:rgba(34,197,94,.06);}
+.tag-b{border-color:rgba(79,142,247,.3);color:var(--blue);background:rgba(79,142,247,.06);}
+.tag-p{border-color:rgba(155,109,255,.3);color:var(--purple);background:rgba(155,109,255,.06);}
+.tag-r{border-color:rgba(232,54,14,.3);color:var(--red);background:rgba(232,54,14,.06);}
+.tag-c{border-color:rgba(34,211,238,.3);color:var(--cyan);background:rgba(34,211,238,.06);}
+
+/* ── CALLOUT ────────────────────────── */
+.callout{
+  border-radius:10px;padding:14px 16px;margin-bottom:16px;
+  display:flex;gap:12px;align-items:flex-start;
+}
+.callout-y{background:rgba(245,200,66,.07);border:1px solid rgba(245,200,66,.2);}
+.callout-g{background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.2);}
+.callout-b{background:rgba(79,142,247,.07);border:1px solid rgba(79,142,247,.2);}
+.callout-r{background:rgba(232,54,14,.07);border:1px solid rgba(232,54,14,.2);}
+.callout-icon{font-size:18px;flex-shrink:0;}
+.callout-text{font-size:13px;line-height:1.6;color:var(--text2);}
+.callout-text strong{color:var(--text);}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .folder-grid{grid-template-columns:1fr;}
+  .auth-diagram{grid-template-columns:1fr;}
+  .content-wrap{padding:20px 16px 60px;}
+  .sec-hero{padding:28px 16px 20px;}
+  .auth-arrow-col{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<nav class="topbar">
+  <div class="t-logo">Ventas<span>VE</span> · <span style="color:var(--text2);font-size:14px;font-weight:400">Arquitectura</span></div>
+  <div class="t-tabs">
+    <div class="ttab active" onclick="show('db',this)"><div class="ttab-dot"></div>🗄️ Base de Datos</div>
+    <div class="ttab" onclick="show('auth',this)"><div class="ttab-dot"></div>🔐 Autenticación</div>
+    <div class="ttab" onclick="show('folders',this)"><div class="ttab-dot"></div>📁 Estructura</div>
+    <div class="ttab" onclick="show('prisma',this)"><div class="ttab-dot"></div>⚡ Prisma Schema</div>
+    <div class="ttab" onclick="show('api',this)"><div class="ttab-dot"></div>🔌 API Routes</div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════
+  PAGE 1: BASE DE DATOS
+═══════════════════════════════════ -->
+<div class="page active" id="p-db">
+  <div class="sec-hero">
+    <div class="sec-eyebrow">Esquema de Base de Datos</div>
+    <div class="sec-title">PostgreSQL · 12 Tablas Core</div>
+    <div class="sec-sub">Diseñado para el contexto venezolano: multi-divisa, multi-método de pago, con soporte para chatbot, pedidos y catálogo público por tenant.</div>
+  </div>
+  <div class="content-wrap">
+
+    <div class="tags">
+      <span class="tag tag-g">PostgreSQL 15</span>
+      <span class="tag tag-b">Prisma ORM</span>
+      <span class="tag tag-p">Multi-tenant</span>
+      <span class="tag tag-y">Multi-divisa</span>
+      <span class="tag tag-c">UUID primary keys</span>
+      <span class="tag tag-r">Soft delete</span>
+    </div>
+
+    <div class="callout callout-y">
+      <div class="callout-icon">💡</div>
+      <div class="callout-text">
+        <strong>Decisión de arquitectura:</strong> Cada negocio (Business) es un tenant independiente. Todos los datos están aislados por <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">businessId</code>. Los precios se guardan siempre en centavos USD (Integer) para evitar errores de punto flotante. La conversión a Bs. se hace en tiempo real.
+      </div>
+    </div>
+
+    <!-- ERD VISUAL -->
+    <div class="sec-label">Diagrama de Relaciones</div>
+    <div class="erd-wrap">
+      <div class="erd">
+
+        <div class="erd-node">
+          <div class="erd-node-head yellow">👤 User</div>
+          <div class="erd-field"><span class="ef-name">id</span><span class="ef-type">uuid</span><span class="ef-pk">PK</span></div>
+          <div class="erd-field"><span class="ef-name">email</span><span class="ef-type">string</span></div>
+          <div class="erd-field"><span class="ef-name">passwordHash</span><span class="ef-type">string</span></div>
+          <div class="erd-field"><span class="ef-name">role</span><span class="ef-type">enum</span></div>
+          <div class="erd-field"><span class="ef-name">businessId</span><span class="ef-type">uuid</span><span class="ef-fk">FK</span></div>
+        </div>
+
+        <div class="erd-arrows">
+          <div class="arrow one-many">1 ──→ N</div>
+          <div class="arrow one-one">1 ──→ 1</div>
+        </div>
+
+        <div class="erd-node">
+          <div class="erd-node-head blue">🏪 Business</div>
+          <div class="erd-field"><span class="ef-name">id</span><span class="ef-type">uuid</span><span class="ef-pk">PK</span></div>
+          <div class="erd-field"><span class="ef-name">slug</span><span class="ef-type">string</span></div>
+          <div class="erd-field"><span class="ef-name">name</span><span class="ef-type">string</span></div>
+          <div class="erd-field"><span class="ef-name">type</span><span class="ef-type">enum</span></div>
+          <div class="erd-field"><span class="ef-name">plan</span><span class="ef-type">enum</span></div>
+          <div class="erd-field"><span class="ef-name">whatsapp</span><span class="ef-type">string</span></div>
+        </div>
+
+        <div class="erd-arrows">
+          <div class="arrow one-many">1 ──→ N</div>
+          <div class="arrow one-many">1 ──→ N</div>
+          <div class="arrow one-many">1 ──→ N</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="erd-node">
+            <div class="erd-node-head green">📦 Product</div>
+            <div class="erd-field"><span class="ef-name">id</span><span class="ef-type">uuid</span><span class="ef-pk">PK</span></div>
+            <div class="erd-field"><span class="ef-name">businessId</span><span class="ef-type">uuid</span><span class="ef-fk">FK</span></div>
+            <div class="erd-field"><span class="ef-name">name</span><span class="ef-type">string</span></div>
+            <div class="erd-field"><span class="ef-name">priceUsdCents</span><span class="ef-type">int</span></div>
+            <div class="erd-field"><span class="ef-name">stock</span><span class="ef-type">int</span></div>
+            <div class="erd-field"><span class="ef-name">variants</span><span class="ef-type">json</span></div>
+          </div>
+          <div class="erd-node">
+            <div class="erd-node-head cyan">👥 Customer</div>
+            <div class="erd-field"><span class="ef-name">id</span><span class="ef-type">uuid</span><span class="ef-pk">PK</span></div>
+            <div class="erd-field"><span class="ef-name">businessId</span><span class="ef-type">uuid</span><span class="ef-fk">FK</span></div>
+            <div class="erd-field"><span class="ef-name">phone</span><span class="ef-type">string</span></div>
+            <div class="erd-field"><span class="ef-name">name</span><span class="ef-type">string</span></div>
+            <div class="erd-field"><span class="ef-name">address</span><span class="ef-type">string</span></div>
+          </div>
+        </div>
+
+        <div class="erd-arrows">
+          <div class="arrow one-many">1 ──→ N</div>
+          <div class="arrow many-many">N ──→ N</div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div class="erd-node">
+            <div class="erd-node-head orange">🛒 Order</div>
+            <div class="erd-field"><span class="ef-name">id</span><span class="ef-type">uuid</span><span class="ef-pk">PK</span></div>
+            <div class="erd-field"><span class="ef-name">businessId</span><span class="ef-type">uuid</span><span class="ef-fk">FK</span></div>
+            <div class="erd-field"><span class="ef-name">customerId</span><span class="ef-type">uuid</span><span class="ef-fk">FK</span></div>
+            <div class="erd-field"><span class="ef-name">status</span><span class="ef-type">enum</span></div>
+            <div class="erd-field"><span class="ef-name">totalCents</span><span class="ef-type">int</span></div>
+            <div class="erd-field"><span class="ef-name">paymentMethod</span><span class="ef-type">enum</span></div>
+          </div>
+          <div class="erd-node">
+            <div class="erd-node-head purple">💬 Conversation</div>
+            <div class="erd-field"><span class="ef-name">id</span><span class="ef-type">uuid</span><span class="ef-pk">PK</span></div>
+            <div class="erd-field"><span class="ef-name">customerId</span><span class="ef-type">uuid</span><span class="ef-fk">FK</span></div>
+            <div class="erd-field"><span class="ef-name">channel</span><span class="ef-type">enum</span></div>
+            <div class="erd-field"><span class="ef-name">botActive</span><span class="ef-type">bool</span></div>
+            <div class="erd-field"><span class="ef-name">status</span><span class="ef-type">enum</span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TABLE DETAILS -->
+    <div class="sec-label">Detalle de cada tabla</div>
+
+    <!-- BUSINESS -->
+    <div class="db-table">
+      <div class="dbt-head">
+        <div class="dbt-name">🏪 businesses</div>
+        <span class="dbt-badge tb-core">CORE</span>
+        <div class="dbt-desc">Tenant raíz — cada negocio registrado</div>
+      </div>
+      <table>
+        <tr><th>Campo</th><th>Tipo</th><th>Restricción</th><th>Descripción</th></tr>
+        <tr><td class="td-field">id</td><td class="td-type">UUID</td><td class="td-pk">PK · DEFAULT gen_random_uuid()</td><td class="td-note">Identificador único del negocio</td></tr>
+        <tr><td class="td-field">slug</td><td class="td-type">VARCHAR(60)</td><td class="td-unique">UNIQUE · NOT NULL</td><td class="td-note">URL del catálogo: ventasve.app/c/{slug}</td></tr>
+        <tr><td class="td-field">name</td><td class="td-type">VARCHAR(120)</td><td>NOT NULL</td><td class="td-note">Nombre visible de la tienda</td></tr>
+        <tr><td class="td-field">type</td><td class="td-type">BusinessType</td><td>ENUM · NOT NULL</td><td class="td-note">FASHION, FOOD, BEAUTY, TECH, GROCERY…</td></tr>
+        <tr><td class="td-field">plan</td><td class="td-type">Plan</td><td>ENUM · DEFAULT FREE</td><td class="td-note">FREE, PRO, BUSINESS</td></tr>
+        <tr><td class="td-field">whatsapp</td><td class="td-type">VARCHAR(20)</td><td>NOT NULL</td><td class="td-note">+58 con código de país</td></tr>
+        <tr><td class="td-field">city</td><td class="td-type">VARCHAR(80)</td><td></td><td class="td-note">Ciudad principal de operación</td></tr>
+        <tr><td class="td-field">settings</td><td class="td-type">JSONB</td><td>DEFAULT '{}'</td><td class="td-note">Config flexible: colores, módulos, campos del ramo</td></tr>
+        <tr><td class="td-field">isActive</td><td class="td-type">BOOLEAN</td><td>DEFAULT true</td><td class="td-note">Pausar tienda temporalmente</td></tr>
+        <tr><td class="td-field">createdAt</td><td class="td-type">TIMESTAMPTZ</td><td>DEFAULT NOW()</td><td class="td-note"></td></tr>
+      </table>
+    </div>
+
+    <!-- PRODUCTS -->
+    <div class="db-table">
+      <div class="dbt-head">
+        <div class="dbt-name">📦 products</div>
+        <span class="dbt-badge tb-core">CORE</span>
+        <div class="dbt-desc">Catálogo de cada negocio</div>
+      </div>
+      <table>
+        <tr><th>Campo</th><th>Tipo</th><th>Restricción</th><th>Descripción</th></tr>
+        <tr><td class="td-field">id</td><td class="td-type">UUID</td><td class="td-pk">PK</td><td class="td-note"></td></tr>
+        <tr><td class="td-field">businessId</td><td class="td-type">UUID</td><td class="td-fk">FK → businesses</td><td class="td-note">Aislamiento por tenant</td></tr>
+        <tr><td class="td-field">name</td><td class="td-type">VARCHAR(200)</td><td>NOT NULL</td><td class="td-note">Nombre del producto</td></tr>
+        <tr><td class="td-field">description</td><td class="td-type">TEXT</td><td></td><td class="td-note"></td></tr>
+        <tr><td class="td-field">priceUsdCents</td><td class="td-type">INTEGER</td><td>NOT NULL · CHECK ≥ 0</td><td class="td-note">Precio en centavos USD (1200 = $12.00)</td></tr>
+        <tr><td class="td-field">stock</td><td class="td-type">INTEGER</td><td>DEFAULT 0</td><td class="td-note">Unidades disponibles</td></tr>
+        <tr><td class="td-field">images</td><td class="td-type">TEXT[]</td><td></td><td class="td-note">Array de URLs de imágenes (Cloudinary/R2)</td></tr>
+        <tr><td class="td-field">variants</td><td class="td-type">JSONB</td><td>DEFAULT '[]'</td><td class="td-note">[{name:"Talla",options:["S","M","L"]}]</td></tr>
+        <tr><td class="td-field">attributes</td><td class="td-type">JSONB</td><td>DEFAULT '{}'</td><td class="td-note">Campos del ramo: color, material, talla, etc.</td></tr>
+        <tr><td class="td-field">categoryId</td><td class="td-type">UUID</td><td class="td-fk">FK → categories</td><td class="td-note"></td></tr>
+        <tr><td class="td-field">isPublished</td><td class="td-type">BOOLEAN</td><td>DEFAULT true</td><td class="td-note">Visible en catálogo público</td></tr>
+        <tr><td class="td-field">deletedAt</td><td class="td-type">TIMESTAMPTZ</td><td>NULLABLE</td><td class="td-note">Soft delete</td></tr>
+      </table>
+    </div>
+
+    <!-- ORDERS -->
+    <div class="db-table">
+      <div class="dbt-head">
+        <div class="dbt-name">🛒 orders</div>
+        <span class="dbt-badge tb-core">CORE</span>
+        <div class="dbt-desc">Pedidos con trazabilidad completa</div>
+      </div>
+      <table>
+        <tr><th>Campo</th><th>Tipo</th><th>Restricción</th><th>Descripción</th></tr>
+        <tr><td class="td-field">id</td><td class="td-type">UUID</td><td class="td-pk">PK</td><td class="td-note"></td></tr>
+        <tr><td class="td-field">orderNumber</td><td class="td-type">SERIAL</td><td class="td-idx">IDX</td><td class="td-note">Número legible: #1044</td></tr>
+        <tr><td class="td-field">businessId</td><td class="td-type">UUID</td><td class="td-fk">FK → businesses</td><td class="td-note"></td></tr>
+        <tr><td class="td-field">customerId</td><td class="td-type">UUID</td><td class="td-fk">FK → customers</td><td class="td-note"></td></tr>
+        <tr><td class="td-field">status</td><td class="td-type">OrderStatus</td><td>ENUM</td><td class="td-note">PENDING · CONFIRMED · PREPARING · SHIPPED · DELIVERED · CANCELLED</td></tr>
+        <tr><td class="td-field">totalCents</td><td class="td-type">INTEGER</td><td>NOT NULL</td><td class="td-note">Total en centavos USD</td></tr>
+        <tr><td class="td-field">exchangeRate</td><td class="td-type">DECIMAL(12,2)</td><td></td><td class="td-note">Tasa del día al momento del pedido</td></tr>
+        <tr><td class="td-field">paymentMethod</td><td class="td-type">PaymentMethod</td><td>ENUM</td><td class="td-note">ZELLE · PAGO_MOVIL · BINANCE · CASH_USD · TRANSFER_BS · CRYPTO</td></tr>
+        <tr><td class="td-field">deliveryAddress</td><td class="td-type">TEXT</td><td></td><td class="td-note"></td></tr>
+        <tr><td class="td-field">notes</td><td class="td-type">TEXT</td><td></td><td class="td-note">Notas del cliente</td></tr>
+        <tr><td class="td-field">source</td><td class="td-type">OrderSource</td><td>ENUM</td><td class="td-note">WEB · WHATSAPP · BOT · MANUAL</td></tr>
+        <tr><td class="td-field">createdAt</td><td class="td-type">TIMESTAMPTZ</td><td>DEFAULT NOW()</td><td class="td-note"></td></tr>
+      </table>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div class="db-table">
+      <div class="dbt-head">
+        <div class="dbt-name">💳 payments</div>
+        <span class="dbt-badge tb-core">CORE</span>
+        <div class="dbt-desc">Registro y conciliación de pagos venezolanos</div>
+      </div>
+      <table>
+        <tr><th>Campo</th><th>Tipo</th><th>Restricción</th><th>Descripción</th></tr>
+        <tr><td class="td-field">id</td><td class="td-type">UUID</td><td class="td-pk">PK</td><td class="td-note"></td></tr>
+        <tr><td class="td-field">orderId</td><td class="td-type">UUID</td><td class="td-fk">FK → orders</td><td class="td-note"></td></tr>
+        <tr><td class="td-field">businessId</td><td class="td-type">UUID</td><td class="td-fk">FK → businesses</td><td class="td-note"></td></tr>
+        <tr><td class="td-field">method</td><td class="td-type">PaymentMethod</td><td>ENUM</td><td class="td-note">ZELLE · PAGO_MOVIL · BINANCE · CASH_USD · TRANSFER_BS · CRYPTO</td></tr>
+        <tr><td class="td-field">amountCents</td><td class="td-type">INTEGER</td><td>NOT NULL</td><td class="td-note">Monto en centavos de la moneda pagada</td></tr>
+        <tr><td class="td-field">currency</td><td class="td-type">VARCHAR(5)</td><td>NOT NULL</td><td class="td-note">USD · VES · USDT · BTC</td></tr>
+        <tr><td class="td-field">reference</td><td class="td-type">VARCHAR(200)</td><td></td><td class="td-note">N° ref Zelle, teléfono PM, hash Binance…</td></tr>
+        <tr><td class="td-field">proofImageUrl</td><td class="td-type">TEXT</td><td></td><td class="td-note">URL del comprobante subido</td></tr>
+        <tr><td class="td-field">status</td><td class="td-type">PaymentStatus</td><td>ENUM</td><td class="td-note">PENDING · VERIFIED · REJECTED</td></tr>
+        <tr><td class="td-field">verifiedAt</td><td class="td-type">TIMESTAMPTZ</td><td>NULLABLE</td><td class="td-note">Cuando fue confirmado el pago</td></tr>
+        <tr><td class="td-field">verifiedBy</td><td class="td-type">UUID</td><td class="td-fk">FK → users (nullable)</td><td class="td-note">null si fue verificado por el bot</td></tr>
+      </table>
+    </div>
+
+    <!-- CONVERSATIONS & MESSAGES -->
+    <div class="db-table">
+      <div class="dbt-head">
+        <div class="dbt-name">💬 conversations + messages</div>
+        <span class="dbt-badge tb-rel">CHAT</span>
+        <div class="dbt-desc">Inbox unificado y chatbot</div>
+      </div>
+      <table>
+        <tr><th>Campo</th><th>Tipo</th><th>Restricción</th><th>Descripción</th></tr>
+        <tr><td class="td-field">conversations.channel</td><td class="td-type">Channel</td><td>ENUM</td><td class="td-note">WHATSAPP · INSTAGRAM · WEB</td></tr>
+        <tr><td class="td-field">conversations.botActive</td><td class="td-type">BOOLEAN</td><td>DEFAULT true</td><td class="td-note">false = humano tomó el control</td></tr>
+        <tr><td class="td-field">conversations.status</td><td class="td-type">ConvStatus</td><td>ENUM</td><td class="td-note">OPEN · BOT · HUMAN · CLOSED</td></tr>
+        <tr><td class="td-field">messages.role</td><td class="td-type">MsgRole</td><td>ENUM</td><td class="td-note">CUSTOMER · BOT · AGENT</td></tr>
+        <tr><td class="td-field">messages.content</td><td class="td-type">TEXT</td><td>NOT NULL</td><td class="td-note">Texto del mensaje</td></tr>
+        <tr><td class="td-field">messages.mediaUrl</td><td class="td-type">TEXT</td><td>NULLABLE</td><td class="td-note">URL de imagen/audio/doc adjunto</td></tr>
+        <tr><td class="td-field">messages.waId</td><td class="td-type">VARCHAR(100)</td><td>NULLABLE</td><td class="td-note">ID del mensaje en WhatsApp para evitar duplicados</td></tr>
+      </table>
+    </div>
+
+    <div class="callout callout-g">
+      <div class="callout-icon">✅</div>
+      <div class="callout-text">
+        <strong>Otras tablas necesarias:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green)">order_items</code> (líneas del pedido con priceSnapshot), <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green)">exchange_rates</code> (histórico de tasas BCV), <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green)">categories</code>, <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green)">sessions</code>, <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green)">notifications</code>. Total: <strong>12 tablas en el MVP.</strong>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+  PAGE 2: AUTENTICACIÓN
+═══════════════════════════════════ -->
+<div class="page" id="p-auth">
+  <div class="sec-hero">
+    <div class="sec-eyebrow">Flujo de Autenticación</div>
+    <div class="sec-title">JWT + Refresh Token · Roles por negocio</div>
+    <div class="sec-sub">Autenticación stateless con access tokens de vida corta (15min) y refresh tokens rotativos de larga duración (30 días). Soporte para múltiples usuarios por negocio con roles.</div>
+  </div>
+  <div class="content-wrap">
+
+    <div class="tags">
+      <span class="tag tag-b">JWT (HS256)</span>
+      <span class="tag tag-g">bcrypt rounds=12</span>
+      <span class="tag tag-p">Refresh Token Rotation</span>
+      <span class="tag tag-y">Role-based (OWNER/AGENT)</span>
+      <span class="tag tag-c">HttpOnly Cookies</span>
+      <span class="tag tag-r">Rate Limiting</span>
+    </div>
+
+    <!-- REGISTRO -->
+    <div class="sec-label">Flujo 1 — Registro de negocio</div>
+
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      <div class="flow-step-card">
+        <div class="step-num-s sn-b">1</div>
+        <div class="step-content-s">
+          <div class="scs-title">Cliente envía datos del negocio</div>
+          <div class="scs-detail">POST /api/auth/register · { name, slug, email, password, whatsapp, type }</div>
+        </div>
+        <span class="step-tag st-api">HTTP POST</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-y">2</div>
+        <div class="step-content-s">
+          <div class="scs-title">Validar y verificar unicidad del slug</div>
+          <div class="scs-detail">Zod schema validation · SELECT FROM businesses WHERE slug = $1</div>
+        </div>
+        <span class="step-tag st-db">DB Query</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-g">3</div>
+        <div class="step-content-s">
+          <div class="scs-title">Hashear contraseña y crear registros</div>
+          <div class="scs-detail">bcrypt.hash(password, 12) → INSERT business → INSERT user (role: OWNER)</div>
+        </div>
+        <span class="step-tag st-db">Transaction</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-p">4</div>
+        <div class="step-content-s">
+          <div class="scs-title">Generar tokens y enviar email de verificación</div>
+          <div class="scs-detail">jwt.sign({ userId, businessId, role }, SECRET, { expiresIn: '15m' })</div>
+        </div>
+        <span class="step-tag st-email">JWT + Email</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-c">5</div>
+        <div class="step-content-s">
+          <div class="scs-title">Responder con tokens y redirigir al dashboard</div>
+          <div class="scs-detail">Set-Cookie: refreshToken (HttpOnly) · Body: { accessToken, user, business }</div>
+        </div>
+        <span class="step-tag st-client">Response</span>
+      </div>
+    </div>
+
+    <!-- LOGIN -->
+    <div class="sec-label">Flujo 2 — Login</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      <div class="flow-step-card">
+        <div class="step-num-s sn-b">1</div>
+        <div class="step-content-s">
+          <div class="scs-title">POST /api/auth/login con credenciales</div>
+          <div class="scs-detail">{ email, password } · Rate limit: 10 intentos / 15min por IP</div>
+        </div>
+        <span class="step-tag st-api">HTTP POST</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-y">2</div>
+        <div class="step-content-s">
+          <div class="scs-title">Buscar usuario y verificar contraseña</div>
+          <div class="scs-detail">SELECT user + business · bcrypt.compare(password, hash)</div>
+        </div>
+        <span class="step-tag st-db">DB + bcrypt</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-r">2b</div>
+        <div class="step-content-s">
+          <div class="scs-title">Si falla: registrar intento y responder error genérico</div>
+          <div class="scs-detail">401 "Credenciales inválidas" (no especificar cuál falló por seguridad)</div>
+        </div>
+        <span class="step-tag st-err">Error Path</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-g">3</div>
+        <div class="step-content-s">
+          <div class="scs-title">Generar access token (15min) + refresh token (30 días)</div>
+          <div class="scs-detail">accessToken: payload corto · refreshToken: guardado en DB + HttpOnly cookie</div>
+        </div>
+        <span class="step-tag st-cache">JWT + DB</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-c">4</div>
+        <div class="step-content-s">
+          <div class="scs-title">Response con accessToken en body, refreshToken en cookie</div>
+          <div class="scs-detail">{ accessToken, expiresIn: 900, user: { id, name, role }, business: { slug, plan } }</div>
+        </div>
+        <span class="step-tag st-client">Response</span>
+      </div>
+    </div>
+
+    <!-- REFRESH -->
+    <div class="sec-label">Flujo 3 — Refresh Token Rotation</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+      <div class="flow-step-card">
+        <div class="step-num-s sn-b">1</div>
+        <div class="step-content-s">
+          <div class="scs-title">Access token expirado → POST /api/auth/refresh</div>
+          <div class="scs-detail">Cookie refreshToken se envía automáticamente (HttpOnly)</div>
+        </div>
+        <span class="step-tag st-api">Auto</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-y">2</div>
+        <div class="step-content-s">
+          <div class="scs-title">Verificar refresh token en DB (no solo en JWT)</div>
+          <div class="scs-detail">SELECT FROM sessions WHERE token = $1 AND revokedAt IS NULL AND expiresAt > NOW()</div>
+        </div>
+        <span class="step-tag st-db">DB Check</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-p">3</div>
+        <div class="step-content-s">
+          <div class="scs-title">Rotación: invalidar token viejo, emitir token nuevo</div>
+          <div class="scs-detail">UPDATE sessions SET revokedAt = NOW() · INSERT new session · (detect token reuse)</div>
+        </div>
+        <span class="step-tag st-db">Rotation</span>
+      </div>
+      <div class="flow-step-card">
+        <div class="step-num-s sn-c">4</div>
+        <div class="step-content-s">
+          <div class="scs-title">Nuevos tokens en respuesta</div>
+          <div class="scs-detail">Si el token viejo ya fue usado → revocar todos los tokens del usuario (ataque detectado)</div>
+        </div>
+        <span class="step-tag st-client">Secure</span>
+      </div>
+    </div>
+
+    <!-- MIDDLEWARE -->
+    <div class="sec-label">Middleware de autorización</div>
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="ch-dots">
+          <div class="ch-dot" style="background:#ff5f57"></div>
+          <div class="ch-dot" style="background:#febc2e"></div>
+          <div class="ch-dot" style="background:#28c840"></div>
+        </div>
+        <span class="ch-lang">TypeScript</span>
+        <span class="ch-file">src/middleware/auth.ts</span>
+        <div class="ch-copy" onclick="copyCode(this)">Copiar</div>
+      </div>
+      <pre><span class="c">// Middleware que protege rutas y verifica permisos por negocio</span>
+<span class="k">export const</span> <span class="f">authenticate</span> = <span class="k">async</span> (req, res, next) <span class="k">=></span> {
+  <span class="k">const</span> token = req.headers.authorization<span class="p">?.</span>split(<span class="s">' '</span>)[<span class="n">1</span>]
+  <span class="k">if</span> (!token) <span class="k">return</span> res.status(<span class="n">401</span>).json({ error: <span class="s">'Token requerido'</span> })
+
+  <span class="k">try</span> {
+    <span class="k">const</span> payload = jwt.verify(token, process.env.<span class="f">JWT_SECRET</span>) <span class="k">as</span> <span class="t">JWTPayload</span>
+    req.user = payload   <span class="c">// { userId, businessId, role }</span>
+    next()
+  } <span class="k">catch</span> {
+    <span class="k">return</span> res.status(<span class="n">401</span>).json({ error: <span class="s">'Token inválido o expirado'</span> })
+  }
+}
+
+<span class="c">// Verifica que el recurso pertenece al business del usuario</span>
+<span class="k">export const</span> <span class="f">belongsToBusiness</span> = (req, res, next) <span class="k">=></span> {
+  <span class="k">const</span> { businessId } = req.params
+  <span class="k">if</span> (req.user.businessId !== businessId) {
+    <span class="k">return</span> res.status(<span class="n">403</span>).json({ error: <span class="s">'Sin acceso a este negocio'</span> })
+  }
+  next()
+}
+
+<span class="c">// Control de acceso por rol</span>
+<span class="k">export const</span> <span class="f">requireRole</span> = (...roles: <span class="t">Role</span>[]) <span class="k">=></span> (req, res, next) <span class="k">=></span> {
+  <span class="k">if</span> (!roles.includes(req.user.role)) {
+    <span class="k">return</span> res.status(<span class="n">403</span>).json({ error: <span class="s">'Permisos insuficientes'</span> })
+  }
+  next()
+}
+
+<span class="c">// Uso en rutas:</span>
+<span class="c">// router.delete('/products/:id', authenticate, requireRole('OWNER'), deleteProduct)</span></pre>
+    </div>
+
+    <div class="callout callout-b">
+      <div class="callout-icon">🔐</div>
+      <div class="callout-text">
+        <strong>Roles del sistema:</strong> <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue)">OWNER</code> (dueño del negocio, acceso total), <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue)">AGENT</code> (empleado, sin acceso a configuración ni pagos), <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue)">SUPER_ADMIN</code> (solo para soporte VentasVE). El catálogo público no requiere auth.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+  PAGE 3: ESTRUCTURA DE CARPETAS
+═══════════════════════════════════ -->
+<div class="page" id="p-folders">
+  <div class="sec-hero">
+    <div class="sec-eyebrow">Estructura del Proyecto</div>
+    <div class="sec-title">Monorepo · Next.js + Node.js</div>
+    <div class="sec-sub">Un único repositorio con frontend y backend separados. El catálogo público y el dashboard corren en Next.js. El backend API es Node.js/Express independiente, más fácil de escalar.</div>
+  </div>
+  <div class="content-wrap">
+
+    <div class="tags">
+      <span class="tag tag-c">Next.js 15 (App Router)</span>
+      <span class="tag tag-g">Node.js + Express</span>
+      <span class="tag tag-b">pnpm workspaces</span>
+      <span class="tag tag-p">Prisma ORM</span>
+      <span class="tag tag-y">TypeScript strict</span>
+    </div>
+
+    <div class="sec-label">Estructura completa del monorepo</div>
+
+    <div class="folder-grid">
+
+      <!-- ROOT -->
+      <div class="folder-block">
+        <div class="fb-head">
+          <span style="font-size:18px">📂</span>
+          <div class="fb-title">ventasve/ (raíz del monorepo)</div>
+        </div>
+        <div class="fb-body">
+          <div class="tree">
+<span class="t-file config">package.json</span>   <span class="t-comment">← workspace root</span>
+<span class="t-file config">pnpm-workspace.yaml</span>
+<span class="t-file config">turbo.json</span>       <span class="t-comment">← build pipeline</span>
+<span class="t-file env">.env.example</span>
+<span class="t-file md">README.md</span>
+<span class="t-file config">docker-compose.yml</span>  <span class="t-comment">← local dev</span>
+<span class="t-file md">.gitignore</span>
+<span class="t-branch">│</span>
+<span class="t-dir">apps/</span>
+<span class="t-indent1"><span class="t-dir">frontend/</span>     <span class="t-comment">← Next.js</span></span>
+<span class="t-indent1"><span class="t-dir">backend/</span>      <span class="t-comment">← Express API</span></span>
+<span class="t-branch">│</span>
+<span class="t-dir">packages/</span>
+<span class="t-indent1"><span class="t-dir">database/</span>     <span class="t-comment">← Prisma schema</span></span>
+<span class="t-indent1"><span class="t-dir">types/</span>        <span class="t-comment">← TypeScript compartido</span></span>
+<span class="t-indent1"><span class="t-dir">utils/</span>        <span class="t-comment">← helpers compartidos</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATABASE PACKAGE -->
+      <div class="folder-block">
+        <div class="fb-head">
+          <span style="font-size:18px">🗄️</span>
+          <div class="fb-title">packages/database/</div>
+          <span class="fb-badge" style="background:rgba(155,109,255,.15);color:var(--purple)">Prisma</span>
+        </div>
+        <div class="fb-body">
+          <div class="tree">
+<span class="t-file prisma">schema.prisma</span>     <span class="t-comment">← definición de modelos</span>
+<span class="t-file config">package.json</span>
+<span class="t-dir">migrations/</span>
+<span class="t-indent1"><span class="t-file md">20250101_init.sql</span></span>
+<span class="t-indent1"><span class="t-file md">20250115_add_chat.sql</span></span>
+<span class="t-dir">seeds/</span>
+<span class="t-indent1"><span class="t-file ts">index.ts</span>          <span class="t-comment">← datos de prueba</span></span>
+<span class="t-indent1"><span class="t-file ts">business.seed.ts</span></span>
+<span class="t-dir">src/</span>
+<span class="t-indent1"><span class="t-file ts">client.ts</span>         <span class="t-comment">← singleton PrismaClient</span></span>
+<span class="t-indent1"><span class="t-file ts">index.ts</span>          <span class="t-comment">← re-exports</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- FRONTEND -->
+      <div class="folder-block">
+        <div class="fb-head">
+          <span style="font-size:18px">⚛️</span>
+          <div class="fb-title">apps/frontend/</div>
+          <span class="fb-badge fb-next">Next.js 15</span>
+        </div>
+        <div class="fb-body">
+          <div class="tree">
+<span class="t-file config">next.config.ts</span>
+<span class="t-file config">tailwind.config.ts</span>
+<span class="t-file env">.env.local</span>
+<span class="t-branch">│</span>
+<span class="t-dir">src/app/</span>                 <span class="t-comment">← App Router</span>
+<span class="t-indent1"><span class="t-file ts">layout.tsx</span>            <span class="t-comment">← root layout</span></span>
+<span class="t-indent1"><span class="t-file ts">page.tsx</span>              <span class="t-comment">← landing /</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">(auth)/</span>               <span class="t-comment">← sin sidebar</span></span>
+<span class="t-indent2"><span class="t-dir">login/page.tsx</span></span>
+<span class="t-indent2"><span class="t-dir">register/page.tsx</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">(dashboard)/</span>          <span class="t-comment">← con sidebar</span></span>
+<span class="t-indent2"><span class="t-dir">layout.tsx</span>            <span class="t-comment">← sidebar + topbar</span></span>
+<span class="t-indent2"><span class="t-dir">page.tsx</span>              <span class="t-comment">← /dashboard</span></span>
+<span class="t-indent2"><span class="t-dir">orders/</span></span>
+<span class="t-indent3"><span class="t-file ts">page.tsx</span>          <span class="t-comment">← lista pedidos</span></span>
+<span class="t-indent3"><span class="t-file ts">[id]/page.tsx</span>     <span class="t-comment">← detalle pedido</span></span>
+<span class="t-indent2"><span class="t-dir">products/</span></span>
+<span class="t-indent3"><span class="t-file ts">page.tsx</span></span>
+<span class="t-indent3"><span class="t-file ts">new/page.tsx</span></span>
+<span class="t-indent3"><span class="t-file ts">[id]/edit/page.tsx</span></span>
+<span class="t-indent2"><span class="t-dir">payments/page.tsx</span></span>
+<span class="t-indent2"><span class="t-dir">inbox/page.tsx</span></span>
+<span class="t-indent2"><span class="t-dir">chatbot/page.tsx</span></span>
+<span class="t-indent2"><span class="t-dir">settings/page.tsx</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">c/[slug]/</span>             <span class="t-comment">← CATÁLOGO PÚBLICO</span></span>
+<span class="t-indent2"><span class="t-file ts">page.tsx</span>          <span class="t-comment">← vitrina del cliente</span></span>
+<span class="t-indent2"><span class="t-dir">checkout/page.tsx</span></span>
+<span class="t-indent2"><span class="t-dir">order/[id]/page.tsx</span>   <span class="t-comment">← confirmación</span></span>
+<span class="t-branch">│</span>
+<span class="t-dir">src/components/</span>
+<span class="t-indent1"><span class="t-dir">ui/</span>                   <span class="t-comment">← botones, inputs, cards</span></span>
+<span class="t-indent1"><span class="t-dir">dashboard/</span>            <span class="t-comment">← sidebar, topbar</span></span>
+<span class="t-indent1"><span class="t-dir">catalog/</span>              <span class="t-comment">← ProductCard, Cart</span></span>
+<span class="t-indent1"><span class="t-dir">chat/</span>                 <span class="t-comment">← MessageBubble, Inbox</span></span>
+<span class="t-indent1"><span class="t-dir">payments/</span>             <span class="t-comment">← PaymentFlow</span></span>
+<span class="t-branch">│</span>
+<span class="t-dir">src/lib/</span>
+<span class="t-indent1"><span class="t-file ts">api.ts</span>                <span class="t-comment">← fetch wrapper + auth</span></span>
+<span class="t-indent1"><span class="t-file ts">auth.ts</span>               <span class="t-comment">← token helpers</span></span>
+<span class="t-indent1"><span class="t-file ts">exchange-rate.ts</span>      <span class="t-comment">← conversión VES/USD</span></span>
+<span class="t-branch">│</span>
+<span class="t-dir">src/hooks/</span>
+<span class="t-indent1"><span class="t-file ts">useAuth.ts</span></span>
+<span class="t-indent1"><span class="t-file ts">useOrders.ts</span></span>
+<span class="t-indent1"><span class="t-file ts">useProducts.ts</span></span>
+<span class="t-indent1"><span class="t-file ts">useExchangeRate.ts</span></span>
+<span class="t-branch">│</span>
+<span class="t-dir">src/store/</span>            <span class="t-comment">← Zustand</span>
+<span class="t-indent1"><span class="t-file ts">cart.store.ts</span></span>
+<span class="t-indent1"><span class="t-file ts">auth.store.ts</span></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- BACKEND -->
+      <div class="folder-block">
+        <div class="fb-head">
+          <span style="font-size:18px">⚡</span>
+          <div class="fb-title">apps/backend/</div>
+          <span class="fb-badge fb-node">Express API</span>
+        </div>
+        <div class="fb-body">
+          <div class="tree">
+<span class="t-file config">package.json</span>
+<span class="t-file env">.env</span>
+<span class="t-file ts">tsconfig.json</span>
+<span class="t-branch">│</span>
+<span class="t-dir">src/</span>
+<span class="t-indent1"><span class="t-file ts">app.ts</span>            <span class="t-comment">← Express setup + middlewares</span></span>
+<span class="t-indent1"><span class="t-file ts">server.ts</span>         <span class="t-comment">← puerto + arranque</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">routes/</span></span>
+<span class="t-indent2"><span class="t-file ts">auth.routes.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">business.routes.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">products.routes.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">orders.routes.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">payments.routes.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">catalog.routes.ts</span>  <span class="t-comment">← público, sin auth</span></span>
+<span class="t-indent2"><span class="t-file ts">chat.routes.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">webhook.routes.ts</span>  <span class="t-comment">← WhatsApp / Meta</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">controllers/</span></span>
+<span class="t-indent2"><span class="t-file ts">auth.controller.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">orders.controller.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">payments.controller.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">catalog.controller.ts</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">services/</span>         <span class="t-comment">← lógica de negocio</span></span>
+<span class="t-indent2"><span class="t-file ts">auth.service.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">order.service.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">payment.service.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">chatbot.service.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">whatsapp.service.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">exchange-rate.service.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">notification.service.ts</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">middleware/</span></span>
+<span class="t-indent2"><span class="t-file ts">auth.ts</span>           <span class="t-comment">← authenticate, requireRole</span></span>
+<span class="t-indent2"><span class="t-file ts">rate-limit.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">validate.ts</span>       <span class="t-comment">← Zod middleware</span></span>
+<span class="t-indent2"><span class="t-file ts">tenant.ts</span>         <span class="t-comment">← inyectar businessId</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">jobs/</span>             <span class="t-comment">← tareas programadas</span></span>
+<span class="t-indent2"><span class="t-file ts">exchange-rate.job.ts</span>  <span class="t-comment">← actualizar tasa BCV 8AM</span></span>
+<span class="t-indent2"><span class="t-file ts">order-reminder.job.ts</span> <span class="t-comment">← recordatorio de pago</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">lib/</span></span>
+<span class="t-indent2"><span class="t-file ts">prisma.ts</span>         <span class="t-comment">← singleton db client</span></span>
+<span class="t-indent2"><span class="t-file ts">redis.ts</span>          <span class="t-comment">← cache + queues</span></span>
+<span class="t-indent2"><span class="t-file ts">storage.ts</span>        <span class="t-comment">← Cloudflare R2 / S3</span></span>
+<span class="t-indent2"><span class="t-file ts">baileys.ts</span>        <span class="t-comment">← cliente WhatsApp</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">validators/</span>       <span class="t-comment">← Zod schemas</span></span>
+<span class="t-indent2"><span class="t-file ts">order.schema.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">product.schema.ts</span></span>
+<span class="t-indent2"><span class="t-file ts">payment.schema.ts</span></span>
+<span class="t-branch">│</span>
+<span class="t-indent1"><span class="t-dir">types/</span></span>
+<span class="t-indent2"><span class="t-file ts">express.d.ts</span>      <span class="t-comment">← augment req.user</span></span>
+<span class="t-indent2"><span class="t-file ts">index.ts</span></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="callout callout-y">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-text">
+        <strong>Regla de oro:</strong> Los <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">controllers</code> solo manejan HTTP (request/response). Toda la lógica va en <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">services</code>. Esto hace que el chatbot pueda llamar directamente a <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent)">order.service.ts</code> sin pasar por HTTP — lo cual es esencial para el bot.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+  PAGE 4: PRISMA SCHEMA
+═══════════════════════════════════ -->
+<div class="page" id="p-prisma">
+  <div class="sec-hero">
+    <div class="sec-eyebrow">Prisma Schema Completo</div>
+    <div class="sec-title">schema.prisma listo para usar</div>
+    <div class="sec-sub">El schema completo que puedes copiar directamente en tu proyecto. Incluye todos los modelos, enums, relaciones e índices optimizados para el contexto venezolano.</div>
+  </div>
+  <div class="content-wrap">
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="ch-dots">
+          <div class="ch-dot" style="background:#ff5f57"></div>
+          <div class="ch-dot" style="background:#febc2e"></div>
+          <div class="ch-dot" style="background:#28c840"></div>
+        </div>
+        <span class="ch-lang">Prisma</span>
+        <span class="ch-file">packages/database/schema.prisma</span>
+        <div class="ch-copy" onclick="copyCode(this)">Copiar</div>
+      </div>
+      <pre><span class="c">// ── GENERADOR Y DATASOURCE ──────────────────────────</span>
+<span class="k">generator</span> <span class="t">client</span> {
+  provider = <span class="s">"prisma-client-js"</span>
+}
+
+<span class="k">datasource</span> <span class="t">db</span> {
+  provider = <span class="s">"postgresql"</span>
+  url      = <span class="f">env</span>(<span class="s">"DATABASE_URL"</span>)
+}
+
+<span class="c">// ── ENUMS ────────────────────────────────────────────</span>
+<span class="k">enum</span> <span class="t">BusinessType</span> {
+  FASHION FOOD BEAUTY TECH GROCERY HOME HEALTH
+  EDUCATION AUTO SERVICE PET OTHER
+}
+
+<span class="k">enum</span> <span class="t">Plan</span>         { FREE PRO BUSINESS }
+<span class="k">enum</span> <span class="t">Role</span>         { OWNER AGENT SUPER_ADMIN }
+<span class="k">enum</span> <span class="t">OrderStatus</span>  { PENDING CONFIRMED PREPARING SHIPPED DELIVERED CANCELLED }
+<span class="k">enum</span> <span class="t">OrderSource</span>  { WEB WHATSAPP BOT MANUAL }
+<span class="k">enum</span> <span class="t">PaymentMethod</span> {
+  ZELLE PAGO_MOVIL BINANCE CASH_USD TRANSFER_BS CRYPTO
+}
+<span class="k">enum</span> <span class="t">PaymentStatus</span> { PENDING VERIFIED REJECTED }
+<span class="k">enum</span> <span class="t">Channel</span>       { WHATSAPP INSTAGRAM WEB }
+<span class="k">enum</span> <span class="t">ConvStatus</span>    { OPEN BOT HUMAN CLOSED }
+<span class="k">enum</span> <span class="t">MsgRole</span>       { CUSTOMER BOT AGENT }
+
+<span class="c">// ── MODELS ───────────────────────────────────────────</span>
+<span class="k">model</span> <span class="t">Business</span> {
+  <span class="f">id</span>          <span class="t">String</span>       <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">slug</span>        <span class="t">String</span>       <span class="k">@unique</span>
+  <span class="f">name</span>        <span class="t">String</span>
+  <span class="f">type</span>        <span class="t">BusinessType</span>
+  <span class="f">plan</span>        <span class="t">Plan</span>         <span class="k">@default</span>(FREE)
+  <span class="f">whatsapp</span>    <span class="t">String</span>
+  <span class="f">city</span>        <span class="t">String</span>?
+  <span class="f">settings</span>    <span class="t">Json</span>         <span class="k">@default</span>(<span class="s">"{}"</span>)  <span class="c">// colores, módulos, campos del ramo</span>
+  <span class="f">isActive</span>    <span class="t">Boolean</span>      <span class="k">@default</span>(true)
+  <span class="f">createdAt</span>   <span class="t">DateTime</span>     <span class="k">@default</span>(<span class="f">now</span>())
+
+  <span class="c">// Relaciones</span>
+  <span class="r">users</span>         <span class="t">User</span>[]
+  <span class="r">products</span>      <span class="t">Product</span>[]
+  <span class="r">categories</span>    <span class="t">Category</span>[]
+  <span class="r">orders</span>        <span class="t">Order</span>[]
+  <span class="r">customers</span>     <span class="t">Customer</span>[]
+  <span class="r">paymentConfig</span> <span class="t">PaymentConfig</span>[]
+  <span class="r">exchangeRates</span> <span class="t">ExchangeRate</span>[]
+}
+
+<span class="k">model</span> <span class="t">User</span> {
+  <span class="f">id</span>           <span class="t">String</span>    <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">businessId</span>   <span class="t">String</span>
+  <span class="f">email</span>        <span class="t">String</span>    <span class="k">@unique</span>
+  <span class="f">passwordHash</span> <span class="t">String</span>
+  <span class="f">name</span>         <span class="t">String</span>
+  <span class="f">role</span>         <span class="t">Role</span>      <span class="k">@default</span>(AGENT)
+  <span class="f">isVerified</span>   <span class="t">Boolean</span>   <span class="k">@default</span>(false)
+  <span class="f">createdAt</span>    <span class="t">DateTime</span>  <span class="k">@default</span>(<span class="f">now</span>())
+
+  <span class="r">business</span>  <span class="t">Business</span>  <span class="k">@relation</span>(fields: [<span class="f">businessId</span>], references: [<span class="f">id</span>])
+  <span class="r">sessions</span>  <span class="t">Session</span>[]
+
+  <span class="k">@@index</span>([<span class="f">businessId</span>])
+}
+
+<span class="k">model</span> <span class="t">Session</span> {
+  <span class="f">id</span>          <span class="t">String</span>    <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">userId</span>      <span class="t">String</span>
+  <span class="f">token</span>       <span class="t">String</span>    <span class="k">@unique</span>  <span class="c">// hashed refresh token</span>
+  <span class="f">userAgent</span>   <span class="t">String</span>?
+  <span class="f">expiresAt</span>   <span class="t">DateTime</span>
+  <span class="f">revokedAt</span>   <span class="t">DateTime</span>?
+  <span class="f">createdAt</span>   <span class="t">DateTime</span>  <span class="k">@default</span>(<span class="f">now</span>())
+
+  <span class="r">user</span>  <span class="t">User</span>  <span class="k">@relation</span>(fields: [<span class="f">userId</span>], references: [<span class="f">id</span>])
+  <span class="k">@@index</span>([<span class="f">userId</span>])
+}
+
+<span class="k">model</span> <span class="t">Product</span> {
+  <span class="f">id</span>              <span class="t">String</span>    <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">businessId</span>      <span class="t">String</span>
+  <span class="f">categoryId</span>      <span class="t">String</span>?
+  <span class="f">name</span>            <span class="t">String</span>
+  <span class="f">description</span>     <span class="t">String</span>?
+  <span class="f">priceUsdCents</span>   <span class="t">Int</span>       <span class="c">// 1200 = $12.00</span>
+  <span class="f">stock</span>           <span class="t">Int</span>       <span class="k">@default</span>(<span class="n">0</span>)
+  <span class="f">images</span>          <span class="t">String</span>[]
+  <span class="f">variants</span>        <span class="t">Json</span>      <span class="k">@default</span>(<span class="s">"[]"</span>)
+  <span class="f">attributes</span>      <span class="t">Json</span>      <span class="k">@default</span>(<span class="s">"{}"</span>)   <span class="c">// campos del ramo</span>
+  <span class="f">isPublished</span>     <span class="t">Boolean</span>   <span class="k">@default</span>(true)
+  <span class="f">deletedAt</span>       <span class="t">DateTime</span>?
+  <span class="f">createdAt</span>       <span class="t">DateTime</span>  <span class="k">@default</span>(<span class="f">now</span>())
+  <span class="f">updatedAt</span>       <span class="t">DateTime</span>  <span class="k">@updatedAt</span>
+
+  <span class="r">business</span>    <span class="t">Business</span>    <span class="k">@relation</span>(fields: [<span class="f">businessId</span>], references: [<span class="f">id</span>])
+  <span class="r">category</span>    <span class="t">Category</span>?   <span class="k">@relation</span>(fields: [<span class="f">categoryId</span>], references: [<span class="f">id</span>])
+  <span class="r">orderItems</span>  <span class="t">OrderItem</span>[]
+
+  <span class="k">@@index</span>([<span class="f">businessId</span>])
+  <span class="k">@@index</span>([<span class="f">businessId</span>, <span class="f">isPublished</span>])
+}
+
+<span class="k">model</span> <span class="t">Order</span> {
+  <span class="f">id</span>              <span class="t">String</span>        <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">orderNumber</span>     <span class="t">Int</span>           <span class="k">@default</span>(<span class="f">autoincrement</span>())
+  <span class="f">businessId</span>      <span class="t">String</span>
+  <span class="f">customerId</span>      <span class="t">String</span>
+  <span class="f">status</span>          <span class="t">OrderStatus</span>   <span class="k">@default</span>(PENDING)
+  <span class="f">source</span>          <span class="t">OrderSource</span>   <span class="k">@default</span>(WEB)
+  <span class="f">totalCents</span>      <span class="t">Int</span>
+  <span class="f">exchangeRate</span>    <span class="t">Decimal</span>?      <span class="c">// snapshot tasa del momento</span>
+  <span class="f">paymentMethod</span>   <span class="t">PaymentMethod</span>
+  <span class="f">deliveryAddress</span> <span class="t">String</span>?
+  <span class="f">notes</span>           <span class="t">String</span>?
+  <span class="f">createdAt</span>       <span class="t">DateTime</span>      <span class="k">@default</span>(<span class="f">now</span>())
+  <span class="f">updatedAt</span>       <span class="t">DateTime</span>      <span class="k">@updatedAt</span>
+
+  <span class="r">business</span>  <span class="t">Business</span>    <span class="k">@relation</span>(fields: [<span class="f">businessId</span>], references: [<span class="f">id</span>])
+  <span class="r">customer</span>  <span class="t">Customer</span>    <span class="k">@relation</span>(fields: [<span class="f">customerId</span>], references: [<span class="f">id</span>])
+  <span class="r">items</span>     <span class="t">OrderItem</span>[]
+  <span class="r">payments</span>  <span class="t">Payment</span>[]
+
+  <span class="k">@@index</span>([<span class="f">businessId</span>, <span class="f">status</span>])
+  <span class="k">@@index</span>([<span class="f">customerId</span>])
+}
+
+<span class="k">model</span> <span class="t">OrderItem</span> {
+  <span class="f">id</span>              <span class="t">String</span>   <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">orderId</span>         <span class="t">String</span>
+  <span class="f">productId</span>       <span class="t">String</span>
+  <span class="f">quantity</span>        <span class="t">Int</span>
+  <span class="f">unitPriceCents</span>  <span class="t">Int</span>      <span class="c">// snapshot precio al momento del pedido</span>
+  <span class="f">variantSelected</span> <span class="t">Json</span>?   <span class="c">// { talla: "M", color: "Azul" }</span>
+
+  <span class="r">order</span>    <span class="t">Order</span>    <span class="k">@relation</span>(fields: [<span class="f">orderId</span>], references: [<span class="f">id</span>])
+  <span class="r">product</span>  <span class="t">Product</span>  <span class="k">@relation</span>(fields: [<span class="f">productId</span>], references: [<span class="f">id</span>])
+}
+
+<span class="k">model</span> <span class="t">Payment</span> {
+  <span class="f">id</span>             <span class="t">String</span>         <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">orderId</span>        <span class="t">String</span>
+  <span class="f">businessId</span>     <span class="t">String</span>
+  <span class="f">method</span>         <span class="t">PaymentMethod</span>
+  <span class="f">amountCents</span>    <span class="t">Int</span>
+  <span class="f">currency</span>       <span class="t">String</span>
+  <span class="f">reference</span>      <span class="t">String</span>?       <span class="c">// n° transacción Zelle, teléfono PM, hash…</span>
+  <span class="f">proofImageUrl</span>  <span class="t">String</span>?
+  <span class="f">status</span>         <span class="t">PaymentStatus</span> <span class="k">@default</span>(PENDING)
+  <span class="f">verifiedAt</span>     <span class="t">DateTime</span>?
+  <span class="f">verifiedBy</span>     <span class="t">String</span>?      <span class="c">// userId o null (bot)</span>
+  <span class="f">createdAt</span>      <span class="t">DateTime</span>     <span class="k">@default</span>(<span class="f">now</span>())
+
+  <span class="r">order</span>     <span class="t">Order</span>     <span class="k">@relation</span>(fields: [<span class="f">orderId</span>], references: [<span class="f">id</span>])
+  <span class="r">business</span>  <span class="t">Business</span>  <span class="k">@relation</span>(fields: [<span class="f">businessId</span>], references: [<span class="f">id</span>])
+
+  <span class="k">@@index</span>([<span class="f">businessId</span>, <span class="f">status</span>])
+}
+
+<span class="k">model</span> <span class="t">Conversation</span> {
+  <span class="f">id</span>          <span class="t">String</span>      <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">businessId</span>  <span class="t">String</span>
+  <span class="f">customerId</span>  <span class="t">String</span>
+  <span class="f">channel</span>     <span class="t">Channel</span>
+  <span class="f">status</span>      <span class="t">ConvStatus</span>  <span class="k">@default</span>(BOT)
+  <span class="f">botActive</span>   <span class="t">Boolean</span>     <span class="k">@default</span>(true)
+  <span class="f">createdAt</span>   <span class="t">DateTime</span>    <span class="k">@default</span>(<span class="f">now</span>())
+  <span class="f">updatedAt</span>   <span class="t">DateTime</span>    <span class="k">@updatedAt</span>
+
+  <span class="r">customer</span>  <span class="t">Customer</span>  <span class="k">@relation</span>(fields: [<span class="f">customerId</span>], references: [<span class="f">id</span>])
+  <span class="r">messages</span>  <span class="t">Message</span>[]
+
+  <span class="k">@@index</span>([<span class="f">businessId</span>, <span class="f">status</span>])
+}
+
+<span class="k">model</span> <span class="t">Message</span> {
+  <span class="f">id</span>               <span class="t">String</span>    <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">conversationId</span>   <span class="t">String</span>
+  <span class="f">role</span>             <span class="t">MsgRole</span>
+  <span class="f">content</span>          <span class="t">String</span>
+  <span class="f">mediaUrl</span>         <span class="t">String</span>?
+  <span class="f">waId</span>             <span class="t">String</span>?   <span class="k">@unique</span>  <span class="c">// evitar duplicados de webhook</span>
+  <span class="f">createdAt</span>        <span class="t">DateTime</span>  <span class="k">@default</span>(<span class="f">now</span>())
+
+  <span class="r">conversation</span>  <span class="t">Conversation</span>  <span class="k">@relation</span>(fields: [<span class="f">conversationId</span>], references: [<span class="f">id</span>])
+  <span class="k">@@index</span>([<span class="f">conversationId</span>])
+}
+
+<span class="k">model</span> <span class="t">ExchangeRate</span> {
+  <span class="f">id</span>          <span class="t">String</span>    <span class="k">@id @default</span>(<span class="f">uuid</span>())
+  <span class="f">businessId</span>  <span class="t">String</span>?  <span class="c">// null = tasa global del sistema</span>
+  <span class="f">usdToVes</span>    <span class="t">Decimal</span>  <span class="c">// 36500.00</span>
+  <span class="f">source</span>      <span class="t">String</span>   <span class="c">// "BCV" | "PARALELO" | "MANUAL"</span>
+  <span class="f">date</span>        <span class="t">DateTime</span> <span class="k">@default</span>(<span class="f">now</span>())
+
+  <span class="k">@@index</span>([<span class="f">date</span>])
+}</pre>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+  PAGE 5: API ROUTES
+═══════════════════════════════════ -->
+<div class="page" id="p-api">
+  <div class="sec-hero">
+    <div class="sec-eyebrow">API REST Endpoints</div>
+    <div class="sec-title">Rutas completas del backend</div>
+    <div class="sec-sub">Todos los endpoints organizados por recurso. Las rutas públicas del catálogo no requieren autenticación. El resto exige JWT + businessId válido.</div>
+  </div>
+  <div class="content-wrap">
+
+    <div class="tags">
+      <span class="tag tag-g">GET · público</span>
+      <span class="tag tag-b">POST · protegido</span>
+      <span class="tag tag-y">PATCH · protegido</span>
+      <span class="tag tag-r">DELETE · solo OWNER</span>
+      <span class="tag tag-c">Webhook · firmado</span>
+    </div>
+
+    <div class="code-wrap">
+      <div class="code-header">
+        <div class="ch-dots">
+          <div class="ch-dot" style="background:#ff5f57"></div>
+          <div class="ch-dot" style="background:#febc2e"></div>
+          <div class="ch-dot" style="background:#28c840"></div>
+        </div>
+        <span class="ch-lang">HTTP</span>
+        <span class="ch-file">API Routes · v1</span>
+        <div class="ch-copy" onclick="copyCode(this)">Copiar</div>
+      </div>
+      <pre><span class="c">── AUTH ──────────────────────────────────────────────</span>
+<span class="t">POST</span>   <span class="f">/api/v1/auth/register</span>         <span class="c">{ name, slug, email, password, whatsapp, type }</span>
+<span class="t">POST</span>   <span class="f">/api/v1/auth/login</span>            <span class="c">{ email, password }</span>
+<span class="t">POST</span>   <span class="f">/api/v1/auth/refresh</span>          <span class="c">cookie: refreshToken</span>
+<span class="t">POST</span>   <span class="f">/api/v1/auth/logout</span>           <span class="c">revoca refresh token</span>
+<span class="t">POST</span>   <span class="f">/api/v1/auth/verify-email</span>     <span class="c">{ token }</span>
+<span class="t">POST</span>   <span class="f">/api/v1/auth/forgot-password</span>  <span class="c">{ email }</span>
+<span class="t">POST</span>   <span class="f">/api/v1/auth/reset-password</span>   <span class="c">{ token, newPassword }</span>
+
+<span class="c">── BUSINESS (OWNER only) ─────────────────────────────</span>
+<span class="t">GET</span>    <span class="f">/api/v1/business/me</span>           <span class="c">datos del negocio actual</span>
+<span class="t">PATCH</span>  <span class="f">/api/v1/business/me</span>           <span class="c">actualizar config, settings, colores</span>
+<span class="t">GET</span>    <span class="f">/api/v1/business/me/stats</span>     <span class="c">métricas del dashboard</span>
+<span class="t">POST</span>   <span class="f">/api/v1/business/me/users</span>     <span class="c">invitar agente al equipo</span>
+
+<span class="c">── CATÁLOGO PÚBLICO (sin auth) ───────────────────────</span>
+<span class="t">GET</span>    <span class="f">/api/v1/catalog/:slug</span>         <span class="c">info del negocio + productos</span>
+<span class="t">GET</span>    <span class="f">/api/v1/catalog/:slug/products</span> <span class="c">?page&limit&category&q</span>
+<span class="t">GET</span>    <span class="f">/api/v1/catalog/:slug/products/:id</span>
+<span class="t">POST</span>   <span class="f">/api/v1/catalog/:slug/orders</span>  <span class="c">crear pedido público</span>
+
+<span class="c">── PRODUCTS (autenticado) ────────────────────────────</span>
+<span class="t">GET</span>    <span class="f">/api/v1/products</span>              <span class="c">?page&limit&category&q&published</span>
+<span class="t">POST</span>   <span class="f">/api/v1/products</span>              <span class="c">crear producto</span>
+<span class="t">GET</span>    <span class="f">/api/v1/products/:id</span>
+<span class="t">PATCH</span>  <span class="f">/api/v1/products/:id</span>
+<span class="t">DELETE</span> <span class="f">/api/v1/products/:id</span>          <span class="c">soft delete (OWNER)</span>
+<span class="t">POST</span>   <span class="f">/api/v1/products/:id/images</span>   <span class="c">subir fotos (multipart)</span>
+<span class="t">PATCH</span>  <span class="f">/api/v1/products/:id/stock</span>    <span class="c">{ delta: +5 | -2 }</span>
+
+<span class="c">── ORDERS ────────────────────────────────────────────</span>
+<span class="t">GET</span>    <span class="f">/api/v1/orders</span>                <span class="c">?status&page&customerId</span>
+<span class="t">POST</span>   <span class="f">/api/v1/orders</span>                <span class="c">crear manual desde dashboard</span>
+<span class="t">GET</span>    <span class="f">/api/v1/orders/:id</span>
+<span class="t">PATCH</span>  <span class="f">/api/v1/orders/:id/status</span>     <span class="c">{ status: "CONFIRMED" | "PREPARING"… }</span>
+<span class="t">DELETE</span> <span class="f">/api/v1/orders/:id</span>            <span class="c">cancelar (OWNER)</span>
+
+<span class="c">── PAYMENTS ─────────────────────────────────────────</span>
+<span class="t">GET</span>    <span class="f">/api/v1/payments</span>              <span class="c">?status=PENDING</span>
+<span class="t">POST</span>   <span class="f">/api/v1/payments</span>              <span class="c">registrar pago + comprobante</span>
+<span class="t">PATCH</span>  <span class="f">/api/v1/payments/:id/verify</span>  <span class="c">confirmar pago (OWNER)</span>
+<span class="t">PATCH</span>  <span class="f">/api/v1/payments/:id/reject</span>  <span class="c">rechazar pago</span>
+<span class="t">GET</span>    <span class="f">/api/v1/payments/config</span>       <span class="c">datos de métodos configurados</span>
+<span class="t">PUT</span>    <span class="f">/api/v1/payments/config</span>       <span class="c">actualizar datos de Zelle, PM, etc.</span>
+
+<span class="c">── EXCHANGE RATE ─────────────────────────────────────</span>
+<span class="t">GET</span>    <span class="f">/api/v1/exchange-rate/current</span> <span class="c">tasa actual del negocio</span>
+<span class="t">POST</span>   <span class="f">/api/v1/exchange-rate</span>         <span class="c">actualizar tasa manual</span>
+
+<span class="c">── CHAT / INBOX ──────────────────────────────────────</span>
+<span class="t">GET</span>    <span class="f">/api/v1/conversations</span>         <span class="c">?status&channel</span>
+<span class="t">GET</span>    <span class="f">/api/v1/conversations/:id/messages</span>
+<span class="t">POST</span>   <span class="f">/api/v1/conversations/:id/messages</span> <span class="c">enviar mensaje</span>
+<span class="t">PATCH</span>  <span class="f">/api/v1/conversations/:id/bot</span> <span class="c">{ active: false } tomar control</span>
+
+<span class="c">── WEBHOOKS (firmados por Meta/Baileys) ──────────────</span>
+<span class="t">GET</span>    <span class="f">/webhooks/whatsapp</span>            <span class="c">verificación Meta</span>
+<span class="t">POST</span>   <span class="f">/webhooks/whatsapp</span>            <span class="c">mensajes entrantes → bot</span>
+
+<span class="c">── CUSTOMERS ─────────────────────────────────────────</span>
+<span class="t">GET</span>    <span class="f">/api/v1/customers</span>             <span class="c">?q (búsqueda por nombre/teléfono)</span>
+<span class="t">GET</span>    <span class="f">/api/v1/customers/:id</span>         <span class="c">perfil + historial de pedidos</span>
+<span class="t">PATCH</span>  <span class="f">/api/v1/customers/:id</span></pre>
+    </div>
+
+    <div class="callout callout-b">
+      <div class="callout-icon">🔌</div>
+      <div class="callout-text">
+        <strong>Convención de respuestas:</strong> Siempre <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue)">{ data, meta }</code> para listas con paginación y <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue)">{ data }</code> para recursos únicos. Los errores siempre devuelven <code style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--blue)">{ error, code, details? }</code>. HTTP status codes estrictos: 200/201/204/400/401/403/404/409/422/500.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function show(key, tab) {
+  const pages = { db:'p-db', auth:'p-auth', folders:'p-folders', prisma:'p-prisma', api:'p-api' };
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.ttab').forEach(t => t.classList.remove('active'));
+  document.getElementById(pages[key]).classList.add('active');
+  tab.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrap').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard?.writeText(text).catch(()=>{});
+  btn.textContent = '✓ Copiado';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copiar'; btn.classList.remove('copied'); }, 2000);
+}
+</script>
+</body>
+</html>

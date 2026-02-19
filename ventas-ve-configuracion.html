@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VentasVE · Configuración</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+/* ============ THEME TOKENS ============ */
+:root {
+  --accent: #f5c842;
+  --accent-red: #e8360e;
+  --green: #22c55e;
+  --blue: #3b82f6;
+  --purple: #a855f7;
+  --transition: 0.22s ease;
+}
+
+[data-theme="dark"] {
+  --bg:        #0b0e17;
+  --bg2:       #111520;
+  --surface:   #161b2c;
+  --surface2:  #1e2438;
+  --border:    rgba(255,255,255,0.07);
+  --border2:   rgba(255,255,255,0.12);
+  --text:      #e8eaf2;
+  --text2:     #a0a8bf;
+  --muted:     #5a6282;
+  --input-bg:  #1a2035;
+  --card-shadow: 0 4px 24px rgba(0,0,0,0.35);
+  --toggle-track: #2a3050;
+}
+[data-theme="light"] {
+  --bg:        #f4f6fb;
+  --bg2:       #ffffff;
+  --surface:   #ffffff;
+  --surface2:  #f0f2f9;
+  --border:    rgba(0,0,0,0.08);
+  --border2:   rgba(0,0,0,0.14);
+  --text:      #1a1e2e;
+  --text2:     #4a5070;
+  --muted:     #9098b5;
+  --input-bg:  #f4f6fb;
+  --card-shadow: 0 4px 24px rgba(0,0,0,0.08);
+  --toggle-track: #d8dce8;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { transition: background var(--transition); }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  transition: background var(--transition), color var(--transition);
+}
+
+/* ====== SIDEBAR ====== */
+.sidebar {
+  width: 240px; min-height: 100vh;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  position: fixed; left:0; top:0; z-index:100;
+  transition: background var(--transition), border-color var(--transition);
+}
+.logo { padding: 26px 22px 18px; border-bottom: 1px solid var(--border); }
+.logo-mark { font-family:'Syne',sans-serif; font-weight:800; font-size:21px; letter-spacing:-0.5px; }
+.logo-mark span { color: var(--accent); }
+.logo-sub { font-size:11px; color:var(--muted); margin-top:2px; letter-spacing:.05em; }
+.nav { padding:14px 10px; flex:1; display:flex; flex-direction:column; gap:2px; }
+.nav-section { font-size:10px; letter-spacing:.1em; color:var(--muted); text-transform:uppercase; padding:10px 12px 5px; font-weight:500; }
+.nav-item {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 12px; border-radius:8px; cursor:pointer;
+  transition:all .15s; font-size:14px; color:var(--text2);
+  position:relative;
+}
+.nav-item:hover { background:var(--surface2); color:var(--text); }
+.nav-item.active { background:rgba(245,200,66,.1); color:var(--accent); font-weight:500; }
+.nav-item.active::before {
+  content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:3px; height:20px; background:var(--accent); border-radius:0 3px 3px 0;
+}
+.nav-icon { font-size:15px; width:20px; text-align:center; }
+.sidebar-footer { padding:14px; border-top:1px solid var(--border); }
+.user-card {
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:8px; background:var(--surface2); cursor:pointer;
+}
+.avatar {
+  width:32px; height:32px; border-radius:8px;
+  background:linear-gradient(135deg,var(--accent),#e8453c);
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; color:#000; font-family:'Syne',sans-serif;
+}
+.user-name { font-size:13px; font-weight:500; }
+.user-role { font-size:11px; color:var(--muted); }
+
+/* ====== MAIN ====== */
+.main { margin-left:240px; flex:1; display:flex; flex-direction:column; }
+.topbar {
+  background: var(--bg2); border-bottom:1px solid var(--border);
+  padding:0 32px; height:60px;
+  display:flex; align-items:center; justify-content:space-between;
+  position:sticky; top:0; z-index:50;
+  transition: background var(--transition), border-color var(--transition);
+}
+.page-title { font-family:'Syne',sans-serif; font-weight:700; font-size:18px; }
+.topbar-right { display:flex; align-items:center; gap:12px; }
+
+/* THEME TOGGLE */
+.theme-toggle {
+  display:flex; align-items:center; gap:8px;
+  background:var(--surface2); border:1px solid var(--border2);
+  border-radius:30px; padding:4px 6px 4px 10px;
+  cursor:pointer; transition:all .2s;
+}
+.theme-toggle:hover { border-color:var(--accent); }
+.theme-toggle-label { font-size:12px; font-weight:500; color:var(--text2); }
+.toggle-track {
+  width:40px; height:22px; background:var(--toggle-track);
+  border-radius:11px; position:relative; transition:background .3s;
+  flex-shrink:0;
+}
+[data-theme="dark"] .toggle-track { background: var(--accent); }
+.toggle-thumb {
+  position:absolute; top:3px; left:3px;
+  width:16px; height:16px; border-radius:50%;
+  background:white; transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 1px 4px rgba(0,0,0,.3);
+}
+[data-theme="dark"] .toggle-thumb { transform:translateX(18px); }
+.theme-icon { font-size:16px; }
+
+.save-btn {
+  padding:8px 20px; background:var(--accent); color:#000;
+  border-radius:9px; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:'Syne',sans-serif;
+  transition:transform .15s, box-shadow .15s;
+  box-shadow:0 4px 14px rgba(245,200,66,.3);
+}
+.save-btn:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(245,200,66,.4); }
+.save-btn.saved { background:var(--green); color:white; }
+
+/* ====== CONTENT ====== */
+.content { padding:28px 32px 60px; display:flex; flex-direction:column; gap:6px; }
+
+/* ====== TABS ====== */
+.settings-tabs {
+  display:flex; gap:2px; background:var(--surface);
+  border:1px solid var(--border); border-radius:12px; padding:4px;
+  margin-bottom:22px; flex-wrap:wrap;
+  transition:background var(--transition);
+}
+.s-tab {
+  flex:1; min-width:max-content; padding:9px 16px; border-radius:9px;
+  font-size:13px; font-weight:500; cursor:pointer;
+  color:var(--text2); transition:all .15s; text-align:center; display:flex;
+  align-items:center; justify-content:center; gap:6px;
+}
+.s-tab:hover { color:var(--text); }
+.s-tab.active { background:var(--bg); color:var(--text); font-weight:600; box-shadow:var(--card-shadow); }
+[data-theme="light"] .s-tab.active { background:var(--bg2); }
+
+/* ====== SECTIONS ====== */
+.settings-section { display:none; flex-direction:column; gap:20px; }
+.settings-section.active { display:flex; }
+
+/* ====== CARD ====== */
+.card {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:16px; overflow:hidden;
+  box-shadow:var(--card-shadow);
+  animation: fadeUp .3s ease both;
+  transition:background var(--transition), border-color var(--transition), box-shadow var(--transition);
+}
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+.card-header {
+  padding:18px 22px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  transition:border-color var(--transition);
+}
+.card-title { font-family:'Syne',sans-serif; font-weight:700; font-size:15px; display:flex; align-items:center; gap:8px; }
+.card-title-icon {
+  width:30px; height:30px; border-radius:8px;
+  display:flex; align-items:center; justify-content:center; font-size:15px;
+}
+.card-subtitle { font-size:12px; color:var(--muted); margin-top:2px; }
+.card-body { padding:22px; }
+.card-body.no-pad { padding:0; }
+
+/* ====== BUSINESS TYPE SELECTOR ====== */
+.biz-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:12px;
+}
+.biz-card {
+  border:2px solid var(--border2); border-radius:14px;
+  padding:16px 12px; text-align:center; cursor:pointer;
+  transition:all .2s; background:var(--surface2);
+}
+.biz-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+.biz-card.selected {
+  border-color:var(--accent); background:rgba(245,200,66,.08);
+  box-shadow:0 0 0 3px rgba(245,200,66,.15);
+}
+.biz-icon { font-size:32px; margin-bottom:8px; }
+.biz-name { font-size:13px; font-weight:600; margin-bottom:3px; }
+.biz-desc { font-size:11px; color:var(--muted); line-height:1.4; }
+.biz-check {
+  width:18px; height:18px; border-radius:50%;
+  background:var(--accent); color:#000;
+  font-size:10px; font-weight:800;
+  display:none; align-items:center; justify-content:center;
+  margin:6px auto 0;
+}
+.biz-card.selected .biz-check { display:flex; }
+
+/* ====== FORM ELEMENTS ====== */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.form-group { display:flex; flex-direction:column; gap:6px; }
+.form-group.full { grid-column:1/-1; }
+.form-label { font-size:12px; font-weight:600; color:var(--text2); letter-spacing:.04em; }
+.form-input, .form-select, .form-textarea {
+  background:var(--input-bg); border:1.5px solid var(--border2);
+  border-radius:10px; padding:10px 14px;
+  font-family:'DM Sans',sans-serif; font-size:14px; color:var(--text);
+  outline:none; transition:border-color .2s, background .2s;
+  width:100%;
+}
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(245,200,66,.12);
+}
+.form-textarea { resize:vertical; min-height:80px; line-height:1.5; }
+.form-select { cursor:pointer; }
+.form-hint { font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* ====== TOGGLE SWITCH ====== */
+.toggle-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 0; border-bottom:1px solid var(--border);
+  transition:border-color var(--transition);
+}
+.toggle-row:last-child { border-bottom:none; padding-bottom:0; }
+.toggle-row:first-child { padding-top:0; }
+.toggle-info {}
+.toggle-title { font-size:14px; font-weight:500; }
+.toggle-desc { font-size:12px; color:var(--muted); margin-top:2px; }
+.sw {
+  width:44px; height:24px; background:var(--toggle-track);
+  border-radius:12px; position:relative; cursor:pointer;
+  transition:background .3s; flex-shrink:0;
+}
+.sw.on { background:var(--green); }
+.sw.accent-on.on { background:var(--accent); }
+.sw::after {
+  content:''; position:absolute; top:3px; left:3px;
+  width:18px; height:18px; border-radius:50%;
+  background:white; transition:transform .3s cubic-bezier(.34,1.4,.64,1);
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
+}
+.sw.on::after { transform:translateX(20px); }
+
+/* ====== COLOR PICKER ROW ====== */
+.color-row { display:flex; gap:10px; flex-wrap:wrap; }
+.color-opt {
+  width:36px; height:36px; border-radius:10px; cursor:pointer;
+  border:2.5px solid transparent; transition:all .15s;
+  position:relative;
+}
+.color-opt.active { border-color:var(--text); transform:scale(1.12); }
+.color-opt.active::after {
+  content:'✓'; position:absolute; inset:0;
+  display:flex; align-items:center; justify-content:center;
+  font-size:14px; font-weight:700;
+  color:white; text-shadow:0 1px 3px rgba(0,0,0,.5);
+}
+.color-custom {
+  display:flex; align-items:center; gap:10px; margin-top:10px;
+}
+.color-custom input[type=color] {
+  width:44px; height:44px; border:2px solid var(--border2);
+  border-radius:10px; cursor:pointer; background:none; padding:2px;
+}
+
+/* ====== PAYMENT METHODS GRID ====== */
+.pay-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+.pay-card {
+  border:1.5px solid var(--border2); border-radius:12px; padding:16px;
+  display:flex; align-items:center; gap:12px;
+  background:var(--surface2); transition:all .2s; cursor:pointer;
+}
+.pay-card.active { border-color:var(--green); background:rgba(34,197,94,.06); }
+.pay-icon { font-size:24px; width:42px; height:42px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pay-name { font-size:14px; font-weight:600; }
+.pay-detail { font-size:11px; color:var(--muted); margin-top:2px; }
+.pay-status { margin-left:auto; }
+.pay-badge {
+  font-size:10px; padding:3px 8px; border-radius:5px; font-weight:700;
+}
+.pb-active { background:rgba(34,197,94,.15); color:var(--green); }
+.pb-inactive { background:var(--surface); color:var(--muted); border:1px solid var(--border2); }
+
+/* PAY CONFIG ROW */
+.pay-config { display:none; padding:12px 0 0; border-top:1px solid var(--border); margin-top:10px; }
+.pay-card.active .pay-config { display:block; }
+.pay-config .form-input { font-size:12px; padding:7px 11px; }
+
+/* ====== SHIPPING ZONES ====== */
+.zone-list { display:flex; flex-direction:column; gap:8px; }
+.zone-row {
+  display:flex; align-items:center; gap:12px;
+  background:var(--surface2); border-radius:10px; padding:12px 14px;
+  border:1px solid var(--border);
+}
+.zone-name { flex:1; font-size:13px; font-weight:500; }
+.zone-price { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:var(--accent); }
+.zone-free { font-size:11px; background:rgba(34,197,94,.12); color:var(--green); padding:2px 8px; border-radius:5px; font-weight:600; }
+.zone-edit { font-size:12px; color:var(--muted); cursor:pointer; padding:4px 10px; border-radius:6px; border:1px solid var(--border2); }
+.zone-edit:hover { color:var(--text); border-color:var(--border2); }
+.add-zone-btn {
+  display:flex; align-items:center; gap:8px; justify-content:center;
+  padding:10px; border:1.5px dashed var(--border2); border-radius:10px;
+  font-size:13px; color:var(--muted); cursor:pointer; transition:all .15s;
+  font-weight:500;
+}
+.add-zone-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ====== MODULES LIST ====== */
+.module-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.module-card {
+  border:1.5px solid var(--border2); border-radius:12px; padding:16px;
+  background:var(--surface2); position:relative; overflow:hidden;
+  transition:all .2s;
+}
+.module-card.enabled { border-color:rgba(245,200,66,.35); background:rgba(245,200,66,.04); }
+.module-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:8px; }
+.module-icon { font-size:24px; margin-bottom:4px; }
+.module-name { font-size:14px; font-weight:700; margin-bottom:3px; }
+.module-desc { font-size:12px; color:var(--muted); line-height:1.5; }
+.module-plan {
+  font-size:10px; font-weight:700; padding:3px 8px; border-radius:5px; letter-spacing:.03em;
+}
+.mp-free { background:rgba(34,197,94,.15); color:var(--green); }
+.mp-pro  { background:rgba(245,200,66,.15); color:var(--accent); }
+.mp-biz  { background:rgba(232,54,14,.15); color:var(--accent-red); }
+
+/* ====== CHATBOT BUILDER ====== */
+.flow-steps { display:flex; flex-direction:column; gap:8px; }
+.flow-step {
+  display:flex; align-items:center; gap:12px;
+  background:var(--surface2); border-radius:10px; padding:12px 14px;
+  border:1px solid var(--border); transition:all .15s; cursor:grab;
+}
+.flow-step:hover { border-color:var(--border2); }
+.step-num {
+  width:28px; height:28px; border-radius:8px;
+  background:var(--accent); color:#000; font-weight:800;
+  font-size:12px; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; font-family:'Syne',sans-serif;
+}
+.step-content { flex:1; }
+.step-title { font-size:13px; font-weight:600; }
+.step-preview { font-size:11px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:320px; }
+.step-type {
+  font-size:10px; padding:3px 8px; border-radius:5px;
+  font-weight:700; flex-shrink:0;
+}
+.st-msg { background:rgba(59,130,246,.15); color:var(--blue); }
+.st-menu { background:rgba(168,85,247,.15); color:var(--purple); }
+.st-auto { background:rgba(34,197,94,.15); color:var(--green); }
+.drag-icon { font-size:14px; color:var(--muted); }
+.add-step-btn {
+  display:flex; align-items:center; gap:8px; justify-content:center;
+  padding:10px; border:1.5px dashed var(--border2); border-radius:10px;
+  font-size:13px; color:var(--muted); cursor:pointer; transition:all .15s; font-weight:500;
+}
+.add-step-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ====== CATALOG SETTINGS ====== */
+.currency-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.cur-chip {
+  padding:7px 16px; border:1.5px solid var(--border2);
+  border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s;
+}
+.cur-chip.active { border-color:var(--accent); background:rgba(245,200,66,.1); color:var(--accent); }
+
+/* ====== NOTIFICATIONS ====== */
+.notif-channel {
+  display:flex; align-items:center; gap:12px;
+  padding:14px 0; border-bottom:1px solid var(--border);
+}
+.notif-channel:last-child { border-bottom:none; }
+.notif-icon { font-size:22px; width:40px; text-align:center; }
+.notif-info { flex:1; }
+.notif-name { font-size:14px; font-weight:600; }
+.notif-detail { font-size:12px; color:var(--muted); margin-top:2px; }
+.notif-switches { display:flex; gap:12px; align-items:center; }
+.notif-sw-label { font-size:11px; color:var(--muted); }
+
+/* ====== PLAN CARD ====== */
+.plan-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.plan-card {
+  border:1.5px solid var(--border2); border-radius:16px; padding:22px 18px;
+  background:var(--surface2); text-align:center; transition:all .2s; cursor:pointer;
+  position:relative; overflow:hidden;
+}
+.plan-card.current { border-color:var(--accent); background:rgba(245,200,66,.06); }
+.plan-card.current::before {
+  content:'ACTUAL'; position:absolute; top:12px; right:12px;
+  background:var(--accent); color:#000; font-size:9px; font-weight:800;
+  padding:3px 8px; border-radius:4px; letter-spacing:.06em;
+}
+.plan-name { font-family:'Syne',sans-serif; font-weight:800; font-size:18px; margin-bottom:6px; }
+.plan-price { font-family:'Syne',sans-serif; font-size:28px; font-weight:700; color:var(--accent); }
+.plan-period { font-size:11px; color:var(--muted); margin-bottom:16px; }
+.plan-feat { font-size:12px; color:var(--text2); margin:5px 0; display:flex; align-items:center; justify-content:center; gap:5px; }
+.plan-feat .ok { color:var(--green); }
+.plan-btn {
+  margin-top:16px; padding:9px; border-radius:10px;
+  font-size:13px; font-weight:700; cursor:pointer; width:100%;
+  font-family:'Syne',sans-serif; transition:all .15s;
+}
+.pb-upgrade { background:var(--accent); color:#000; }
+.pb-current { background:transparent; border:1.5px solid var(--border2); color:var(--muted); cursor:default; }
+.pb-enterprise { background:var(--text); color:var(--bg); }
+
+/* ====== DANGER ZONE ====== */
+.danger-card { border-color:rgba(232,54,14,.3) !important; }
+.danger-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 0; border-bottom:1px solid var(--border);
+}
+.danger-row:last-child { border-bottom:none; }
+.danger-info .danger-title { font-size:14px; font-weight:600; }
+.danger-info .danger-desc { font-size:12px; color:var(--muted); margin-top:2px; }
+.danger-btn {
+  padding:8px 16px; border-radius:9px; font-size:13px; font-weight:600;
+  cursor:pointer; border:1.5px solid;
+}
+.db-warn { border-color:rgba(245,158,11,.4); color:#f59e0b; background:rgba(245,158,11,.08); }
+.db-red  { border-color:rgba(232,54,14,.4); color:var(--accent-red); background:rgba(232,54,14,.08); }
+
+/* ====== TOAST ====== */
+.toast {
+  position:fixed; bottom:28px; right:28px;
+  background:var(--green); color:white;
+  padding:12px 20px; border-radius:12px;
+  font-size:14px; font-weight:600;
+  z-index:999; transform:translateY(80px); opacity:0;
+  transition:all .4s cubic-bezier(.34,1.4,.64,1);
+  display:flex; align-items:center; gap:8px;
+  box-shadow:0 6px 24px rgba(0,0,0,.25);
+}
+.toast.show { transform:translateY(0); opacity:1; }
+
+/* ====== RESPONSIVE ====== */
+@media(max-width:900px) {
+  .sidebar { display:none; }
+  .main { margin-left:0; }
+  .content { padding:20px 16px 60px; }
+  .form-grid { grid-template-columns:1fr; }
+  .module-grid { grid-template-columns:1fr; }
+  .plan-grid { grid-template-columns:1fr; }
+  .biz-grid { grid-template-columns:repeat(2,1fr); }
+  .topbar { padding:0 16px; }
+  .settings-tabs { overflow-x:auto; flex-wrap:nowrap; }
+  .s-tab { flex:0 0 auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast">✅ Cambios guardados correctamente</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-mark">Ventas<span>VE</span></div>
+    <div class="logo-sub">Gestión Comercial · Venezuela</div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Principal</div>
+    <div class="nav-item"><span class="nav-icon">📊</span> Dashboard</div>
+    <div class="nav-item"><span class="nav-icon">📦</span> Pedidos</div>
+    <div class="nav-item"><span class="nav-icon">🛍️</span> Catálogo</div>
+    <div class="nav-section">Pagos</div>
+    <div class="nav-item"><span class="nav-icon">💳</span> Transacciones</div>
+    <div class="nav-item"><span class="nav-icon">🔄</span> Conciliación</div>
+    <div class="nav-section">Comunicación</div>
+    <div class="nav-item"><span class="nav-icon">💬</span> Inbox</div>
+    <div class="nav-item"><span class="nav-icon">🤖</span> ChatBot IA</div>
+    <div class="nav-section">Negocio</div>
+    <div class="nav-item"><span class="nav-icon">👥</span> Clientes</div>
+    <div class="nav-item"><span class="nav-icon">📈</span> Reportes</div>
+    <div class="nav-item active"><span class="nav-icon">⚙️</span> Configuración</div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="avatar">JM</div>
+      <div><div class="user-name">Juan Martínez</div><div class="user-role">Plan Pro · Activo</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+  <header class="topbar">
+    <div class="page-title">⚙️ Configuración</div>
+    <div class="topbar-right">
+      <!-- THEME TOGGLE -->
+      <div class="theme-toggle" onclick="toggleTheme()">
+        <span class="theme-icon" id="themeIcon">🌙</span>
+        <span class="theme-toggle-label" id="themeLabel">Oscuro</span>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="save-btn" id="saveBtn" onclick="saveSettings()">Guardar cambios</div>
+    </div>
+  </header>
+
+  <main class="content">
+
+    <!-- Captura del sistema real -->
+    <section style="margin-bottom:24px;padding:16px;border-radius:12px;border:1px dashed var(--border);background:rgba(0,0,0,0.18);">
+      <h2 style="font-size:13px;font-weight:600;margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);">
+        Captura del sistema real · Configuración
+      </h2>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:10px;">
+        Reemplaza la imagen inferior con una captura actual de la pantalla de Configuración de VentasVE.
+      </p>
+      <img
+        src="./captures/configuracion-real.png"
+        alt="Captura real de la Configuración de VentasVE"
+        style="width:100%;border-radius:10px;border:1px solid var(--border);display:block;"
+      />
+    </section>
+
+    <!-- TABS -->
+    <div class="settings-tabs">
+      <div class="s-tab active" onclick="switchTab(this,'negocio')">🏪 Mi Negocio</div>
+      <div class="s-tab" onclick="switchTab(this,'pagos')">💳 Pagos</div>
+      <div class="s-tab" onclick="switchTab(this,'catalogo')">🛍️ Catálogo</div>
+      <div class="s-tab" onclick="switchTab(this,'envios')">🚚 Envíos</div>
+      <div class="s-tab" onclick="switchTab(this,'chatbot')">🤖 ChatBot</div>
+      <div class="s-tab" onclick="switchTab(this,'modulos')">🧩 Módulos</div>
+      <div class="s-tab" onclick="switchTab(this,'notif')">🔔 Notif.</div>
+      <div class="s-tab" onclick="switchTab(this,'plan')">⭐ Plan</div>
+    </div>
+
+    <!-- ===== TAB: MI NEGOCIO ===== -->
+    <div class="settings-section active" id="tab-negocio">
+
+      <!-- TIPO DE NEGOCIO -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">
+              <div class="card-title-icon" style="background:rgba(245,200,66,.15)">🏪</div>
+              Tipo de Negocio
+            </div>
+            <div class="card-subtitle">Define tu ramo para activar funciones específicas de tu industria</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="biz-grid" id="bizGrid">
+            <div class="biz-card selected" onclick="selectBiz(this)">
+              <div class="biz-icon">👗</div>
+              <div class="biz-name">Moda y Ropa</div>
+              <div class="biz-desc">Tallas, colores, temporadas, lookbook</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">🍔</div>
+              <div class="biz-name">Comida y Bebidas</div>
+              <div class="biz-desc">Menú, tiempo prep., ingredientes, alérgenos</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">💄</div>
+              <div class="biz-name">Belleza / Spa</div>
+              <div class="biz-desc">Servicios, citas, duración, personal</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">📱</div>
+              <div class="biz-name">Tecnología</div>
+              <div class="biz-desc">Modelos, especificaciones, garantía, accesorios</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">🛒</div>
+              <div class="biz-name">Abastos / Bodega</div>
+              <div class="biz-desc">Stock por unidad, precios Bs. y $, mayor/detal</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">🏠</div>
+              <div class="biz-name">Hogar y Muebles</div>
+              <div class="biz-desc">Dimensiones, materiales, tiempo entrega</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">🌿</div>
+              <div class="biz-name">Salud / Farmacia</div>
+              <div class="biz-desc">Principio activo, dosis, equivalencias</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">📚</div>
+              <div class="biz-name">Educación</div>
+              <div class="biz-desc">Cursos, niveles, modalidad, certificados</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">🚗</div>
+              <div class="biz-name">Automotriz</div>
+              <div class="biz-desc">Marca, modelo, año, compatibilidad</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">🔧</div>
+              <div class="biz-name">Servicios / Taller</div>
+              <div class="biz-desc">Cotización, mano de obra, agenda</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">🐾</div>
+              <div class="biz-name">Mascotas</div>
+              <div class="biz-desc">Especie, peso, raza, necesidades</div>
+              <div class="biz-check">✓</div>
+            </div>
+            <div class="biz-card" onclick="selectBiz(this)">
+              <div class="biz-icon">⚡</div>
+              <div class="biz-name">Otro Ramo</div>
+              <div class="biz-desc">Personaliza cada campo desde cero</div>
+              <div class="biz-check">✓</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DATOS DE LA TIENDA -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><div class="card-title-icon" style="background:rgba(59,130,246,.15)">🏷️</div>Datos de la Tienda</div>
+            <div class="card-subtitle">Información que verán tus clientes en el catálogo público</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">NOMBRE DE LA TIENDA</label>
+              <input class="form-input" type="text" value="Mis Modas 2025">
+            </div>
+            <div class="form-group">
+              <label class="form-label">USUARIO / SLUG (URL)</label>
+              <input class="form-input" type="text" value="mismodas2025">
+              <span class="form-hint">ventasve.app/c/mismodas2025</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">TELÉFONO WHATSAPP</label>
+              <input class="form-input" type="text" value="+58 412-555-0123">
+            </div>
+            <div class="form-group">
+              <label class="form-label">CIUDAD PRINCIPAL</label>
+              <select class="form-select">
+                <option>Caracas</option><option>Maracaibo</option><option>Valencia</option>
+                <option>Barquisimeto</option><option>Maturín</option><option>Barcelona</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">DESCRIPCIÓN DE LA TIENDA</label>
+              <textarea class="form-textarea">Tienda de ropa y accesorios con más de 2 años en el mercado. Atendemos a nivel nacional. Pagos en todas las divisas 💸</textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">INSTAGRAM</label>
+              <input class="form-input" type="text" placeholder="@mismodas2025">
+            </div>
+            <div class="form-group">
+              <label class="form-label">HORARIO DE ATENCIÓN</label>
+              <input class="form-input" type="text" value="Lun–Sáb 8am–6pm">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- APARIENCIA -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-title-icon" style="background:rgba(168,85,247,.15)">🎨</div>Apariencia del Catálogo Público</div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">COLOR PRINCIPAL</label>
+              <div class="color-row">
+                <div class="color-opt active" style="background:#e8360e" onclick="pickColor(this)"></div>
+                <div class="color-opt" style="background:#f5c842" onclick="pickColor(this)"></div>
+                <div class="color-opt" style="background:#3b82f6" onclick="pickColor(this)"></div>
+                <div class="color-opt" style="background:#22c55e" onclick="pickColor(this)"></div>
+                <div class="color-opt" style="background:#a855f7" onclick="pickColor(this)"></div>
+                <div class="color-opt" style="background:#ec4899" onclick="pickColor(this)"></div>
+                <div class="color-opt" style="background:#f97316" onclick="pickColor(this)"></div>
+                <div class="color-opt" style="background:#0ea5e9" onclick="pickColor(this)"></div>
+              </div>
+              <div class="color-custom">
+                <input type="color" value="#e8360e">
+                <span class="form-hint">Color personalizado</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">TEMA DEL CATÁLOGO</label>
+              <div style="display:flex;gap:8px;margin-top:4px">
+                <div style="flex:1;border:2px solid var(--accent);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--surface2)">
+                  <div style="font-size:20px">☀️</div><div style="font-size:12px;font-weight:600;margin-top:4px">Claro</div>
+                </div>
+                <div style="flex:1;border:2px solid var(--border2);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--surface2)">
+                  <div style="font-size:20px">🌙</div><div style="font-size:12px;font-weight:600;margin-top:4px">Oscuro</div>
+                </div>
+                <div style="flex:1;border:2px solid var(--border2);border-radius:10px;padding:14px;text-align:center;cursor:pointer;background:var(--surface2)">
+                  <div style="font-size:20px">⚙️</div><div style="font-size:12px;font-weight:600;margin-top:4px">Auto</div>
+                </div>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">OPCIONES DE CATÁLOGO</label>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Mostrar precios en bolívares</div><div class="toggle-desc">Muestra Bs. junto al precio en dólares</div></div>
+                <div class="sw on" onclick="this.classList.toggle('on')"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Mostrar stock disponible</div><div class="toggle-desc">El cliente ve cuántas unidades quedan</div></div>
+                <div class="sw on" onclick="this.classList.toggle('on')"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Permitir pedidos sin registro</div><div class="toggle-desc">El cliente puede pedir sin crear cuenta</div></div>
+                <div class="sw on" onclick="this.classList.toggle('on')"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Chat flotante de WhatsApp</div><div class="toggle-desc">Botón verde visible en el catálogo</div></div>
+                <div class="sw on" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAMPOS ESPECÍFICOS DEL RAMO -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><div class="card-title-icon" style="background:rgba(245,200,66,.15)">🎯</div>Campos del Ramo — Moda y Ropa</div>
+            <div class="card-subtitle">Atributos que aparecerán en tus productos para este tipo de negocio</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div style="margin-bottom:14px">
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">Tallas (S, M, L, XL…)</div><div class="toggle-desc">Mostrar selector de talla en cada producto</div></div>
+              <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">Colores / Variantes</div><div class="toggle-desc">Activar selección de colores en el catálogo</div></div>
+              <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">Temporadas / Colecciones</div><div class="toggle-desc">Agrupa productos por temporada (Verano 2025, etc.)</div></div>
+              <div class="sw accent-on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">Género (Dama / Caballero / Unisex)</div><div class="toggle-desc">Filtro de género en el catálogo público</div></div>
+              <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">Material / Tela</div><div class="toggle-desc">Campo de descripción de material en el producto</div></div>
+              <div class="sw accent-on" onclick="this.classList.toggle('on')"></div>
+            </div>
+            <div class="toggle-row">
+              <div class="toggle-info"><div class="toggle-title">Lookbook / Fotos de uso</div><div class="toggle-desc">Galería secundaria de imágenes con modelo</div></div>
+              <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">TABLA DE TALLAS PERSONALIZADA</label>
+            <input class="form-input" type="text" value="XS, S, M, L, XL, XXL" placeholder="Ej: 28, 30, 32, 34...">
+            <span class="form-hint">Separa con comas. Estas serán las opciones por defecto al crear productos.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: PAGOS ===== -->
+    <div class="settings-section" id="tab-pagos">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><div class="card-title-icon" style="background:rgba(34,197,94,.15)">💳</div>Métodos de Pago Activos</div>
+            <div class="card-subtitle">Configura cada método con tus datos para que aparezca en el catálogo</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="pay-grid">
+
+            <div class="pay-card active">
+              <div class="pay-icon" style="background:rgba(118,72,232,.12)">💸</div>
+              <div style="flex:1">
+                <div class="pay-name">Zelle</div>
+                <div class="pay-detail">juan@gmail.com</div>
+                <div class="pay-config">
+                  <input class="form-input" type="text" placeholder="Email o teléfono Zelle" value="juan@gmail.com">
+                  <div style="margin-top:6px"><input class="form-input" type="text" placeholder="Nombre del titular" value="Juan Martínez"></div>
+                </div>
+              </div>
+              <div class="pay-status"><span class="pay-badge pb-active">Activo</span></div>
+            </div>
+
+            <div class="pay-card active">
+              <div class="pay-icon" style="background:rgba(59,130,246,.12)">📱</div>
+              <div style="flex:1">
+                <div class="pay-name">Pago Móvil</div>
+                <div class="pay-detail">0414 555-0123 · Banesco</div>
+                <div class="pay-config">
+                  <input class="form-input" type="text" placeholder="Número de teléfono" value="04145550123">
+                  <div style="margin-top:6px">
+                    <select class="form-select">
+                      <option>Banesco</option><option>Banco de Venezuela</option>
+                      <option>Mercantil</option><option>Provincial</option><option>BOD</option>
+                    </select>
+                  </div>
+                  <div style="margin-top:6px"><input class="form-input" type="text" placeholder="Cédula del titular" value="V-12.345.678"></div>
+                </div>
+              </div>
+              <div class="pay-status"><span class="pay-badge pb-active">Activo</span></div>
+            </div>
+
+            <div class="pay-card active">
+              <div class="pay-icon" style="background:rgba(245,188,9,.12)">⚡</div>
+              <div style="flex:1">
+                <div class="pay-name">Binance Pay</div>
+                <div class="pay-detail">ID: 123456789</div>
+                <div class="pay-config">
+                  <input class="form-input" type="text" placeholder="Binance Pay ID o email" value="juan@binance.com">
+                </div>
+              </div>
+              <div class="pay-status"><span class="pay-badge pb-active">Activo</span></div>
+            </div>
+
+            <div class="pay-card">
+              <div class="pay-icon" style="background:rgba(34,197,94,.12)">💵</div>
+              <div style="flex:1">
+                <div class="pay-name">Efectivo USD</div>
+                <div class="pay-detail">Pago en mano al entregar</div>
+                <div class="pay-config">
+                  <div class="toggle-row" style="padding:6px 0">
+                    <span style="font-size:12px">Solo para entregas en persona</span>
+                    <div class="sw on" onclick="this.classList.toggle('on')"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="pay-status"><span class="pay-badge pb-inactive">Inactivo</span></div>
+            </div>
+
+            <div class="pay-card">
+              <div class="pay-icon" style="background:rgba(232,54,14,.1)">🏦</div>
+              <div style="flex:1">
+                <div class="pay-name">Transferencia Bs.</div>
+                <div class="pay-detail">Banco de Venezuela</div>
+                <div class="pay-config">
+                  <input class="form-input" type="text" placeholder="Número de cuenta" value="0102 0000 0000000000">
+                  <div style="margin-top:6px"><input class="form-input" type="text" placeholder="Titular" value="Juan José Martínez"></div>
+                </div>
+              </div>
+              <div class="pay-status"><span class="pay-badge pb-inactive">Inactivo</span></div>
+            </div>
+
+            <div class="pay-card">
+              <div class="pay-icon" style="background:rgba(168,85,247,.12)">🔷</div>
+              <div style="flex:1">
+                <div class="pay-name">Cripto (USDT/BTC)</div>
+                <div class="pay-detail">Wallet TRC20, ERC20</div>
+                <div class="pay-config">
+                  <input class="form-input" type="text" placeholder="Dirección de wallet">
+                  <div style="margin-top:6px">
+                    <select class="form-select">
+                      <option>USDT TRC20</option><option>USDT ERC20</option><option>BTC</option><option>ETH</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="pay-status"><span class="pay-badge pb-inactive">Inactivo</span></div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-title-icon" style="background:rgba(245,200,66,.15)">💱</div>Tasa de Cambio</div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">FUENTE DE TASA</label>
+              <select class="form-select">
+                <option>BCV (Banco Central de Venezuela)</option>
+                <option>Paralelo / Dólar Today</option>
+                <option>Manual (yo la actualizo)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">TASA ACTUAL (Bs. por $1)</label>
+              <input class="form-input" type="number" value="36500">
+              <span class="form-hint">Actualiza automáticamente cada 24h si usas BCV</span>
+            </div>
+            <div class="form-group full">
+              <div class="toggle-row" style="padding:10px 0 0">
+                <div class="toggle-info"><div class="toggle-title">Actualización automática diaria</div><div class="toggle-desc">La plataforma actualizará la tasa cada día a las 8:00 AM</div></div>
+                <div class="sw on" onclick="this.classList.toggle('on')"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Mostrar tasa al cliente</div><div class="toggle-desc">El catálogo mostrará la tasa del día junto a los precios</div></div>
+                <div class="sw on" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: CATÁLOGO ===== -->
+    <div class="settings-section" id="tab-catalogo">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-title-icon" style="background:rgba(59,130,246,.15)">🛍️</div>Configuración del Catálogo</div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">MONEDA PRINCIPAL</label>
+              <div class="currency-row">
+                <div class="cur-chip active">USD $</div>
+                <div class="cur-chip">Bs. VES</div>
+                <div class="cur-chip">EUR €</div>
+                <div class="cur-chip">USDT</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">MONEDAS SECUNDARIAS A MOSTRAR</label>
+              <div class="currency-row">
+                <div class="cur-chip active">Bs. VES</div>
+                <div class="cur-chip">EUR €</div>
+                <div class="cur-chip">COP</div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">PRODUCTOS POR PÁGINA</label>
+              <select class="form-select"><option>12</option><option>24</option><option>36</option><option>48</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">ORDEN DEFAULT DEL CATÁLOGO</label>
+              <select class="form-select">
+                <option>Más vendidos</option><option>Más recientes</option>
+                <option>Precio: menor a mayor</option><option>Precio: mayor a menor</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">OPCIONES AVANZADAS</label>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Permitir reseñas de clientes</div><div class="toggle-desc">Los clientes pueden calificar y comentar productos</div></div>
+                <div class="sw on" onclick="this.classList.toggle('on')"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Mostrar "Agotado" en lugar de ocultar</div><div class="toggle-desc">Los productos sin stock aparecen marcados pero visibles</div></div>
+                <div class="sw on" onclick="this.classList.toggle('on')"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Precio mínimo por mayor</div><div class="toggle-desc">Activa precio especial para pedidos al por mayor</div></div>
+                <div class="sw" onclick="this.classList.toggle('on')"></div>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><div class="toggle-title">Modo catálogo sin precios</div><div class="toggle-desc">Oculta precios y solo muestra el botón "Consultar"</div></div>
+                <div class="sw" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: ENVÍOS ===== -->
+    <div class="settings-section" id="tab-envios">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title"><div class="card-title-icon" style="background:rgba(34,197,94,.15)">🚚</div>Zonas y Tarifas de Envío</div>
+        </div>
+        <div class="card-body">
+          <div class="zone-list">
+            <div class="zone-row">
+              <span style="font-size:18px">📍</span>
+              <div class="zone-name">Caracas (mismo día)</div>
+              <div class="zone-free">Gratis &gt;$20</div>
+              <div class="zone-price">$2.00</div>
+              <div class="zone-edit">Editar</div>
+            </div>
+            <div class="zone-row">
+              <span style="font-size:18px">🗺️</span>
+              <div class="zone-name">Miranda / La Guaira</div>
+              <div style="font-size:11px;color:var(--muted)">1–2 días</div>
+              <div class="zone-price">$3.50</div>
+              <div class="zone-edit">Editar</div>
+            </div>
+            <div class="zone-row">
+              <span style="font-size:18px">🚌</span>
+              <div class="zone-name">Interior del país</div>
+              <div style="font-size:11px;color:var(--muted)">2–4 días · MRW/Zoom</div>
+              <div class="zone-price">$6.00</div>
+              <div class="zone-edit">Editar</div>
+            </div>
+            <div class="zone-row">
+              <span style="font-size:18px">✈️</span>
+              <div class="zone-name">Internacional</div>
+              <div style="font-size:11px;color:var(--muted)">Cotización manual</div>
+              <div class="zone-price">Cotizar</div>
+              <div class="zone-edit">Editar</div>
+            </div>
+            <div class="add-zone-btn">+ Agregar nueva zona de envío</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title"><div class="card-title-icon" style="background:rgba(245,200,66,.15)">📦</div>Opciones de Entrega</div></div>
+        <div class="card-body">
+          <div class="toggle-row" style="padding-top:0">
+            <div class="toggle-info"><div class="toggle-title">Ofrecer retiro en tienda</div><div class="toggle-desc">El cliente puede recoger el pedido personalmente</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Moto delivery propio</div><div class="toggle-desc">Tu negocio hace los envíos directamente</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Integrar MRW / Zoom</div><div class="toggle-desc">Generar guías automáticamente (requiere contrato)</div></div>
+            <div class="sw" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Envío gratis desde cierto monto</div><div class="toggle-desc">Activa umbral de envío gratuito por zona</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: CHATBOT ===== -->
+    <div class="settings-section" id="tab-chatbot">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><div class="card-title-icon" style="background:rgba(34,197,94,.15)">🤖</div>Configuración del ChatBot IA</div>
+            <div class="card-subtitle">Automatiza respuestas, pedidos y seguimiento sin intervención humana</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:12px;color:var(--muted)">Estado:</span>
+            <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(34,197,94,.1);border-radius:20px">
+              <div style="width:7px;height:7px;background:var(--green);border-radius:50%;animation:pulse 1.5s infinite"></div>
+              <span style="font-size:12px;font-weight:600;color:var(--green)">Activo</span>
+            </div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid" style="margin-bottom:20px">
+            <div class="form-group">
+              <label class="form-label">CONEXIÓN DE WHATSAPP</label>
+              <select class="form-select">
+                <option>API Oficial Meta (WhatsApp Business)</option>
+                <option>Baileys (Conexión directa QR)</option>
+                <option>WPPConnect</option>
+              </select>
+              <span class="form-hint">API Oficial es más estable; Baileys es más rápido de conectar</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">NOMBRE DEL BOT</label>
+              <input class="form-input" type="text" value="Valeria de Mis Modas">
+              <span class="form-hint">Así se presentará el bot a tus clientes</span>
+            </div>
+            <div class="form-group full">
+              <label class="form-label">MENSAJE DE BIENVENIDA</label>
+              <textarea class="form-textarea">¡Hola! Soy Valeria 👋 Bienvenido a Mis Modas 2025. ¿En qué te puedo ayudar?\n\n1️⃣ Ver catálogo\n2️⃣ Consultar pedido\n3️⃣ Métodos de pago\n4️⃣ Hablar con un asesor</textarea>
+            </div>
+          </div>
+
+          <div class="form-label" style="margin-bottom:10px">FLUJO DE CONVERSACIÓN</div>
+          <div class="flow-steps">
+            <div class="flow-step">
+              <div class="step-num">1</div>
+              <div class="step-content">
+                <div class="step-title">Saludo y menú principal</div>
+                <div class="step-preview">¡Hola! Soy Valeria 👋 ¿En qué te puedo ayudar? 1) Catálogo 2) Pedido 3) Pagos...</div>
+              </div>
+              <div class="step-type st-menu">MENÚ</div>
+              <div class="drag-icon">⋮⋮</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num">2</div>
+              <div class="step-content">
+                <div class="step-title">Enviar link del catálogo</div>
+                <div class="step-preview">Aquí te dejo nuestro catálogo completo: ventasve.app/c/mismodas2025 🛍️</div>
+              </div>
+              <div class="step-type st-auto">AUTO</div>
+              <div class="drag-icon">⋮⋮</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num">3</div>
+              <div class="step-content">
+                <div class="step-title">Capturar datos del pedido</div>
+                <div class="step-preview">¿Qué producto te interesa? Dime el nombre o número del catálogo 📦</div>
+              </div>
+              <div class="step-type st-msg">MENSAJE</div>
+              <div class="drag-icon">⋮⋮</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num">4</div>
+              <div class="step-content">
+                <div class="step-title">Confirmar método de pago</div>
+                <div class="step-preview">¿Cómo prefieres pagar? 💸 Zelle 📱 Pago Móvil ⚡ Binance 💵 Efectivo</div>
+              </div>
+              <div class="step-type st-menu">MENÚ</div>
+              <div class="drag-icon">⋮⋮</div>
+            </div>
+            <div class="flow-step">
+              <div class="step-num">5</div>
+              <div class="step-content">
+                <div class="step-title">Solicitar comprobante y confirmar</div>
+                <div class="step-preview">¡Perfecto! Por favor envía el comprobante de pago para confirmar tu pedido ✅</div>
+              </div>
+              <div class="step-type st-auto">AUTO</div>
+              <div class="drag-icon">⋮⋮</div>
+            </div>
+            <div class="add-step-btn">+ Agregar paso al flujo</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><div class="card-title"><div class="card-title-icon" style="background:rgba(168,85,247,.15)">⚙️</div>Comportamiento del Bot</div></div>
+        <div class="card-body">
+          <div class="toggle-row" style="padding-top:0">
+            <div class="toggle-info"><div class="toggle-title">Responder consultas del catálogo con IA</div><div class="toggle-desc">El bot describe productos y responde "¿tienen X?" automáticamente</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Tomar pedidos automáticamente</div><div class="toggle-desc">El bot crea el pedido en el sistema sin que intervengas</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Escalar a humano si no entiende</div><div class="toggle-desc">Si el bot no puede responder, notifica al equipo</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Confirmar pagos por comprobante</div><div class="toggle-desc">El bot pide foto del pago y notifica para confirmar</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Enviar seguimiento automático del pedido</div><div class="toggle-desc">Notificar al cliente cuando su pedido cambia de estado</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Horario activo del bot</div><div class="toggle-desc">Fuera de horario, responde que será atendido pronto</div></div>
+            <div class="sw" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: MÓDULOS ===== -->
+    <div class="settings-section" id="tab-modulos">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title"><div class="card-title-icon" style="background:rgba(245,200,66,.15)">🧩</div>Módulos Activos</div>
+            <div class="card-subtitle">Activa o desactiva funcionalidades según las necesidades de tu negocio</div>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="module-grid">
+            <div class="module-card enabled">
+              <div class="module-top">
+                <div class="module-icon">📦</div>
+                <span class="module-plan mp-free">GRATIS</span>
+              </div>
+              <div class="module-name">Gestión de Pedidos</div>
+              <div class="module-desc">Flujo completo desde pedido hasta entrega con estados y notificaciones.</div>
+              <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:var(--green);font-weight:600">✓ Activo</span>
+                <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+            <div class="module-card enabled">
+              <div class="module-top">
+                <div class="module-icon">🛍️</div>
+                <span class="module-plan mp-free">GRATIS</span>
+              </div>
+              <div class="module-name">Catálogo Online</div>
+              <div class="module-desc">URL pública compartible por WhatsApp con fotos, precios y variantes.</div>
+              <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:var(--green);font-weight:600">✓ Activo</span>
+                <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+            <div class="module-card enabled">
+              <div class="module-top">
+                <div class="module-icon">💳</div>
+                <span class="module-plan mp-pro">PRO</span>
+              </div>
+              <div class="module-name">Pagos Multi-método</div>
+              <div class="module-desc">Zelle, Pago Móvil, Binance, efectivo y bolívares en un solo panel.</div>
+              <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:var(--green);font-weight:600">✓ Activo</span>
+                <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+            <div class="module-card enabled">
+              <div class="module-top">
+                <div class="module-icon">💬</div>
+                <span class="module-plan mp-pro">PRO</span>
+              </div>
+              <div class="module-name">Inbox Unificado</div>
+              <div class="module-desc">Todos los chats de WhatsApp, Instagram y web en un solo lugar.</div>
+              <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:var(--green);font-weight:600">✓ Activo</span>
+                <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+            <div class="module-card enabled">
+              <div class="module-top">
+                <div class="module-icon">🤖</div>
+                <span class="module-plan mp-pro">PRO</span>
+              </div>
+              <div class="module-name">ChatBot IA WhatsApp</div>
+              <div class="module-desc">Responde, muestra catálogo, toma pedidos y confirma pagos solo.</div>
+              <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:var(--green);font-weight:600">✓ Activo</span>
+                <div class="sw on accent-on" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+            <div class="module-card">
+              <div class="module-top">
+                <div class="module-icon">📊</div>
+                <span class="module-plan mp-pro">PRO</span>
+              </div>
+              <div class="module-name">Reportes Avanzados</div>
+              <div class="module-desc">Análisis de ventas, clientes frecuentes, productos más vendidos.</div>
+              <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:var(--muted)">Inactivo</span>
+                <div class="sw accent-on" onclick="this.classList.toggle('on')"></div>
+              </div>
+            </div>
+            <div class="module-card">
+              <div class="module-top">
+                <div class="module-icon">🎁</div>
+                <span class="module-plan mp-biz">BUSSINESS</span>
+              </div>
+              <div class="module-name">Cupones y Descuentos</div>
+              <div class="module-desc">Crea códigos de descuento y promociones automáticas.</div>
+              <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:var(--muted)">Requiere upgrade</span>
+                <div style="font-size:11px;padding:4px 10px;background:rgba(232,54,14,.1);color:var(--accent-red);border-radius:6px;font-weight:600;cursor:pointer">Activar</div>
+              </div>
+            </div>
+            <div class="module-card">
+              <div class="module-top">
+                <div class="module-icon">🔔</div>
+                <span class="module-plan mp-biz">BUSSINESS</span>
+              </div>
+              <div class="module-name">Marketing Automático</div>
+              <div class="module-desc">Mensajes masivos por WhatsApp, recuperación de carritos abandonados.</div>
+              <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:11px;color:var(--muted)">Requiere upgrade</span>
+                <div style="font-size:11px;padding:4px 10px;background:rgba(232,54,14,.1);color:var(--accent-red);border-radius:6px;font-weight:600;cursor:pointer">Activar</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: NOTIFICACIONES ===== -->
+    <div class="settings-section" id="tab-notif">
+      <div class="card">
+        <div class="card-header"><div class="card-title"><div class="card-title-icon" style="background:rgba(59,130,246,.15)">🔔</div>Canales de Notificación</div></div>
+        <div class="card-body">
+          <div class="notif-channel">
+            <div class="notif-icon">📱</div>
+            <div class="notif-info">
+              <div class="notif-name">WhatsApp (dueño)</div>
+              <div class="notif-detail">Recibe alertas de pedidos y pagos en tu WhatsApp</div>
+            </div>
+            <div class="notif-switches">
+              <span class="notif-sw-label">Pedidos</span><div class="sw on" onclick="this.classList.toggle('on')"></div>
+              <span class="notif-sw-label">Pagos</span><div class="sw on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="notif-channel">
+            <div class="notif-icon">📧</div>
+            <div class="notif-info">
+              <div class="notif-name">Correo electrónico</div>
+              <div class="notif-detail">juan@gmail.com</div>
+            </div>
+            <div class="notif-switches">
+              <span class="notif-sw-label">Resumen</span><div class="sw on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+          <div class="notif-channel">
+            <div class="notif-icon">🔔</div>
+            <div class="notif-info">
+              <div class="notif-name">Push (navegador / app)</div>
+              <div class="notif-detail">Notificaciones en tiempo real</div>
+            </div>
+            <div class="notif-switches">
+              <span class="notif-sw-label">Activo</span><div class="sw on" onclick="this.classList.toggle('on')"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><div class="card-title"><div class="card-title-icon" style="background:rgba(245,200,66,.15)">📋</div>Qué me notifican</div></div>
+        <div class="card-body">
+          <div class="toggle-row" style="padding-top:0">
+            <div class="toggle-info"><div class="toggle-title">Nuevo pedido recibido</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Pago registrado</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Mensaje sin leer por más de 30 min</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Producto con stock bajo (&lt;5 unidades)</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Resumen diario de ventas (8 AM)</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+          <div class="toggle-row">
+            <div class="toggle-info"><div class="toggle-title">Bot escaló conversación a humano</div></div>
+            <div class="sw on" onclick="this.classList.toggle('on')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TAB: PLAN ===== -->
+    <div class="settings-section" id="tab-plan">
+      <div class="card">
+        <div class="card-header"><div class="card-title"><div class="card-title-icon" style="background:rgba(245,200,66,.15)">⭐</div>Tu Plan Actual — Pro</div></div>
+        <div class="card-body">
+          <div class="plan-grid">
+            <div class="plan-card">
+              <div class="plan-name">Básico</div>
+              <div class="plan-price">Gratis</div>
+              <div class="plan-period">Para siempre</div>
+              <div class="plan-feat"><span class="ok">✓</span> Catálogo hasta 20 productos</div>
+              <div class="plan-feat"><span class="ok">✓</span> Pagos básicos</div>
+              <div class="plan-feat" style="color:var(--muted)">✗ ChatBot IA</div>
+              <div class="plan-feat" style="color:var(--muted)">✗ Inbox unificado</div>
+              <div class="plan-btn pb-current">Plan anterior</div>
+            </div>
+            <div class="plan-card current">
+              <div class="plan-name">Pro</div>
+              <div class="plan-price">$19</div>
+              <div class="plan-period">/mes · pago mensual</div>
+              <div class="plan-feat"><span class="ok">✓</span> Productos ilimitados</div>
+              <div class="plan-feat"><span class="ok">✓</span> Todos los métodos de pago</div>
+              <div class="plan-feat"><span class="ok">✓</span> ChatBot IA WhatsApp</div>
+              <div class="plan-feat"><span class="ok">✓</span> Inbox WA + IG + Web</div>
+              <div class="plan-btn pb-current">Plan actual</div>
+            </div>
+            <div class="plan-card">
+              <div class="plan-name">Business</div>
+              <div class="plan-price">$49</div>
+              <div class="plan-period">/mes · facturación mensual</div>
+              <div class="plan-feat"><span class="ok">✓</span> Todo lo de Pro</div>
+              <div class="plan-feat"><span class="ok">✓</span> Cupones y marketing</div>
+              <div class="plan-feat"><span class="ok">✓</span> Multi-sucursal</div>
+              <div class="plan-feat"><span class="ok">✓</span> API y webhooks</div>
+              <div class="plan-btn pb-upgrade">Mejorar a Business</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card danger-card">
+        <div class="card-header"><div class="card-title" style="color:var(--accent-red)"><div class="card-title-icon" style="background:rgba(232,54,14,.15)">⚠️</div>Zona de Peligro</div></div>
+        <div class="card-body">
+          <div class="danger-row">
+            <div class="danger-info">
+              <div class="danger-title">Exportar todos mis datos</div>
+              <div class="danger-desc">Descarga un archivo con pedidos, clientes y configuración</div>
+            </div>
+            <div class="danger-btn db-warn">Exportar</div>
+          </div>
+          <div class="danger-row">
+            <div class="danger-info">
+              <div class="danger-title">Pausar mi tienda temporalmente</div>
+              <div class="danger-desc">El catálogo público mostrará "Temporalmente cerrado"</div>
+            </div>
+            <div class="danger-btn db-warn">Pausar</div>
+          </div>
+          <div class="danger-row">
+            <div class="danger-info">
+              <div class="danger-title">Eliminar cuenta y todos los datos</div>
+              <div class="danger-desc">Esta acción es irreversible. Se borrarán productos, pedidos y clientes.</div>
+            </div>
+            <div class="danger-btn db-red">Eliminar cuenta</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<style>
+@keyframes pulse {
+  0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.5)}
+  50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}
+}
+</style>
+
+<script>
+/* THEME */
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeIcon').textContent = isDark ? '☀️' : '🌙';
+  document.getElementById('themeLabel').textContent = isDark ? 'Claro' : 'Oscuro';
+}
+
+/* TABS */
+function switchTab(el, tabId) {
+  document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.settings-section').forEach(s => s.classList.remove('active'));
+  el.classList.add('active');
+  const section = document.getElementById('tab-' + tabId);
+  if (section) {
+    section.classList.add('active');
+    // Re-trigger animations
+    section.querySelectorAll('.card').forEach((c,i) => {
+      c.style.animation = 'none';
+      c.offsetHeight;
+      c.style.animation = `fadeUp .3s ease ${i * 0.06}s both`;
+    });
+  }
+}
+
+/* BUSINESS TYPE */
+function selectBiz(el) {
+  document.querySelectorAll('.biz-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  const name = el.querySelector('.biz-name').textContent;
+  // Update ramo title card
+  const titleEl = document.querySelector('#tab-negocio .card:last-child .card-title');
+  if (titleEl) {
+    const icon = el.querySelector('.biz-icon').textContent;
+    titleEl.innerHTML = `<div class="card-title-icon" style="background:rgba(245,200,66,.15)">${icon}</div>Campos del Ramo — ${name}`;
+  }
+}
+
+/* COLOR PICKER */
+function pickColor(el) {
+  document.querySelectorAll('.color-opt').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+}
+
+/* PAY CARD TOGGLE */
+document.querySelectorAll('.pay-card').forEach(card => {
+  card.addEventListener('click', function(e) {
+    if (e.target.closest('.pay-config') || e.target.closest('.form-input') || e.target.closest('.form-select')) return;
+    this.classList.toggle('active');
+    const badge = this.querySelector('.pay-badge');
+    if (badge) {
+      badge.className = 'pay-badge ' + (this.classList.contains('active') ? 'pb-active' : 'pb-inactive');
+      badge.textContent = this.classList.contains('active') ? 'Activo' : 'Inactivo';
+    }
+  });
+});
+
+/* SAVE */
+function saveSettings() {
+  const btn = document.getElementById('saveBtn');
+  btn.textContent = '⏳ Guardando...';
+  btn.style.opacity = '0.7';
+  setTimeout(() => {
+    btn.textContent = '✅ Guardado';
+    btn.classList.add('saved');
+    showToast();
+    setTimeout(() => {
+      btn.textContent = 'Guardar cambios';
+      btn.classList.remove('saved');
+      btn.style.opacity = '1';
+    }, 2500);
+  }, 900);
+}
+
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+/* CURRENCY CHIPS */
+document.querySelectorAll('.cur-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const parent = chip.closest('.currency-row');
+    if (parent) {
+      parent.querySelectorAll('.cur-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+    }
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+// ── GENERADOR Y DATASOURCE ──────────────────────────
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── ENUMS ────────────────────────────────────────────
+enum BusinessType {
+  FASHION
+  FOOD
+  BEAUTY
+  TECH
+  GROCERY
+  HOME
+  HEALTH
+  EDUCATION
+  AUTO
+  SERVICE
+  PET
+  OTHER
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+enum Role {
+  OWNER
+  AGENT
+  SUPER_ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderSource {
+  WEB
+  WHATSAPP
+  BOT
+  MANUAL
+}
+
+enum PaymentMethod {
+  ZELLE
+  PAGO_MOVIL
+  BINANCE
+  CASH_USD
+  TRANSFER_BS
+  CRYPTO
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum Channel {
+  WHATSAPP
+  INSTAGRAM
+  WEB
+}
+
+enum ConvStatus {
+  OPEN
+  BOT
+  HUMAN
+  CLOSED
+}
+
+enum MsgRole {
+  CUSTOMER
+  BOT
+  AGENT
+}
+
+// ── MODELS ───────────────────────────────────────────
+model Business {
+  id             String       @id @default(uuid())
+  slug           String       @unique
+  name           String
+  type           BusinessType
+  plan           Plan         @default(FREE)
+  whatsapp       String
+  city           String?
+  description    String?
+  instagram      String?
+  schedule       String?
+  settings       Json         @default("{}")  // colores, módulos, campos del ramo
+  paymentMethods Json?
+  catalogOptions Json?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+
+  // Relaciones
+  users         User[]
+  products      Product[]
+  categories    Category[]
+  orders        Order[]
+  customers     Customer[]
+  payments      Payment[]
+  conversations Conversation[]
+  paymentConfig PaymentConfig[]
+  exchangeRates ExchangeRate[]
+}
+
+model User {
+  id           String    @id @default(uuid())
+  businessId   String
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(AGENT)
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+
+  business  Business  @relation(fields: [businessId], references: [id])
+  sessions  Session[]
+
+  @@index([businessId])
+}
+
+model Session {
+  id          String    @id @default(uuid())
+  userId      String
+  token       String    @unique  // hashed refresh token
+  userAgent   String?
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  @@index([userId])
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  businessId  String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  business Business  @relation(fields: [businessId], references: [id])
+  products Product[]
+
+  @@index([businessId])
+}
+
+model Product {
+  id              String    @id @default(uuid())
+  businessId      String
+  categoryId      String?
+  name            String
+  description     String?
+  priceUsdCents   Int       // 1200 = $12.00
+  stock           Int       @default(0)
+  images          String[]
+  variants        Json      @default("[]")
+  attributes      Json      @default("{}")   // campos del ramo
+  isPublished     Boolean   @default(true)
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  business    Business    @relation(fields: [businessId], references: [id])
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+
+  @@index([businessId])
+  @@index([businessId, isPublished])
+}
+
+model Customer {
+  id             String   @id @default(uuid())
+  businessId     String
+  phone          String?
+  name           String?
+  email          String?
+  address        String?
+  addressNotes   String?
+  identification String?
+  preferences    Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  business      Business       @relation(fields: [businessId], references: [id])
+  orders        Order[]
+  conversations Conversation[]
+
+  @@index([businessId])
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  orderNumber     Int           @default(autoincrement())
+  businessId      String
+  customerId      String
+  status          OrderStatus   @default(PENDING)
+  source          OrderSource   @default(WEB)
+  totalCents      Int
+  exchangeRate    Decimal?      // snapshot tasa del momento
+  paymentMethod   PaymentMethod
+  deliveryAddress String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  business  Business    @relation(fields: [businessId], references: [id])
+  customer  Customer    @relation(fields: [customerId], references: [id])
+  items     OrderItem[]
+  payments  Payment[]
+
+  @@index([businessId, status])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id              String   @id @default(uuid())
+  orderId         String
+  productId       String
+  quantity        Int
+  unitPriceCents  Int      // snapshot precio al momento del pedido
+  variantSelected Json?    // { talla: "M", color: "Azul" }
+
+  order    Order    @relation(fields: [orderId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id             String         @id @default(uuid())
+  orderId        String
+  businessId     String
+  method         PaymentMethod
+  amountCents    Int
+  currency       String
+  reference      String?       // n° transacción Zelle, teléfono PM, hash…
+  proofImageUrl  String?
+  status         PaymentStatus @default(PENDING)
+  verifiedAt     DateTime?
+  verifiedBy     String?      // userId o null (bot)
+  createdAt      DateTime     @default(now())
+
+  order     Order     @relation(fields: [orderId], references: [id])
+  business  Business  @relation(fields: [businessId], references: [id])
+
+  @@index([businessId, status])
+}
+
+model PaymentConfig {
+  id          String        @id @default(uuid())
+  businessId  String
+  method      PaymentMethod
+  details     Json          @default("{}")
+  isActive    Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  business Business @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+}
+
+model Conversation {
+  id          String      @id @default(uuid())
+  businessId  String
+  customerId  String
+  channel     Channel
+  status      ConvStatus  @default(BOT)
+  botActive   Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  business  Business  @relation(fields: [businessId], references: [id])
+  customer  Customer  @relation(fields: [customerId], references: [id])
+  messages  Message[]
+
+  @@index([businessId, status])
+}
+
+model Message {
+  id               String    @id @default(uuid())
+  conversationId   String
+  role             MsgRole
+  content          String
+  mediaUrl         String?
+  waId             String?   @unique  // evitar duplicados de webhook
+  createdAt        DateTime  @default(now())
+
+  conversation  Conversation  @relation(fields: [conversationId], references: [id])
+  @@index([conversationId])
+}
+
+model ExchangeRate {
+  id          String    @id @default(uuid())
+  businessId  String?   // null = tasa global del sistema
+  usdToVes    Decimal   // 36500.00
+  source      String    // "BCV" | "PARALELO" | "MANUAL"
+  date        DateTime  @default(now())
+
+  business    Business? @relation(fields: [businessId], references: [id])
+  @@index([date])
+}

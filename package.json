@@ -1,0 +1,25 @@
+{
+  "name": "ventas-ve-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "packageManager": "pnpm@8.10.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "clean": "turbo run clean",
+    "db:push": "pnpm --filter database db:push",
+    "db:studio": "pnpm --filter database db:studio"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "typescript": "^5.3.3",
+    "eslint": "^8.56.0",
+    "prettier": "^3.1.1"
+  }
+}

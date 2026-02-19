@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MisModa2025 · Tienda Online</title>
+<link href="https://fonts.googleapis.com/css2?family=Clash+Display:wght@500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f7f4ef;
+    --white: #ffffff;
+    --surface: #edeae4;
+    --text: #1a1612;
+    --muted: #7a7470;
+    --border: rgba(0,0,0,0.08);
+    --accent: #e8360e;
+    --accent2: #f5c842;
+    --green: #1a9e5c;
+    --wa: #25d366;
+    --dark: #1a1612;
+    --tag-bg: rgba(232,54,14,0.1);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* TOP STORE HEADER */
+  .store-header {
+    background: var(--dark);
+    padding: 20px 20px 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .store-header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 200px; height: 200px;
+    background: radial-gradient(circle, rgba(245,200,66,0.3), transparent 70%);
+    pointer-events: none;
+  }
+  .store-header::after {
+    content: '';
+    position: absolute;
+    bottom: -30px; left: -30px;
+    width: 140px; height: 140px;
+    background: radial-gradient(circle, rgba(232,54,14,0.25), transparent 70%);
+    pointer-events: none;
+  }
+  .store-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  }
+  .back-btn {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    backdrop-filter: blur(10px);
+  }
+  .store-actions { display: flex; gap: 8px; }
+  .action-btn {
+    width: 36px; height: 36px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    backdrop-filter: blur(10px);
+    position: relative;
+  }
+  .cart-count {
+    position: absolute; top: -4px; right: -4px;
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    font-size: 9px; font-weight: 700;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--dark);
+  }
+
+  .store-identity {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 18px;
+    position: relative;
+    z-index: 1;
+  }
+  .store-logo {
+    width: 60px; height: 60px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    flex-shrink: 0;
+    box-shadow: 0 4px 20px rgba(232,54,14,0.4);
+  }
+  .store-name {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+    line-height: 1.1;
+  }
+  .store-handle { color: rgba(255,255,255,0.5); font-size: 13px; margin-top: 2px; }
+  .store-badges { display: flex; gap: 6px; margin-top: 6px; }
+  .store-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .badge-verified { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.8); }
+  .badge-fast { background: rgba(245,200,66,0.25); color: var(--accent2); }
+
+  .store-stats {
+    display: flex;
+    gap: 0;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+    z-index: 1;
+  }
+  .store-stat {
+    flex: 1;
+    text-align: center;
+    padding: 14px 10px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+  }
+  .store-stat:last-child { border-right: none; }
+  .sstat-num {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+  }
+  .sstat-label { font-size: 10px; color: rgba(255,255,255,0.4); margin-top: 1px; }
+
+  /* SEARCH BAR */
+  .search-wrap {
+    padding: 16px 16px 8px;
+  }
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--white);
+    border-radius: 14px;
+    padding: 12px 16px;
+    border: 1.5px solid var(--border);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    transition: border-color 0.2s;
+  }
+  .search-bar:focus-within { border-color: var(--accent); }
+  .search-icon { font-size: 16px; opacity: 0.4; }
+  .search-bar input {
+    flex: 1;
+    border: none; outline: none;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    background: transparent;
+    color: var(--text);
+  }
+  .search-bar input::placeholder { color: var(--muted); }
+  .filter-btn {
+    font-size: 14px;
+    padding: 4px 8px;
+    background: var(--surface);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  /* CATEGORIES */
+  .categories {
+    padding: 10px 16px 4px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .categories::-webkit-scrollbar { display: none; }
+  .cat-pill {
+    flex-shrink: 0;
+    padding: 7px 16px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1.5px solid var(--border);
+    background: var(--white);
+    color: var(--muted);
+  }
+  .cat-pill.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    box-shadow: 0 4px 14px rgba(232,54,14,0.3);
+  }
+
+  /* PROMO BANNER */
+  .promo-banner {
+    margin: 12px 16px;
+    background: linear-gradient(135deg, var(--dark) 60%, #2d1a00);
+    border-radius: 16px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .promo-banner::before {
+    content: '🎁';
+    position: absolute;
+    right: 16px; top: 50%; transform: translateY(-50%);
+    font-size: 52px;
+    opacity: 0.25;
+  }
+  .promo-tag {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+  }
+  .promo-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: white;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+  .promo-title span { color: var(--accent2); }
+  .promo-sub { font-size: 12px; color: rgba(255,255,255,0.5); }
+
+  /* SECTION TITLE */
+  .section-head {
+    padding: 14px 16px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .section-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+  }
+  .see-all { font-size: 13px; color: var(--accent); font-weight: 500; cursor: pointer; }
+
+  /* PRODUCT GRID */
+  .products-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 0 16px 16px;
+  }
+  .prod-card {
+    background: var(--white);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    animation: cardIn 0.4s ease both;
+    position: relative;
+  }
+  .prod-card:nth-child(1) { animation-delay: 0.05s; }
+  .prod-card:nth-child(2) { animation-delay: 0.1s; }
+  .prod-card:nth-child(3) { animation-delay: 0.15s; }
+  .prod-card:nth-child(4) { animation-delay: 0.2s; }
+  .prod-card:nth-child(5) { animation-delay: 0.25s; }
+  .prod-card:nth-child(6) { animation-delay: 0.3s; }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .prod-card:active { transform: scale(0.97); }
+
+  .prod-fav {
+    position: absolute; top: 10px; right: 10px;
+    width: 30px; height: 30px;
+    background: rgba(255,255,255,0.9);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    backdrop-filter: blur(4px);
+    z-index: 2;
+    cursor: pointer;
+  }
+  .prod-badge {
+    position: absolute; top: 10px; left: 10px;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 3px 7px;
+    border-radius: 5px;
+    letter-spacing: 0.04em;
+    z-index: 2;
+  }
+  .badge-oferta { background: var(--accent); color: white; }
+  .badge-nuevo { background: var(--green); color: white; }
+  .badge-agotado { background: rgba(0,0,0,0.6); color: white; }
+
+  .prod-img {
+    height: 160px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 64px;
+    position: relative;
+  }
+  .prod-info { padding: 12px 12px 14px; }
+  .prod-name {
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 1.3;
+    margin-bottom: 4px;
+    color: var(--text);
+  }
+  .prod-variants { font-size: 11px; color: var(--muted); margin-bottom: 8px; }
+  .prod-pricing {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    justify-content: space-between;
+  }
+  .prod-price-usd {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .prod-price-bs { font-size: 11px; color: var(--muted); }
+  .prod-old { font-size: 11px; color: var(--muted); text-decoration: line-through; }
+  .add-btn {
+    width: 30px; height: 30px;
+    background: var(--accent);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    color: white;
+    font-size: 18px;
+    font-weight: 300;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.15s, background 0.15s;
+    box-shadow: 0 3px 10px rgba(232,54,14,0.35);
+  }
+  .add-btn:active { transform: scale(0.9); }
+  .add-btn.added { background: var(--green); }
+
+  /* FULL WIDTH PRODUCT */
+  .prod-card.wide {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: row;
+  }
+  .prod-card.wide .prod-img { width: 120px; height: auto; flex-shrink: 0; border-radius: 0; font-size: 52px; }
+  .prod-card.wide .prod-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  /* PAYMENT METHODS PILL ROW */
+  .pay-strip {
+    margin: 4px 16px 12px;
+    background: var(--white);
+    border-radius: 14px;
+    padding: 14px 16px;
+    border: 1.5px solid var(--border);
+  }
+  .pay-strip-title { font-size: 12px; color: var(--muted); margin-bottom: 10px; font-weight: 500; }
+  .pay-methods-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pay-method {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1.5px solid;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pm-zelle { border-color: rgba(118,78,237,0.3); color: #7648e8; background: rgba(118,78,237,0.07); }
+  .pm-movil { border-color: rgba(59,130,246,0.3); color: #3b82f6; background: rgba(59,130,246,0.07); }
+  .pm-binance { border-color: rgba(245,188,9,0.4); color: #d4a100; background: rgba(245,188,9,0.07); }
+  .pm-efectivo { border-color: rgba(26,158,92,0.3); color: var(--green); background: rgba(26,158,92,0.07); }
+  .pm-bs { border-color: rgba(232,54,14,0.25); color: var(--accent); background: rgba(232,54,14,0.06); }
+
+  /* CHAT FLOAT */
+  .chat-float {
+    position: fixed;
+    bottom: 90px; right: 16px;
+    width: 52px; height: 52px;
+    background: var(--wa);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    box-shadow: 0 4px 20px rgba(37,211,102,0.5);
+    cursor: pointer;
+    z-index: 200;
+    animation: bounceIn 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+    animation-delay: 0.8s;
+  }
+  @keyframes bounceIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .chat-float:active { transform: scale(0.92); }
+
+  /* BOTTOM BAR */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px;
+    background: var(--white);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex;
+    gap: 10px;
+    z-index: 100;
+    box-shadow: 0 -4px 30px rgba(0,0,0,0.08);
+  }
+  .btn-wa {
+    flex: 0 0 auto;
+    padding: 13px 16px;
+    background: var(--wa);
+    border-radius: 14px;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(37,211,102,0.4);
+    transition: transform 0.15s;
+  }
+  .btn-wa:active { transform: scale(0.95); }
+  .btn-order {
+    flex: 1;
+    padding: 13px;
+    background: var(--accent);
+    border-radius: 14px;
+    font-family: 'Clash Display', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: white;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 18px rgba(232,54,14,0.4);
+    transition: transform 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    position: relative;
+  }
+  .btn-order:active { transform: scale(0.97); }
+  .btn-cart-badge {
+    position: absolute; top: -6px; right: -4px;
+    background: var(--dark);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid white;
+  }
+
+  /* MODAL OVERLAY */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 300;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .product-modal {
+    position: fixed;
+    bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+    width: 100%; max-width: 480px;
+    background: var(--white);
+    border-radius: 24px 24px 0 0;
+    padding: 0 0 30px;
+    z-index: 400;
+    transition: transform 0.4s cubic-bezier(0.34,1.2,0.64,1);
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .product-modal.open { transform: translateX(-50%) translateY(0); }
+  .modal-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 12px auto 0;
+  }
+  .modal-img {
+    height: 200px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 90px;
+    margin: 12px 20px;
+    background: var(--bg);
+    border-radius: 16px;
+  }
+  .modal-body { padding: 0 20px; }
+  .modal-name {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 22px; font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .modal-prices {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .modal-price-usd {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 28px; font-weight: 700;
+    color: var(--accent);
+  }
+  .modal-price-bs { color: var(--muted); font-size: 14px; }
+  .modal-desc { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+  .modal-section { font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 8px; letter-spacing: 0.04em; }
+  .variant-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .variant-chip {
+    padding: 6px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--white);
+  }
+  .variant-chip.active {
+    border-color: var(--accent);
+    background: rgba(232,54,14,0.07);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .qty-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .qty-btn {
+    width: 36px; height: 36px;
+    background: var(--surface);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+    cursor: pointer;
+    font-weight: 300;
+    transition: background 0.15s;
+    user-select: none;
+  }
+  .qty-btn:active { background: var(--border); }
+  .qty-num {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    width: 30px;
+    text-align: center;
+  }
+  .modal-add-btn {
+    width: 100%;
+    padding: 15px;
+    background: var(--accent);
+    color: white;
+    border-radius: 14px;
+    font-family: 'Clash Display', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(232,54,14,0.35);
+    transition: transform 0.15s;
+  }
+  .modal-add-btn:active { transform: scale(0.98); }
+
+  /* CART MODAL */
+  .cart-modal {
+    position: fixed;
+    bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+    width: 100%; max-width: 480px;
+    background: var(--white);
+    border-radius: 24px 24px 0 0;
+    padding: 0 0 30px;
+    z-index: 400;
+    transition: transform 0.4s cubic-bezier(0.34,1.2,0.64,1);
+    max-height: 88vh;
+    overflow-y: auto;
+  }
+  .cart-modal.open { transform: translateX(-50%) translateY(0); }
+  .cart-header {
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cart-title {
+    font-family: 'Clash Display', sans-serif;
+    font-size: 20px; font-weight: 600;
+  }
+  .cart-items { padding: 14px 20px; display: flex; flex-direction: column; gap: 12px; }
+  .cart-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 12px;
+  }
+  .cart-item-img {
+    width: 52px; height: 52px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .cart-item-name { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .cart-item-variant { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .cart-item-price { font-family: 'Clash Display', sans-serif; font-size: 15px; font-weight: 600; color: var(--accent); }
+  .cart-item-right { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .cart-qty-mini {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px;
+  }
+  .cqb {
+    width: 24px; height: 24px;
+    background: var(--surface);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 14px; font-weight: 600;
+  }
+
+  .cart-summary {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+  }
+  .summary-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .summary-total {
+    display: flex;
+    justify-content: space-between;
+    font-size: 17px;
+    font-family: 'Clash Display', sans-serif;
+    font-weight: 600;
+    padding-top: 10px;
+    border-top: 1.5px dashed var(--border);
+    margin-top: 6px;
+  }
+  .total-usd { color: var(--accent); }
+
+  .pay-select {
+    margin: 10px 20px 14px;
+    padding: 12px;
+    background: var(--bg);
+    border-radius: 12px;
+  }
+  .pay-select-title { font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--text); }
+  .pay-options { display: flex; gap: 6px; flex-wrap: wrap; }
+  .pay-opt {
+    padding: 6px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--white);
+    transition: all 0.15s;
+  }
+  .pay-opt.selected {
+    border-color: var(--accent);
+    background: rgba(232,54,14,0.07);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .btn-pedido {
+    margin: 0 20px;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--dark), #2a1a0a);
+    color: white;
+    border-radius: 14px;
+    font-family: 'Clash Display', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+  }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    top: 20px; left: 50%; transform: translateX(-50%) translateY(-80px);
+    background: var(--dark);
+    color: white;
+    padding: 10px 18px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 999;
+    transition: transform 0.4s cubic-bezier(0.34,1.4,0.64,1);
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    white-space: nowrap;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* PADDING BOTTOM for fixed bar */
+  .scroll-pad { height: 90px; }
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast">✅ Agregado al carrito</div>
+
+<!-- STORE HEADER -->
+<div class="store-header">
+  <div class="store-topbar">
+    <div class="back-btn">←</div>
+    <div class="store-actions">
+      <div class="action-btn" onclick="openCart()">🛒<div class="cart-count" id="cartCount">0</div></div>
+      <div class="action-btn">⋯</div>
+    </div>
+  </div>
+  <div class="store-identity">
+    <div class="store-logo">👗</div>
+    <div>
+      <div class="store-name">Mis Modas 2025</div>
+      <div class="store-handle">@mismodas2025</div>
+      <div class="store-badges">
+        <span class="store-badge badge-verified">✓ Verificado</span>
+        <span class="store-badge badge-fast">⚡ Envío rápido</span>
+      </div>
+    </div>
+  </div>
+  <div class="store-stats">
+    <div class="store-stat">
+      <div class="sstat-num">128</div>
+      <div class="sstat-label">Productos</div>
+    </div>
+    <div class="store-stat">
+      <div class="sstat-num">4.9★</div>
+      <div class="sstat-label">Valoración</div>
+    </div>
+    <div class="store-stat">
+      <div class="sstat-num">1.2K</div>
+      <div class="sstat-label">Clientes</div>
+    </div>
+    <div class="store-stat">
+      <div class="sstat-num">CCS</div>
+      <div class="sstat-label">Ciudad</div>
+    </div>
+  </div>
+</div>
+
+<!-- SEARCH -->
+<div class="search-wrap">
+  <div class="search-bar">
+    <div class="search-icon">🔍</div>
+    <input type="text" placeholder="Buscar en el catálogo...">
+    <div class="filter-btn">🎛</div>
+  </div>
+</div>
+
+<!-- CATEGORIES -->
+<div class="categories">
+  <div class="cat-pill active">Todo</div>
+  <div class="cat-pill">Ropa</div>
+  <div class="cat-pill">Calzado</div>
+  <div class="cat-pill">Accesorios</div>
+  <div class="cat-pill">Bolsos</div>
+  <div class="cat-pill">Ofertas 🔥</div>
+</div>
+
+<!-- PROMO BANNER -->
+<div class="promo-banner">
+  <div class="promo-tag">OFERTA ESPECIAL</div>
+  <div class="promo-title">2x1 en toda<br><span>ropa de temporada</span></div>
+  <div class="promo-sub">Solo hasta el viernes · Corre 👟</div>
+</div>
+
+<!-- PAYMENT METHODS -->
+<div class="pay-strip">
+  <div class="pay-strip-title">💳 Métodos de pago aceptados</div>
+  <div class="pay-methods-row">
+    <div class="pay-method pm-zelle">💸 Zelle</div>
+    <div class="pay-method pm-movil">📱 Pago Móvil</div>
+    <div class="pay-method pm-binance">⚡ Binance</div>
+    <div class="pay-method pm-efectivo">💵 Efectivo USD</div>
+    <div class="pay-method pm-bs">🏦 Bs. Transf.</div>
+  </div>
+</div>
+
+<!-- FEATURED SECTION -->
+<div class="section-head">
+  <div class="section-title">🔥 Más vendidos</div>
+  <div class="see-all">Ver todos</div>
+</div>
+
+<div class="products-grid">
+  <!-- PRODUCT 1 -->
+  <div class="prod-card" onclick="openProduct('polo')">
+    <div class="prod-fav" onclick="event.stopPropagation()">🤍</div>
+    <div class="prod-badge badge-oferta">-20%</div>
+    <div class="prod-img" style="background: linear-gradient(135deg, #fef3e2, #fde68a)">👕</div>
+    <div class="prod-info">
+      <div class="prod-name">Polo Classic Premium</div>
+      <div class="prod-variants">Tallas: S · M · L · XL</div>
+      <div class="prod-pricing">
+        <div>
+          <div class="prod-price-usd">$12.00</div>
+          <div class="prod-price-bs">Bs. 438,000</div>
+        </div>
+        <div class="add-btn" id="add-polo" onclick="event.stopPropagation(); addToCart('polo', 'Polo Classic Premium', '$12.00', '👕')">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT 2 -->
+  <div class="prod-card" onclick="openProduct('jeans')">
+    <div class="prod-fav" onclick="event.stopPropagation()">🤍</div>
+    <div class="prod-badge badge-nuevo">NUEVO</div>
+    <div class="prod-img" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe)">👖</div>
+    <div class="prod-info">
+      <div class="prod-name">Jeans Slim Fit</div>
+      <div class="prod-variants">Colores: Azul · Negro</div>
+      <div class="prod-pricing">
+        <div>
+          <div class="prod-price-usd">$28.00</div>
+          <div class="prod-price-bs">Bs. 1.02M</div>
+        </div>
+        <div class="add-btn" id="add-jeans" onclick="event.stopPropagation(); addToCart('jeans', 'Jeans Slim Fit', '$28.00', '👖')">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT 3 -->
+  <div class="prod-card" onclick="openProduct('tenis')">
+    <div class="prod-fav" onclick="event.stopPropagation()">🤍</div>
+    <div class="prod-img" style="background: linear-gradient(135deg, #f0fdf4, #bbf7d0)">👟</div>
+    <div class="prod-info">
+      <div class="prod-name">Tenis Sport Run</div>
+      <div class="prod-variants">Tallas: 36–42</div>
+      <div class="prod-pricing">
+        <div>
+          <div class="prod-price-usd">$45.00</div>
+          <div class="prod-price-bs">Bs. 1.64M</div>
+        </div>
+        <div class="add-btn" id="add-tenis" onclick="event.stopPropagation(); addToCart('tenis', 'Tenis Sport Run', '$45.00', '👟')">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT 4 -->
+  <div class="prod-card" onclick="openProduct('bolso')">
+    <div class="prod-fav" onclick="event.stopPropagation()">🤍</div>
+    <div class="prod-badge badge-oferta">-15%</div>
+    <div class="prod-img" style="background: linear-gradient(135deg, #fdf2f8, #f0abfc)">👜</div>
+    <div class="prod-info">
+      <div class="prod-name">Bolso Elegante</div>
+      <div class="prod-variants">Rosa · Beige · Negro</div>
+      <div class="prod-pricing">
+        <div>
+          <div class="prod-price-usd">$22.00</div>
+          <div class="prod-price-bs">Bs. 803,000</div>
+        </div>
+        <div class="add-btn" id="add-bolso" onclick="event.stopPropagation(); addToCart('bolso', 'Bolso Elegante', '$22.00', '👜')">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WIDE PRODUCT -->
+  <div class="prod-card wide" onclick="openProduct('vestido')">
+    <div class="prod-img" style="background: linear-gradient(135deg, #fff1f2, #fda4af)">👗</div>
+    <div class="prod-info">
+      <div class="prod-badge badge-nuevo" style="position:relative;top:auto;left:auto;display:inline-block;margin-bottom:6px">NUEVO</div>
+      <div class="prod-name">Vestido Floral Verano</div>
+      <div class="prod-variants">XS · S · M · L</div>
+      <div class="prod-pricing">
+        <div>
+          <div class="prod-price-usd">$35.00</div>
+          <div class="prod-price-bs">Bs. 1.28M</div>
+        </div>
+        <div class="add-btn" id="add-vestido" onclick="event.stopPropagation(); addToCart('vestido', 'Vestido Floral Verano', '$35.00', '👗')">+</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRODUCT 5 - AGOTADO -->
+  <div class="prod-card">
+    <div class="prod-badge badge-agotado">AGOTADO</div>
+    <div class="prod-img" style="background: linear-gradient(135deg, #f9fafb, #e5e7eb);opacity:0.7">🕶️</div>
+    <div class="prod-info" style="opacity:0.6">
+      <div class="prod-name">Gafas Retro</div>
+      <div class="prod-variants">Varios colores</div>
+      <div class="prod-pricing">
+        <div>
+          <div class="prod-price-usd">$18.00</div>
+          <div class="prod-price-bs">Bs. 657,000</div>
+        </div>
+        <div class="add-btn" style="background:var(--muted);box-shadow:none">+</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="scroll-pad"></div>
+
+<!-- WHATSAPP FLOAT -->
+<div class="chat-float" onclick="alert('Abriendo WhatsApp con Mis Modas 2025...')">💬</div>
+
+<!-- BOTTOM BAR -->
+<div class="bottom-bar">
+  <div class="btn-wa" onclick="alert('Chatear por WhatsApp')">📲</div>
+  <div class="btn-order" onclick="openCart()">
+    🛒 Ver carrito
+    <div class="btn-cart-badge" id="cartBadge" style="display:none">0</div>
+  </div>
+</div>
+
+<!-- MODAL OVERLAY -->
+<div class="modal-overlay" id="overlay" onclick="closeAll()"></div>
+
+<!-- PRODUCT MODAL -->
+<div class="product-modal" id="productModal">
+  <div class="modal-handle"></div>
+  <div class="modal-img" id="modalImg">👕</div>
+  <div class="modal-body">
+    <div class="modal-name" id="modalName">Polo Classic Premium</div>
+    <div class="modal-prices">
+      <div class="modal-price-usd" id="modalPriceUsd">$12.00</div>
+      <div class="modal-price-bs" id="modalPriceBs">Bs. 438,000</div>
+    </div>
+    <div class="modal-desc">
+      Polo de algodón peinado 100% con acabado premium. Disponible en múltiples colores y tallas. Envío a todo el país con entrega en 24–48 horas en Caracas.
+    </div>
+    <div class="modal-section">TALLA</div>
+    <div class="variant-row">
+      <div class="variant-chip">XS</div>
+      <div class="variant-chip active">S</div>
+      <div class="variant-chip">M</div>
+      <div class="variant-chip">L</div>
+      <div class="variant-chip">XL</div>
+    </div>
+    <div class="modal-section">COLOR</div>
+    <div class="variant-row">
+      <div class="variant-chip active">Blanco</div>
+      <div class="variant-chip">Negro</div>
+      <div class="variant-chip">Azul</div>
+      <div class="variant-chip">Rojo</div>
+    </div>
+    <div class="modal-section">CANTIDAD</div>
+    <div class="qty-row">
+      <div class="qty-btn" onclick="changeQty(-1)">−</div>
+      <div class="qty-num" id="qtyNum">1</div>
+      <div class="qty-btn" onclick="changeQty(1)">+</div>
+      <div style="margin-left:auto;font-size:13px;color:var(--muted)">Stock: 24 unidades</div>
+    </div>
+    <div class="modal-add-btn" id="modalAddBtn" onclick="addFromModal()">Agregar al carrito · $12.00</div>
+  </div>
+</div>
+
+<!-- CART MODAL -->
+<div class="cart-modal" id="cartModal">
+  <div class="modal-handle"></div>
+  <div class="cart-header">
+    <div class="cart-title">🛒 Tu pedido</div>
+  </div>
+  <div class="cart-items" id="cartItems">
+    <div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">
+      Tu carrito está vacío. ¡Agrega productos! 🛍️
+    </div>
+  </div>
+  <div class="cart-summary" id="cartSummary" style="display:none">
+    <div class="summary-row"><span>Subtotal</span><span id="subtotal">$0.00</span></div>
+    <div class="summary-row"><span>Envío Caracas</span><span style="color:var(--green)">Gratis</span></div>
+    <div class="summary-total">
+      <span>Total</span>
+      <span class="total-usd" id="totalUsd">$0.00</span>
+    </div>
+  </div>
+  <div class="pay-select" id="paySelect" style="display:none">
+    <div class="pay-select-title">¿Cómo vas a pagar?</div>
+    <div class="pay-options">
+      <div class="pay-opt selected" onclick="selectPay(this)">💸 Zelle</div>
+      <div class="pay-opt" onclick="selectPay(this)">📱 Pago Móvil</div>
+      <div class="pay-opt" onclick="selectPay(this)">⚡ Binance</div>
+      <div class="pay-opt" onclick="selectPay(this)">💵 Efectivo</div>
+    </div>
+  </div>
+  <div class="btn-pedido" id="orderBtn" style="display:none" onclick="sendOrder()">
+    📲 Confirmar por WhatsApp
+  </div>
+</div>
+
+<script>
+  let cart = [];
+  let qty = 1;
+
+  const products = {
+    polo: { name: 'Polo Classic Premium', usd: '$12.00', bs: 'Bs. 438,000', emoji: '👕' },
+    jeans: { name: 'Jeans Slim Fit', usd: '$28.00', bs: 'Bs. 1.02M', emoji: '👖' },
+    tenis: { name: 'Tenis Sport Run', usd: '$45.00', bs: 'Bs. 1.64M', emoji: '👟' },
+    bolso: { name: 'Bolso Elegante', usd: '$22.00', bs: 'Bs. 803,000', emoji: '👜' },
+    vestido: { name: 'Vestido Floral Verano', usd: '$35.00', bs: 'Bs. 1.28M', emoji: '👗' },
+  };
+
+  let currentProduct = null;
+
+  function openProduct(id) {
+    const p = products[id];
+    if (!p) return;
+    currentProduct = { id, ...p };
+    qty = 1;
+    document.getElementById('modalImg').textContent = p.emoji;
+    document.getElementById('modalName').textContent = p.name;
+    document.getElementById('modalPriceUsd').textContent = p.usd;
+    document.getElementById('modalPriceBs').textContent = p.bs;
+    document.getElementById('qtyNum').textContent = 1;
+    document.getElementById('modalAddBtn').textContent = `Agregar al carrito · ${p.usd}`;
+
+    document.querySelectorAll('.variant-chip').forEach((c, i) => {
+      c.classList.toggle('active', i === 1);
+    });
+
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('productModal').classList.add('open');
+  }
+
+  function changeQty(d) {
+    qty = Math.max(1, Math.min(10, qty + d));
+    document.getElementById('qtyNum').textContent = qty;
+    if (currentProduct) {
+      const base = parseFloat(currentProduct.usd.replace('$', ''));
+      document.getElementById('modalAddBtn').textContent = `Agregar al carrito · $${(base * qty).toFixed(2)}`;
+    }
+  }
+
+  function addFromModal() {
+    if (!currentProduct) return;
+    addToCart(currentProduct.id, currentProduct.name, currentProduct.usd, currentProduct.emoji);
+    closeAll();
+  }
+
+  function addToCart(id, name, price, emoji) {
+    const existing = cart.find(i => i.id === id);
+    if (existing) {
+      existing.qty++;
+    } else {
+      cart.push({ id, name, price, emoji, qty: 1 });
+    }
+    updateCartUI();
+    showToast(`✅ ${name} agregado`);
+
+    const btn = document.getElementById('add-' + id);
+    if (btn) {
+      btn.classList.add('added');
+      btn.textContent = '✓';
+      setTimeout(() => { btn.classList.remove('added'); btn.textContent = '+'; }, 1500);
+    }
+  }
+
+  function updateCartUI() {
+    const total = cart.reduce((s, i) => s + parseFloat(i.price.replace('$', '')) * i.qty, 0);
+    const count = cart.reduce((s, i) => s + i.qty, 0);
+
+    document.getElementById('cartCount').textContent = count;
+    document.getElementById('cartBadge').textContent = count;
+    document.getElementById('cartBadge').style.display = count > 0 ? 'flex' : 'none';
+
+    // Render cart items
+    const el = document.getElementById('cartItems');
+    if (cart.length === 0) {
+      el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">Tu carrito está vacío 🛍️</div>';
+      document.getElementById('cartSummary').style.display = 'none';
+      document.getElementById('paySelect').style.display = 'none';
+      document.getElementById('orderBtn').style.display = 'none';
+      return;
+    }
+
+    el.innerHTML = cart.map(item => `
+      <div class="cart-item">
+        <div class="cart-item-img">${item.emoji}</div>
+        <div>
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-variant">Talla M · Blanco</div>
+          <div class="cart-item-price">${item.price}</div>
+        </div>
+        <div class="cart-item-right">
+          <div class="cart-qty-mini">
+            <div class="cqb" onclick="changeCartQty('${item.id}', -1)">−</div>
+            <span>${item.qty}</span>
+            <div class="cqb" onclick="changeCartQty('${item.id}', 1)">+</div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    document.getElementById('subtotal').textContent = `$${total.toFixed(2)}`;
+    document.getElementById('totalUsd').textContent = `$${total.toFixed(2)}`;
+    document.getElementById('cartSummary').style.display = 'block';
+    document.getElementById('paySelect').style.display = 'block';
+    document.getElementById('orderBtn').style.display = 'flex';
+  }
+
+  function changeCartQty(id, d) {
+    const item = cart.find(i => i.id === id);
+    if (!item) return;
+    item.qty += d;
+    if (item.qty <= 0) cart = cart.filter(i => i.id !== id);
+    updateCartUI();
+  }
+
+  function openCart() {
+    document.getElementById('overlay').classList.add('open');
+    document.getElementById('cartModal').classList.add('open');
+  }
+
+  function closeAll() {
+    document.getElementById('overlay').classList.remove('open');
+    document.getElementById('productModal').classList.remove('open');
+    document.getElementById('cartModal').classList.remove('open');
+  }
+
+  function selectPay(el) {
+    document.querySelectorAll('.pay-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+
+  function sendOrder() {
+    const items = cart.map(i => `• ${i.name} x${i.qty} (${i.price})`).join('\n');
+    const total = cart.reduce((s, i) => s + parseFloat(i.price.replace('$', '')) * i.qty, 0);
+    const selected = document.querySelector('.pay-opt.selected')?.textContent || 'Zelle';
+    const msg = `Hola! Quiero hacer este pedido 🛒\n\n${items}\n\nTotal: $${total.toFixed(2)}\nMétodo de pago: ${selected}\n\n¿Me confirman disponibilidad?`;
+    alert('✅ Redirigiendo a WhatsApp con tu pedido:\n\n' + msg);
+    closeAll();
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 2200);
+  }
+
+  // Category filter
+  document.querySelectorAll('.cat-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  // Fav toggle
+  document.querySelectorAll('.prod-fav').forEach(fav => {
+    fav.addEventListener('click', () => {
+      fav.textContent = fav.textContent === '🤍' ? '❤️' : '🤍';
+    });
+  });
+</script>
+</body>
+</html>
