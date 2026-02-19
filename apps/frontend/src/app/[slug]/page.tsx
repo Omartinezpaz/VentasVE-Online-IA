@@ -57,196 +57,194 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
 
   return (
     <>
-      <div className="min-h-screen bg-zinc-50 text-zinc-900">
-        <div className="mx-auto min-h-screen max-w-md bg-zinc-50">
-          <header className="relative overflow-hidden bg-zinc-900 text-white">
-            <div className="px-4 pt-4 pb-2">
-              <div className="mb-4 flex items-center justify-between">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-lg">
+      <div className="min-h-screen bg-[var(--bg-light)] text-[var(--dark)]">
+        <div className="mx-auto min-h-screen max-w-md bg-[var(--bg-light)] shadow-2xl overflow-x-hidden relative">
+
+          {/* HEADER OSCURO */}
+          <header className="relative overflow-hidden bg-[var(--dark)] text-white px-5 pt-6 pb-0">
+             {/* Decoración de fondo */}
+            <div className="absolute -top-16 -right-16 w-48 h-48 bg-[radial-gradient(circle,rgba(245,200,66,0.3),transparent_70%)] pointer-events-none" />
+            <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-[radial-gradient(circle,rgba(232,54,14,0.25),transparent_70%)] pointer-events-none" />
+
+            <div className="relative z-10">
+              <div className="mb-6 flex items-center justify-between">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 backdrop-blur-md text-lg cursor-pointer">
                   <span>‹</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5 text-lg">
+                  <CartLink slug={slug} />
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 backdrop-blur-md text-lg cursor-pointer">
                     <span>⋯</span>
                   </div>
-                  <CartLink slug={slug} />
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 text-2xl font-semibold shadow-lg">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-secondary)] text-3xl font-bold shadow-[0_4px_20px_rgba(232,54,14,0.4)] flex-shrink-0">
                   {business.name.charAt(0)}
                 </div>
-                <div className="flex-1">
-                  <div className="text-lg font-semibold leading-tight">
+                <div className="min-w-0">
+                  <h1 className="font-heading text-2xl font-bold leading-none tracking-tight truncate">
                     {business.name}
-                  </div>
-                  {business.description && (
-                    <p className="mt-1 text-xs text-zinc-200/70 line-clamp-2">
-                      {business.description}
-                    </p>
-                  )}
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-100">
-                      Verificado
+                  </h1>
+                  <p className="text-[13px] text-white/50 mt-0.5 font-medium">@{slug}</p>
+                  <div className="mt-2 flex gap-1.5">
+                    <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/90">
+                      ✓ Verificado
                     </span>
-                    <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-300">
-                      Entrega rápida
+                    <span className="rounded-full bg-[var(--accent-secondary)]/20 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[var(--accent-secondary)]">
+                      ⚡ Envío rápido
                     </span>
                   </div>
                 </div>
               </div>
             </div>
-            <div className="flex border-t border-white/10">
-              <div className="flex-1 border-r border-white/10 px-3 py-3 text-center">
-                <div className="text-sm font-semibold text-white">
+
+            {/* STATS BAR */}
+            <div className="relative z-10 flex border-t border-white/10 mt-2">
+              <div className="flex-1 border-r border-white/10 py-4 text-center">
+                <div className="font-heading text-lg font-bold leading-none">
                   {products.length}
                 </div>
-                <div className="mt-0.5 text-[10px] text-zinc-300">
+                <div className="mt-1 text-[9px] font-bold text-white/40 uppercase tracking-widest">
                   Productos
                 </div>
               </div>
-              <div className="flex-1 border-r border-white/10 px-3 py-3 text-center">
-                <div className="text-sm font-semibold text-white">
-                  USD / Bs
+              <div className="flex-1 border-r border-white/10 py-4 text-center">
+                <div className="font-heading text-lg font-bold leading-none">
+                  4.9★
                 </div>
-                <div className="mt-0.5 text-[10px] text-zinc-300">
-                  Doble moneda
+                <div className="mt-1 text-[9px] font-bold text-white/40 uppercase tracking-widest">
+                  Valoración
                 </div>
               </div>
-              <div className="flex-1 px-3 py-3 text-center">
-                <div className="text-sm font-semibold text-white">
-                  WhatsApp
+              <div className="flex-1 py-4 text-center">
+                <div className="font-heading text-lg font-bold leading-none">
+                  1.2K
                 </div>
-                <div className="mt-0.5 text-[10px] text-zinc-300">
-                  Pedidos directos
+                <div className="mt-1 text-[9px] font-bold text-white/40 uppercase tracking-widest">
+                  Clientes
                 </div>
               </div>
             </div>
           </header>
 
-          <main className="pb-20">
-            <section className="border-b border-zinc-200 bg-white px-4 py-3 text-xs text-zinc-600">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="font-medium text-zinc-700">
-                  Métodos de pago:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  <span className="inline-flex items-center gap-1 rounded-md border border-[rgba(118,72,232,0.3)] bg-[rgba(118,72,232,0.06)] px-2 py-1 text-[11px] font-semibold text-[#7648e8]">
-                    <span>●</span>
-                    <span>Zelle</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-[rgba(59,130,246,0.3)] bg-[rgba(59,130,246,0.06)] px-2 py-1 text-[11px] font-semibold text-[#3b82f6]">
-                    <span>●</span>
-                    <span>Pago móvil</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-[rgba(245,188,9,0.35)] bg-[rgba(245,188,9,0.06)] px-2 py-1 text-[11px] font-semibold text-[#c49500]">
-                    <span>●</span>
-                    <span>Binance Pay</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-[rgba(26,158,92,0.3)] bg-[rgba(26,158,92,0.06)] px-2 py-1 text-[11px] font-semibold text-[#1a9e5c]">
-                    <span>●</span>
-                    <span>Efectivo USD</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-md border border-[rgba(232,54,14,0.25)] bg-[rgba(232,54,14,0.05)] px-2 py-1 text-[11px] font-semibold text-[#e8360e]">
-                    <span>●</span>
-                    <span>Transferencia Bs</span>
-                  </span>
-                </div>
-              </div>
-            </section>
-
-            <section className="px-4 pt-4">
-              <div className="flex items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-sm shadow-sm">
-                <span className="text-lg text-zinc-400">⌕</span>
+          <main className="pb-24">
+            {/* SEARCH BAR */}
+            <section className="px-4 pt-5 pb-2">
+              <div className="flex items-center gap-3 rounded-2xl border-2 border-black/5 bg-white px-4 py-3.5 shadow-sm focus-within:border-[var(--accent)] transition-colors group">
+                <span className="text-xl opacity-30 group-focus-within:opacity-100 transition-opacity">🔍</span>
                 <input
                   type="search"
-                  placeholder="Buscar productos..."
-                  className="h-6 flex-1 border-none bg-transparent text-sm text-zinc-800 outline-none placeholder:text-zinc-400"
+                  placeholder="Buscar en el catálogo..."
+                  className="flex-1 border-none bg-transparent text-sm font-medium text-[var(--dark)] outline-none placeholder:text-zinc-400"
                 />
-                <span className="rounded-lg bg-zinc-100 px-2 py-1 text-[11px] text-zinc-600">
-                  Filtros
+                <span className="rounded-lg bg-zinc-100 px-2 py-1 text-lg leading-none cursor-pointer">
+                  🎛
                 </span>
               </div>
             </section>
 
-            <section className="mt-2 flex gap-2 overflow-x-auto px-4 pb-1 pt-2 text-sm">
-              <button className="whitespace-nowrap rounded-full border border-zinc-900 bg-zinc-900 px-3 py-1 text-xs font-medium text-white shadow">
-                Todo
-              </button>
-              <button className="whitespace-nowrap rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
-                Nuevos
-              </button>
-              <button className="whitespace-nowrap rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
-                Ofertas
-              </button>
-              <button className="whitespace-nowrap rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-600">
-                Más vendidos
-              </button>
+            {/* CATEGORIES */}
+            <section className="flex gap-2 overflow-x-auto px-4 py-2 no-scrollbar">
+              {['Todo', 'Novedades', 'Ofertas 🔥', 'Calzado', 'Accesorios'].map((cat, i) => (
+                <button
+                  key={cat}
+                  className={`whitespace-nowrap rounded-full border-2 px-4 py-1.5 text-xs font-bold transition-all ${
+                    i === 0
+                    ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-lg shadow-orange-950/20'
+                    : 'bg-white border-black/5 text-zinc-500'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
             </section>
 
-            <section className="px-4 pt-4">
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-950 px-4 py-4 text-white shadow">
-                <span className="inline-flex rounded-md bg-orange-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                  Promo del día
+            {/* PROMO BANNER */}
+            <section className="px-4 pt-3">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--dark)] to-[#2d1a00] p-5 text-white shadow-xl group cursor-pointer active:scale-[0.98] transition-transform">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-5xl opacity-20 group-hover:scale-110 transition-transform">🎁</div>
+                <span className="inline-block rounded bg-[var(--accent)] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest mb-2">
+                  Oferta Especial
                 </span>
-                <h2 className="mt-2 text-base font-semibold">
-                  Envíos rápidos y pagos en
-                  <span className="text-amber-300"> USD o Bs</span>
+                <h2 className="font-heading text-xl font-bold leading-tight">
+                  2x1 en toda la<br />
+                  <span className="text-[var(--accent-secondary)]">ropa de temporada</span>
                 </h2>
-                <p className="mt-1 text-xs text-zinc-300">
-                  Elige tus piezas favoritas y paga en la moneda que prefieras.
+                <p className="mt-1 text-[11px] text-white/50 font-medium">
+                  Solo hasta el viernes · Corre 👟
                 </p>
               </div>
             </section>
 
-            <section className="px-4 pt-5">
-              <div className="mb-2 flex items-center justify-between">
-                <h2 className="text-sm font-semibold">
-                  Colección destacada
+            {/* PAY STRIP */}
+            <section className="px-4 pt-4">
+              <div className="rounded-2xl border-2 border-black/5 bg-white p-4">
+                 <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3">💳 Métodos de pago aceptados</div>
+                 <div className="flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/20 bg-purple-500/5 px-2.5 py-1.5 text-[10px] font-bold text-purple-600">
+                        💸 Zelle
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-blue-500/20 bg-blue-500/5 px-2.5 py-1.5 text-[10px] font-bold text-blue-600">
+                        📱 Pago Móvil
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-yellow-600/20 bg-yellow-600/5 px-2.5 py-1.5 text-[10px] font-bold text-yellow-700">
+                        ⚡ Binance
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-2.5 py-1.5 text-[10px] font-bold text-emerald-600">
+                        💵 Efectivo
+                    </span>
+                 </div>
+              </div>
+            </section>
+
+            {/* PRODUCT GRID */}
+            <section className="px-4 pt-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="font-heading text-lg font-bold">
+                  🔥 Más vendidos
                 </h2>
-                <span className="text-xs font-medium text-orange-600">
-                  Ver todo
+                <span className="text-xs font-bold text-[var(--accent)] uppercase tracking-tight cursor-pointer">
+                  Ver todos
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 pb-4">
+              <div className="grid grid-cols-2 gap-4">
                 {products.map(product => (
                   <article
                     key={product.id}
-                    className="relative overflow-hidden rounded-2xl bg-white shadow-sm transition-transform duration-150 hover:-translate-y-0.5"
+                    className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition-all duration-200 active:scale-95"
                   >
-                    <div className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-xs text-zinc-700 shadow">
-                      ♥
+                    <div className="absolute right-2.5 top-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-xs shadow-md backdrop-blur-sm cursor-pointer hover:bg-white transition-colors">
+                      🤍
                     </div>
-                    <div className="flex h-32 items-center justify-center bg-zinc-100 text-4xl text-zinc-300">
+                    {product.stock && product.stock < 10 && (
+                        <div className="absolute left-2.5 top-2.5 z-10 bg-[var(--accent)] text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-sm">
+                            ÚLTIMOS {product.stock}
+                        </div>
+                    )}
+                    <div className="aspect-[4/5] flex items-center justify-center bg-[#f7f7f7] text-6xl group-hover:scale-105 transition-transform duration-500">
                       {product.name.charAt(0)}
                     </div>
-                    <div className="px-3 pb-3 pt-2">
-                      <h3 className="line-clamp-2 text-[13px] font-semibold text-zinc-900">
+                    <div className="flex flex-1 flex-col p-3">
+                      <h3 className="line-clamp-1 font-heading text-[14px] font-bold text-[var(--dark)]">
                         {product.name}
                       </h3>
-                      {product.description && (
-                        <p className="mt-1 line-clamp-2 text-[11px] text-zinc-500">
-                          {product.description}
-                        </p>
-                      )}
-                      <div className="mt-3 flex items-end justify-between gap-2">
-                        <div className="text-[12px]">
+                      <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-zinc-400">
+                        {product.description || 'Sin descripción'}
+                      </p>
+                      <div className="mt-auto pt-3 flex items-end justify-between gap-2">
+                        <div className="min-w-0">
                           <DualPrice
                             usdCents={product.priceUsdCents}
                             businessId={business.id}
                             showBoth={showBs}
                           />
-                          {showStock && typeof product.stock === 'number' && (
-                            <p className="mt-1 text-[10px] text-zinc-500">
-                              Stock: {product.stock}
-                            </p>
-                          )}
                         </div>
                         <Link
                           href={`/${slug}/products/${product.id}`}
-                          className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 text-lg font-medium text-white shadow-md"
+                          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-xl font-light text-white shadow-[0_4px_12px_rgba(232,54,14,0.35)] active:translate-y-0.5 transition-all"
                         >
                           +
                         </Link>

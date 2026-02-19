@@ -51,100 +51,109 @@ export default function CartPage({ params }: CartPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_20%_0%,_rgba(245,200,66,0.07),_transparent_55%),_radial-gradient(ellipse_at_80%_100%,_rgba(79,142,247,0.06),_transparent_55%),_#050712] text-zinc-50">
-      <header className="border-b border-zinc-800 bg-zinc-950/70">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Paso 1 de 2 · Tu carrito
-            </p>
-            <h1 className="font-heading text-lg font-semibold tracking-tight">
-              Resumen del carrito
-            </h1>
-          </div>
-          <Link
-            href={`/${slug}`}
-            className="text-xs font-medium text-zinc-400 underline"
-          >
-            Seguir comprando
+    <div className="min-h-screen bg-[var(--bg-light)] text-[var(--dark)]">
+      <header className="border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
+          <Link href={`/${slug}`} className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 text-lg cursor-pointer">
+            <span>‹</span>
           </Link>
+          <div className="text-center">
+            <h1 className="font-heading text-lg font-bold tracking-tight">
+              🛒 Tu pedido
+            </h1>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              Paso 1 de 2
+            </p>
+          </div>
+          <div className="w-9" />
         </div>
       </header>
-      <main className="mx-auto max-w-4xl px-4 py-5">
-        <div className="grid gap-4 md:grid-cols-[2.2fr,1.4fr]">
-          <section className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-950/80">
-            <div className="border-b border-zinc-800 px-5 py-4">
-              <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                Productos en tu pedido
-              </h2>
-              <p className="text-xs text-zinc-500">
-                Ajusta cantidades o quita productos antes de continuar.
-              </p>
-            </div>
-            <div className="px-5 py-4">
-              <div className="space-y-3">
-                {items.map(item => (
-                  <article
-                    key={item.productId}
-                    className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950/80 px-3 py-2"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-sm text-zinc-300">
-                      {item.name.charAt(0).toUpperCase()}
+
+      <main className="mx-auto max-w-4xl px-4 py-6">
+        <div className="grid gap-6 md:grid-cols-[1fr,0.7fr]">
+          <section className="space-y-4">
+            <div className="flex flex-col gap-3">
+              {items.map(item => (
+                <article
+                  key={item.productId}
+                  className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+                >
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--bg-light)] text-2xl font-bold text-zinc-400">
+                    {item.name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-[14px] font-bold text-[var(--dark)] truncate">
+                      {item.name}
+                    </h2>
+                    <div className="mt-1">
+                      <DualPrice usdCents={item.priceUsdCents} showBoth />
                     </div>
-                    <div className="flex-1">
-                      <h2 className="text-sm font-medium text-zinc-100">
-                        {item.name}
-                      </h2>
-                      <p className="mt-0.5 text-[11px] text-zinc-500">
-                        <DualPrice usdCents={item.priceUsdCents} showBoth />
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min={1}
-                          value={item.quantity}
-                          onChange={event =>
-                            handleQuantityChange(item.productId, event.target.value)
-                          }
-                          className="w-20 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                        />
-                      </div>
-                      <button
+                  </div>
+                  <div className="flex flex-col items-end gap-3">
+                     <button
                         type="button"
                         onClick={() => removeItem(item.productId)}
-                        className="text-[11px] font-medium text-red-400"
+                        className="text-[18px] text-zinc-300 hover:text-red-500 transition-colors"
                       >
-                        Quitar
+                        ×
                       </button>
+                    <div className="flex items-center gap-2 bg-[var(--bg-light)] rounded-lg p-1">
+                       <button onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))} className="w-6 h-6 flex items-center justify-center font-bold text-zinc-500 hover:text-[var(--dark)] transition-colors">−</button>
+                       <span className="font-heading font-bold text-sm min-w-[20px] text-center">{item.quantity}</span>
+                       <button onClick={() => updateQuantity(item.productId, item.quantity + 1)} className="w-6 h-6 flex items-center justify-center font-bold text-zinc-500 hover:text-[var(--dark)] transition-colors">+</button>
                     </div>
-                  </article>
-                ))}
-              </div>
+                  </div>
+                </article>
+              ))}
             </div>
-          </section>
-          <section className="card-elevated flex flex-col justify-between rounded-2xl border border-zinc-800 bg-zinc-950/80 px-5 py-4">
-            <div>
-              <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                Resumen de pago
-              </h2>
-              <div className="mt-4 flex items-center justify-between text-xs text-zinc-400">
-                <span>Subtotal estimado</span>
-                <span className="font-heading text-sm text-[var(--accent)]">
-                  <DualPrice usdCents={totalCents} showBoth />
-                </span>
-              </div>
-              <p className="mt-2 text-[11px] text-zinc-500">
-                El monto final se confirmará por WhatsApp según el método de pago elegido.
-              </p>
-            </div>
+
             <Link
-              href={`/${slug}/checkout`}
-              className="mt-4 block w-full rounded-xl bg-[var(--accent)] px-3 py-2 text-center text-sm font-semibold text-black shadow-md shadow-[rgba(0,0,0,0.6)]"
+                href={`/${slug}`}
+                className="flex items-center justify-center gap-2 py-4 text-xs font-bold text-[var(--accent)] uppercase tracking-tight"
             >
-              Ir al checkout
+                + Agregar más productos
             </Link>
+          </section>
+
+          <section className="space-y-4">
+             <div className="rounded-[24px] bg-white p-6 shadow-xl ring-1 ring-black/5">
+                <h2 className="font-heading text-lg font-bold mb-5">
+                    Resumen de pago
+                </h2>
+                <div className="space-y-3">
+                    <div className="flex justify-between text-sm font-medium text-zinc-500">
+                        <span>Subtotal</span>
+                        <DualPrice usdCents={totalCents} />
+                    </div>
+                    <div className="flex justify-between text-sm font-medium text-zinc-500">
+                        <span>Envío Caracas</span>
+                        <span className="text-emerald-600 font-bold">Gratis</span>
+                    </div>
+                    <div className="pt-4 mt-2 border-t-2 border-dashed border-zinc-100 flex justify-between items-end">
+                        <span className="font-heading text-lg font-bold">Total</span>
+                        <div className="text-right">
+                            <div className="font-heading text-2xl font-bold text-[var(--accent)]">
+                                <DualPrice usdCents={totalCents} showBoth />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-8 rounded-2xl bg-[var(--bg-light)] p-4">
+                    <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-tight mb-2">💳 ¿Cómo vas a pagar?</div>
+                    <div className="flex flex-wrap gap-2">
+                        <span className="px-3 py-1.5 rounded-lg border-2 border-[var(--accent)] bg-[var(--accent)]/5 text-[11px] font-bold text-[var(--accent)]">💸 Zelle</span>
+                        <span className="px-3 py-1.5 rounded-lg border-2 border-black/5 bg-white text-[11px] font-bold text-zinc-500">📱 Pago Móvil</span>
+                    </div>
+                </div>
+
+                <Link
+                href={`/${slug}/checkout`}
+                className="mt-8 block w-full rounded-2xl bg-[var(--dark)] py-4 text-center font-heading text-base font-bold text-white shadow-xl shadow-zinc-950/20 active:scale-[0.98] transition-all"
+                >
+                Confirmar datos →
+                </Link>
+             </div>
           </section>
         </div>
       </main>

@@ -171,10 +171,10 @@ export default function SettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-base font-semibold text-zinc-50">
+          <h1 className="font-heading text-xl font-bold text-zinc-50">
             Configuración
           </h1>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-zinc-400">
             Ajustes de tu negocio, WhatsApp, catálogo y métodos de pago.
           </p>
         </div>
@@ -182,85 +182,83 @@ export default function SettingsPage() {
           type="button"
           onClick={handleSave}
           disabled={saving || loading}
-          className="rounded-lg bg-[var(--accent)] px-3 py-1.5 text-xs font-semibold text-black shadow disabled:opacity-70"
+          className="rounded-xl bg-[var(--accent)] px-6 py-2.5 text-sm font-bold text-zinc-950 shadow-lg shadow-orange-950/20 transition-transform active:scale-95 disabled:opacity-70"
         >
           {saving ? 'Guardando...' : 'Guardar cambios'}
         </button>
       </div>
 
       {error && (
-        <div className="rounded-md border border-red-500/40 bg-red-950/40 px-3 py-2 text-xs text-red-100">
+        <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-100 shadow-xl">
           {error}
         </div>
       )}
 
       {loading && !error && (
-        <div className="rounded-md border border-zinc-800 bg-zinc-900/70 px-3 py-2 text-xs text-zinc-400">
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-400 shadow-xl">
           Cargando configuración del negocio...
         </div>
       )}
 
-      <section className="grid gap-4 md:grid-cols-[1.8fr,1.4fr]">
-        <div className="space-y-4">
-          <div className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-900/80">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
-              <div>
-                <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                  Mi negocio
-                </h2>
-                <p className="text-xs text-zinc-500">
-                  Datos que verán tus clientes en el catálogo público.
-                </p>
-              </div>
+      <section className="grid gap-6 lg:grid-cols-[1fr,0.8fr]">
+        <div className="space-y-6">
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-[var(--border)] px-6 py-5">
+              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
+                Mi negocio
+              </h2>
+              <p className="text-xs text-[var(--muted)]">
+                Datos que verán tus clientes en el catálogo público.
+              </p>
             </div>
-            <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-zinc-400">
+            <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold tracking-wider text-[var(--muted)] uppercase">
                   Nombre de la tienda
                 </label>
                 <input
                   type="text"
                   value={business.name}
                   onChange={event => handleBusinessChange('name', event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
                   placeholder="Mis Modas 2025"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-zinc-400">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
                   Usuario / slug (URL)
                 </label>
                 <input
                   type="text"
                   value={business.slug}
                   onChange={event => handleBusinessChange('slug', event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
                   placeholder="mismodas2025"
                 />
-                <p className="mt-1 text-[10px] text-zinc-500">
+                <p className="mt-1.5 text-[10px] text-zinc-500 font-medium">
                   ventasve.app/c/{business.slug || 'tutienda'}
                 </p>
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-zinc-400">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
                   Teléfono WhatsApp
                 </label>
                 <input
                   type="tel"
                   value={business.whatsappPhone}
                   onChange={event => handleBusinessChange('whatsappPhone', event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
                   placeholder="+58 412-555-0123"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-zinc-400">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
                   Ciudad principal
                 </label>
                 <select
                   value={business.city}
                   onChange={event => handleBusinessChange('city', event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 appearance-none"
                 >
                   <option value="">Selecciona una ciudad</option>
                   <option value="Caracas">Caracas</option>
@@ -271,203 +269,189 @@ export default function SettingsPage() {
                   <option value="Barcelona">Barcelona</option>
                 </select>
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-zinc-400">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
                   Instagram
                 </label>
                 <input
                   type="text"
                   value={business.instagram}
                   onChange={event => handleBusinessChange('instagram', event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
                   placeholder="@mismodas2025"
                 />
               </div>
-              <div className="space-y-1">
-                <label className="text-[11px] font-medium text-zinc-400">
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
                   Horario de atención
                 </label>
                 <input
                   type="text"
                   value={business.schedule}
                   onChange={event => handleBusinessChange('schedule', event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
                   placeholder="Lun–Sáb 8am–6pm"
                 />
               </div>
-              <div className="space-y-1 md:col-span-2">
-                <label className="text-[11px] font-medium text-zinc-400">
+              <div className="space-y-1.5 md:col-span-2">
+                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
                   Descripción de la tienda
                 </label>
                 <textarea
                   value={business.description}
                   onChange={event => handleBusinessChange('description', event.target.value)}
-                  className="min-h-[80px] w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+                  className="min-h-[100px] w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 resize-none"
                   placeholder="Cuenta brevemente qué vendes y cómo atiendes a tus clientes."
                 />
-                <p className="mt-1 text-[10px] text-zinc-500">
-                  Esta descripción se mostrará en la cabecera de tu catálogo público.
-                </p>
               </div>
             </div>
           </div>
 
-          <div className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-900/80">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
-              <div>
-                <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                  Métodos de pago
-                </h2>
-                <p className="text-xs text-zinc-500">
-                  Define cómo pueden pagarte tus clientes.
-                </p>
-              </div>
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-zinc-800 px-6 py-5">
+              <h2 className="font-heading text-lg font-bold text-zinc-50">
+                Métodos de pago
+              </h2>
+              <p className="text-xs text-zinc-500">
+                Define cómo pueden pagarte tus clientes.
+              </p>
             </div>
-            <div className="grid gap-3 px-5 py-4 md:grid-cols-2">
-              <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+            <div className="grid gap-4 px-6 py-6 md:grid-cols-2">
+              <div className="space-y-3 rounded-2xl border-2 border-[var(--border)] bg-[var(--background)]/40 p-5 transition-all hover:border-[var(--muted)]">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-100">
-                      Zelle
-                    </div>
-                    <div className="text-[11px] text-zinc-500">
-                      Correo o teléfono asociado a Zelle.
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">💸</span>
+                    <span className="text-sm font-bold text-[var(--foreground)]">Zelle</span>
                   </div>
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                    Activo
+                  <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
+                    ACTIVO
                   </span>
                 </div>
-                <input
-                  type="text"
-                  value={zelleEmail}
-                  onChange={event => setZelleEmail(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="Email o teléfono Zelle"
-                />
-                <input
-                  type="text"
-                  value={zelleName}
-                  onChange={event => setZelleName(event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="Nombre del titular"
-                />
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={zelleEmail}
+                    onChange={event => setZelleEmail(event.target.value)}
+                    className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--foreground)] outline-none focus:border-[var(--accent)] transition-all"
+                    placeholder="Email o teléfono Zelle"
+                  />
+                  <input
+                    type="text"
+                    value={zelleName}
+                    onChange={event => setZelleName(event.target.value)}
+                    className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--foreground)] outline-none focus:border-[var(--accent)] transition-all"
+                    placeholder="Nombre del titular"
+                  />
+                </div>
               </div>
-              <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+
+              <div className="space-y-3 rounded-2xl border-2 border-zinc-800 bg-zinc-950/40 p-5 transition-all hover:border-zinc-700">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-100">
-                      Pago móvil
-                    </div>
-                    <div className="text-[11px] text-zinc-500">
-                      Número, banco y cédula del titular.
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">📱</span>
+                    <span className="text-sm font-bold text-zinc-100">Pago móvil</span>
                   </div>
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                    Activo
+                  <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
+                    ACTIVO
                   </span>
                 </div>
-                <input
-                  type="text"
-                  value={pagoMovilPhone}
-                  onChange={event => setPagoMovilPhone(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="04145550123"
-                />
-                <select
-                  value={pagoMovilBank}
-                  onChange={event => setPagoMovilBank(event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                >
-                  <option value="">Selecciona un banco</option>
-                  <option value="Banesco">Banesco</option>
-                  <option value="Banco de Venezuela">Banco de Venezuela</option>
-                  <option value="Mercantil">Mercantil</option>
-                  <option value="Provincial">Provincial</option>
-                  <option value="Otro banco">Otro banco</option>
-                </select>
-                <input
-                  type="text"
-                  value={pagoMovilId}
-                  onChange={event => setPagoMovilId(event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="Cédula del titular"
-                />
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={pagoMovilPhone}
+                    onChange={event => setPagoMovilPhone(event.target.value)}
+                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
+                    placeholder="Número de teléfono"
+                  />
+                  <select
+                    value={pagoMovilBank}
+                    onChange={event => setPagoMovilBank(event.target.value)}
+                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all appearance-none"
+                  >
+                    <option value="">Selecciona un banco</option>
+                    <option value="Banesco">Banesco</option>
+                    <option value="Banco de Venezuela">Banco de Venezuela</option>
+                    <option value="Mercantil">Mercantil</option>
+                    <option value="Provincial">Provincial</option>
+                    <option value="Otro banco">Otro banco</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={pagoMovilId}
+                    onChange={event => setPagoMovilId(event.target.value)}
+                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
+                    placeholder="Cédula del titular"
+                  />
+                </div>
               </div>
-              <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+
+              <div className="space-y-3 rounded-2xl border-2 border-zinc-800 bg-zinc-950/40 p-5 transition-all hover:border-zinc-700">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-100">
-                      Binance Pay
-                    </div>
-                    <div className="text-[11px] text-zinc-500">
-                      ID o correo de Binance Pay.
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">⚡</span>
+                    <span className="text-sm font-bold text-zinc-100">Binance Pay</span>
                   </div>
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
-                    Activo
+                  <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
+                    ACTIVO
                   </span>
                 </div>
                 <input
                   type="text"
                   value={binanceId}
                   onChange={event => setBinanceId(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
                   placeholder="Binance Pay ID o email"
                 />
               </div>
-              <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
+
+              <div className="space-y-3 rounded-2xl border-2 border-zinc-800 bg-zinc-950/40 p-5 transition-all hover:border-zinc-700">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-semibold text-zinc-100">
-                      Transferencia Bs.
-                    </div>
-                    <div className="text-[11px] text-zinc-500">
-                      Cuenta bancaria en bolívares.
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">🏦</span>
+                    <span className="text-sm font-bold text-zinc-100">Transferencia</span>
                   </div>
-                  <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-zinc-400">
-                    Opcional
+                  <span className="rounded-lg bg-zinc-800 px-2 py-1 text-[10px] font-bold text-zinc-500 border border-zinc-700">
+                    OPCIONAL
                   </span>
                 </div>
-                <input
-                  type="text"
-                  value={transferAccount}
-                  onChange={event => setTransferAccount(event.target.value)}
-                  className="mt-2 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="Número de cuenta"
-                />
-                <input
-                  type="text"
-                  value={transferName}
-                  onChange={event => setTransferName(event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="Titular"
-                />
+                <div className="space-y-2">
+                  <input
+                    type="text"
+                    value={transferAccount}
+                    onChange={event => setTransferAccount(event.target.value)}
+                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
+                    placeholder="Número de cuenta"
+                  />
+                  <input
+                    type="text"
+                    value={transferName}
+                    onChange={event => setTransferName(event.target.value)}
+                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
+                    placeholder="Titular"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-900/80">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
-              <div>
-                <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                  WhatsApp
-                </h2>
-                <p className="text-xs text-zinc-500">
-                  Conecta tu número para recibir pedidos por WhatsApp.
-                </p>
-              </div>
+        <div className="space-y-6">
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-zinc-800 px-6 py-5">
+              <h2 className="font-heading text-lg font-bold text-zinc-50">
+                WhatsApp
+              </h2>
+              <p className="text-xs text-zinc-500">
+                Conecta tu número para recibir pedidos.
+              </p>
             </div>
-            <div className="space-y-3 px-5 py-4">
-              <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950/60 px-3 py-2">
-                <div>
-                  <div className="text-xs font-semibold text-zinc-100">
+            <div className="space-y-4 px-6 py-6">
+              <div className="flex items-center justify-between rounded-2xl border-2 border-zinc-800 bg-zinc-950/40 px-4 py-4">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-zinc-100 uppercase tracking-tight">
                     Estado de conexión
                   </div>
-                  <div className="text-[11px] text-zinc-500">
+                  <div className="text-[11px] text-zinc-500 leading-relaxed max-w-[180px]">
                     {whatsappLoading
                       ? 'Verificando conexión...'
                       : whatsappStatus?.connected
@@ -475,32 +459,37 @@ export default function SettingsPage() {
                         : 'Conecta tu WhatsApp para empezar a recibir pedidos.'}
                   </div>
                 </div>
-                <span
-                  className={
-                    whatsappStatus?.connected
-                      ? 'rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400'
-                      : 'rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-zinc-400'
-                  }
-                >
-                  {whatsappStatus?.connected ? 'Conectado' : 'Desconectado'}
-                </span>
+                <div className="flex items-center gap-2">
+                   {whatsappStatus?.connected && <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
+                  <span
+                    className={
+                      whatsappStatus?.connected
+                        ? 'text-xs font-bold text-emerald-400'
+                        : 'text-xs font-bold text-zinc-500'
+                    }
+                  >
+                    {whatsappStatus?.connected ? 'Conectado' : 'Desconectado'}
+                  </span>
+                </div>
               </div>
+
               {!whatsappStatus?.connected && whatsappStatus?.qr && (
-                <div className="space-y-2 rounded-xl border border-zinc-800 bg-zinc-950/60 p-3">
-                  <div className="text-xs font-semibold text-zinc-100">
-                    Escanea el código QR en WhatsApp
+                <div className="space-y-4 rounded-2xl border-2 border-dashed border-zinc-800 bg-zinc-950/20 p-6 text-center">
+                  <div className="space-y-1">
+                    <div className="text-xs font-bold text-zinc-100">
+                      Escanea el código QR
+                    </div>
+                    <p className="text-[10px] text-zinc-500 leading-normal">
+                      Abre WhatsApp &gt; Dispositivos vinculados y escanea este QR.
+                    </p>
                   </div>
-                  <div className="text-[11px] text-zinc-500">
-                    Abre WhatsApp &gt; Dispositivos vinculados y escanea este QR
-                    para conectar tu negocio.
-                  </div>
-                  <div className="mt-2 flex justify-center">
+                  <div className="mx-auto inline-block rounded-2xl bg-white p-4 shadow-2xl shadow-zinc-950">
                     <Image
                       src={whatsappStatus.qr}
                       alt="Código QR de WhatsApp"
-                      width={160}
-                      height={160}
-                      className="h-40 w-40 rounded bg-white p-2"
+                      width={180}
+                      height={180}
+                      className="h-44 w-44"
                       unoptimized
                     />
                   </div>
@@ -509,95 +498,67 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-900/80">
-            <div className="border-b border-zinc-800 px-5 py-4">
-              <h2 className="font-heading text-sm font-semibold text-zinc-50">
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-xl">
+            <div className="border-b border-zinc-800 px-6 py-5">
+              <h2 className="font-heading text-lg font-bold text-zinc-50">
                 Catálogo público
               </h2>
               <p className="text-xs text-zinc-500">
-                Preferencias básicas del catálogo que ven tus clientes.
+                Preferencias básicas del catálogo.
               </p>
             </div>
-            <div className="space-y-3 px-5 py-4">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-                <div>
-                  <div className="text-xs font-medium text-zinc-100">
-                    Mostrar precios en bolívares
+            <div className="space-y-1 px-4 py-4">
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-zinc-100">
+                    Precios en bolívares
                   </div>
-                  <div className="text-[11px] text-zinc-500">
-                    Convierte en tiempo real usando la tasa BCV.
+                  <div className="text-[10px] text-zinc-500">
+                    Conversión BCV en tiempo real.
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowBs(prev => !prev)}
-                  className={
-                    showBs
-                      ? 'inline-flex h-6 w-10 items-center rounded-full bg-emerald-500/20 px-1'
-                      : 'inline-flex h-6 w-10 items-center rounded-full bg-zinc-700 px-1'
-                  }
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showBs ? 'bg-[var(--accent-secondary)]' : 'bg-zinc-700'}`}
                 >
-                  <span
-                    className={
-                      showBs
-                        ? 'inline-block h-4 w-4 translate-x-4 rounded-full bg-emerald-400'
-                        : 'inline-block h-4 w-4 translate-x-0 rounded-full bg-zinc-300'
-                    }
-                  />
+                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${showBs ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-                <div>
-                  <div className="text-xs font-medium text-zinc-100">
-                    Mostrar stock disponible
+
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-zinc-100">
+                    Mostrar stock
                   </div>
-                  <div className="text-[11px] text-zinc-500">
-                    Tus clientes verán cuántas unidades quedan de cada producto.
+                  <div className="text-[10px] text-zinc-500">
+                    Visibilidad de unidades disponibles.
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowStock(prev => !prev)}
-                  className={
-                    showStock
-                      ? 'inline-flex h-6 w-10 items-center rounded-full bg-emerald-500/20 px-1'
-                      : 'inline-flex h-6 w-10 items-center rounded-full bg-zinc-700 px-1'
-                  }
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showStock ? 'bg-[var(--accent-secondary)]' : 'bg-zinc-700'}`}
                 >
-                  <span
-                    className={
-                      showStock
-                        ? 'inline-block h-4 w-4 translate-x-4 rounded-full bg-emerald-400'
-                        : 'inline-block h-4 w-4 translate-x-0 rounded-full bg-zinc-300'
-                    }
-                  />
+                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${showStock ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-medium text-zinc-100">
-                    Chat flotante de WhatsApp
+
+              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-zinc-100">
+                    Botón de WhatsApp
                   </div>
-                  <div className="text-[11px] text-zinc-500">
-                    Muestra un botón verde en el catálogo para abrir WhatsApp.
+                  <div className="text-[10px] text-zinc-500">
+                    Chat flotante en el catálogo.
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowChatButton(prev => !prev)}
-                  className={
-                    showChatButton
-                      ? 'inline-flex h-6 w-10 items-center rounded-full bg-emerald-500/20 px-1'
-                      : 'inline-flex h-6 w-10 items-center rounded-full bg-zinc-700 px-1'
-                  }
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showChatButton ? 'bg-[var(--accent-secondary)]' : 'bg-zinc-700'}`}
                 >
-                  <span
-                    className={
-                      showChatButton
-                        ? 'inline-block h-4 w-4 translate-x-4 rounded-full bg-emerald-400'
-                        : 'inline-block h-4 w-4 translate-x-0 rounded-full bg-zinc-300'
-                    }
-                  />
+                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${showChatButton ? 'translate-x-5' : 'translate-x-0'}`} />
                 </button>
               </div>
             </div>

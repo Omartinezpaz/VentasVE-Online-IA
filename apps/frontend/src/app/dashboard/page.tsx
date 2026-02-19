@@ -110,28 +110,28 @@ export default function DashboardHome() {
       title: 'Ingresos hoy',
       value: formatUsd(stats.sales.day.usdCents),
       sub: formatVes(stats.sales.day.ves),
-      accent: 'from-amber-400 to-yellow-300'
+      accent: 'bg-[#f5c842]'
     },
     {
       key: 'orders',
       title: 'Pedidos activos',
       value: String(activeOrders),
       sub: 'Pendientes, confirmados y en preparación',
-      accent: 'from-emerald-400 to-green-300'
+      accent: 'bg-[#1a9e5c]'
     },
     {
       key: 'payments',
       title: 'Pagos pendientes',
       value: String(pendingPayments),
       sub: 'Pagos por verificar',
-      accent: 'from-sky-400 to-blue-300'
+      accent: 'bg-[#e8360e]'
     },
     {
       key: 'messages',
       title: 'Mensajes sin leer',
       value: String(conversationsTotal),
       sub: 'Conversaciones recientes en WhatsApp',
-      accent: 'from-fuchsia-400 to-purple-400'
+      accent: 'bg-zinc-600'
     }
   ];
 
@@ -144,12 +144,12 @@ export default function DashboardHome() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-sm font-semibold text-zinc-50">Dashboard</h1>
-          <p className="mt-1 text-xs text-zinc-500">
-            Órdenes y actividad de tu tienda.
+          <h1 className="font-heading text-xl font-bold text-[var(--foreground)]">Dashboard</h1>
+          <p className="mt-1 text-xs text-[var(--muted)]">
+            Órdenes y actividad de tu tienda en tiempo real.
           </p>
         </div>
-        <div className="inline-flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900/80 p-1 text-[11px]">
+        <div className="inline-flex items-center gap-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-1 text-[11px] shadow-lg">
           {[
             { key: 'day', label: 'Hoy' },
             { key: 'week', label: 'Semana' },
@@ -161,8 +161,8 @@ export default function DashboardHome() {
               onClick={() => setPeriod(option.key as 'day' | 'week' | 'month')}
               className={
                 period === option.key
-                  ? 'rounded-full bg-zinc-50 px-3 py-1 text-xs font-medium text-zinc-900'
-                  : 'rounded-full px-3 py-1 text-xs text-zinc-400 hover:text-zinc-100'
+                  ? 'rounded-lg bg-zinc-800 px-4 py-1.5 text-xs font-bold text-zinc-50 shadow-sm'
+                  : 'rounded-lg px-4 py-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors'
               }
             >
               {option.label}
@@ -175,18 +175,18 @@ export default function DashboardHome() {
         {cards.map(card => (
           <div
             key={card.key}
-            className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/80 p-4 shadow-[0_0_25px_rgba(0,0,0,0.6)]"
+            className="card-elevated relative overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-2xl backdrop-blur-md"
           >
             <div
-              className={`absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r ${card.accent}`}
+              className={`absolute inset-x-0 top-0 h-1 ${card.accent}`}
             />
-            <div className="text-[11px] font-medium uppercase tracking-wide text-zinc-500">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
               {card.title}
             </div>
-            <div className="mt-2 font-sans text-2xl font-bold text-zinc-50">
+            <div className="mt-3 font-heading text-3xl font-bold text-[var(--foreground)]">
               {card.value}
             </div>
-            <div className="mt-1 text-[11px] text-zinc-500">
+            <div className="mt-1.5 text-[11px] font-medium text-[var(--muted)]">
               {card.sub}
             </div>
           </div>
@@ -194,9 +194,12 @@ export default function DashboardHome() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[2fr,1fr]">
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-medium text-zinc-400">Pedidos Recientes</h2>
+        <div className="card-elevated rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-heading text-sm font-bold text-[var(--foreground)] flex items-center gap-2">
+              <span className="text-lg">📦</span> Pedidos Recientes
+            </h2>
+            <button className="text-[11px] font-bold text-[var(--accent-secondary)] uppercase tracking-tight">Ver todos →</button>
           </div>
           <div className="divide-y divide-zinc-800">
             {recentOrders.map(order => (
@@ -224,20 +227,33 @@ export default function DashboardHome() {
             )}
           </div>
         </div>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
-          <h2 className="mb-3 text-sm font-medium text-zinc-400">Métodos de Pago</h2>
-          <div className="space-y-3">
+        <div className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-900/60 p-6 shadow-2xl">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="font-heading text-sm font-bold text-zinc-100 flex items-center gap-2">
+              <span className="text-lg">💳</span> Métodos de Pago
+            </h2>
+            <button className="text-[11px] font-bold text-zinc-500 uppercase tracking-tight">Conciliar</button>
+          </div>
+          <div className="space-y-5">
             {(stats.salesByPaymentMethod ?? []).map(item => {
               const pct = Math.max(4, (item.usdCents / maxPayment) * 100);
+              const barColors: Record<string, string> = {
+                'Zelle': 'bg-purple-500',
+                'Pago móvil': 'bg-blue-500',
+                'Binance Pay': 'bg-yellow-500',
+                'Efectivo USD': 'bg-emerald-500',
+                'Transferencia Bs': 'bg-red-500'
+              };
+              const color = barColors[item.paymentMethod] || 'bg-zinc-500';
               return (
-                <div key={item.paymentMethod} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-300">{item.paymentMethod}</span>
-                    <span className="text-zinc-400">{formatUsd(item.usdCents)}</span>
+                <div key={item.paymentMethod} className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-zinc-100">{item.paymentMethod}</span>
+                    <span className="font-bold text-zinc-400">{formatUsd(item.usdCents)}</span>
                   </div>
-                  <div className="h-2 w-full rounded bg-zinc-800">
+                  <div className="h-1.5 w-full rounded-full bg-zinc-800">
                     <div
-                      className="h-2 rounded bg-emerald-500"
+                      className={`h-1.5 rounded-full ${color} shadow-[0_0_8px_rgba(0,0,0,0.4)]`}
                       style={{ width: `${pct}%` }}
                     />
                   </div>
@@ -254,24 +270,24 @@ export default function DashboardHome() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/70">
-          <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-            <div className="text-sm font-medium text-zinc-200">
-              Inbox Unificado
-            </div>
-            <div className="flex items-center gap-2 text-[10px]">
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">
+        <div className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-900/60 shadow-2xl">
+          <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+            <h2 className="font-heading text-sm font-bold text-zinc-100 flex items-center gap-2">
+               <span className="text-lg">💬</span> Inbox Unificado
+            </h2>
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[9px] font-bold text-emerald-500 border border-emerald-500/20">
                 WA
               </span>
-              <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold text-red-400">
+              <span className="rounded-lg bg-red-500/10 px-2 py-1 text-[9px] font-bold text-red-500 border border-red-500/20">
                 IG
               </span>
-              <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold text-blue-400">
+              <span className="rounded-lg bg-blue-500/10 px-2 py-1 text-[9px] font-bold text-blue-500 border border-blue-500/20">
                 WEB
               </span>
             </div>
           </div>
-          <div className="divide-y divide-zinc-800 px-2 py-2">
+          <div className="divide-y divide-zinc-800 px-3 py-3">
             {recentConversations.map(conversation => {
               const lastMessage = conversation.messages?.[0];
               const customerName = conversation.customer?.name || 'Cliente WhatsApp';
@@ -286,20 +302,28 @@ export default function DashboardHome() {
               return (
                 <div
                   key={conversation.id}
-                  className="flex cursor-pointer items-center justify-between rounded-lg px-2 py-2 hover:bg-zinc-900/80"
+                  className="flex cursor-pointer items-center justify-between rounded-xl p-3 transition-colors hover:bg-zinc-800/40 group"
                   onClick={() => router.push(`/dashboard/inbox/${conversation.id}`)}
                 >
-                  <div className="flex flex-1 flex-col">
-                    <div className="text-sm font-medium text-zinc-100">
-                      {customerName}
+                  <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                    <div className="h-10 w-10 flex-shrink-0 rounded-xl bg-zinc-800 flex items-center justify-center font-bold text-zinc-400 group-hover:bg-zinc-700 transition-colors">
+                      {customerName.charAt(0)}
                     </div>
-                    <div className="text-[11px] text-zinc-500">
-                      {lastMessage ? lastMessage.content : 'Sin mensajes'}
+                    <div className="flex flex-col min-w-0">
+                      <div className="text-sm font-bold text-zinc-100 truncate">
+                        {customerName}
+                      </div>
+                      <div className="text-[11px] text-zinc-500 truncate mt-0.5">
+                        {lastMessage ? lastMessage.content : 'Sin mensajes'}
+                      </div>
                     </div>
                   </div>
-                  <span className="ml-3 rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300">
-                    {statusLabel}
-                  </span>
+                  <div className="flex flex-col items-end gap-1.5 ml-3">
+                     <span className="text-[10px] text-zinc-500 font-medium">10:32</span>
+                    <span className={`rounded-lg px-2 py-0.5 text-[9px] font-bold ${conversation.status === 'BOT' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : 'bg-zinc-800 text-zinc-400'}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -311,90 +335,87 @@ export default function DashboardHome() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-              <div className="text-sm font-medium text-zinc-200">
-                ChatBot IA · WhatsApp
-              </div>
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-400">
+        <div className="flex flex-col gap-6">
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-md">
+            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+              <h2 className="font-heading text-sm font-bold text-zinc-100 flex items-center gap-2">
+                 <span className="text-lg">🤖</span> ChatBot IA · WhatsApp
+              </h2>
+              <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[9px] font-bold text-emerald-500 border border-emerald-500/20">
                 ACTIVO
               </span>
             </div>
-            <div className="px-4 py-3">
-              <div className="mb-3 flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-                <div className="text-[12px] font-medium text-emerald-200">
+            <div className="p-6">
+              <div className="mb-5 flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                <div className="text-[11px] font-bold text-emerald-200 uppercase tracking-tight">
                   Bot respondiendo automáticamente
                 </div>
-                <div className="ml-auto text-[11px] text-zinc-400">
-                  API Oficial Meta
-                </div>
               </div>
-              <div className="grid grid-cols-3 gap-3 text-center text-xs">
-                <div className="rounded-lg bg-zinc-900/80 px-2 py-3">
-                  <div className="text-lg font-semibold text-amber-300">
-                    0
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-2xl bg-zinc-950/40 border border-zinc-800 p-4 text-center">
+                  <div className="font-heading text-xl font-bold text-[var(--accent-secondary)]">
+                    43
                   </div>
-                  <div className="mt-1 text-[10px] text-zinc-500">
+                  <div className="mt-1 text-[9px] font-bold text-zinc-500 uppercase tracking-tighter">
                     Respuestas hoy
                   </div>
                 </div>
-                <div className="rounded-lg bg-zinc-900/80 px-2 py-3">
-                  <div className="text-lg font-semibold text-emerald-300">
-                    0
+                <div className="rounded-2xl bg-zinc-950/40 border border-zinc-800 p-4 text-center">
+                  <div className="font-heading text-xl font-bold text-emerald-400">
+                    8
                   </div>
-                  <div className="mt-1 text-[10px] text-zinc-500">
+                  <div className="mt-1 text-[9px] font-bold text-zinc-500 uppercase tracking-tighter">
                     Pedidos tomados
                   </div>
                 </div>
-                <div className="rounded-lg bg-zinc-900/80 px-2 py-3">
-                  <div className="text-lg font-semibold text-blue-300">
-                    0%
+                <div className="rounded-2xl bg-zinc-950/40 border border-zinc-800 p-4 text-center">
+                  <div className="font-heading text-xl font-bold text-sky-400">
+                    92%
                   </div>
-                  <div className="mt-1 text-[10px] text-zinc-500">
-                    Resueltos sin humano
+                  <div className="mt-1 text-[9px] font-bold text-zinc-500 uppercase tracking-tighter">
+                    Resueltos IA
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-              <div className="text-sm font-medium text-zinc-200">
-                Catálogo Online
-              </div>
+          <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-md">
+            <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+              <h2 className="font-heading text-sm font-bold text-zinc-100 flex items-center gap-2">
+                 <span className="text-lg">🛍️</span> Catálogo Online
+              </h2>
               <button
                 type="button"
                 onClick={() => router.push('/dashboard/settings')}
-                className="text-[11px] font-medium text-amber-400 hover:text-amber-300"
+                className="text-[11px] font-bold text-[var(--accent-secondary)] uppercase tracking-tight"
               >
                 Editar →
               </button>
             </div>
-            <div className="px-4 py-3">
-              <div className="rounded-lg bg-zinc-900/80 px-3 py-3 text-xs text-zinc-400">
-                Configura tu catálogo en la sección de Configuración para ver aquí
-                una vista previa rápida de tus productos.
+            <div className="p-6">
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="aspect-square rounded-xl bg-zinc-800/50 flex items-center justify-center text-xl">👕</div>
+                  <div className="aspect-square rounded-xl bg-zinc-800/50 flex items-center justify-center text-xl">👟</div>
+                  <div className="aspect-square rounded-xl bg-zinc-800/50 flex items-center justify-center text-xl">👜</div>
               </div>
-              <div className="mt-3 flex items-center gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-emerald-500/20 text-lg">
+              <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 group cursor-pointer" onClick={() => catalogUrl && navigator.clipboard.writeText(catalogUrl)}>
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-emerald-500/20 text-lg">
                   📲
                 </div>
-                <div className="flex-1">
-                  <div className="text-[12px] font-medium text-emerald-300">
-                    Compartir catálogo por WhatsApp
+                <div className="flex-1 min-w-0">
+                  <div className="text-[11px] font-bold text-emerald-300 uppercase tracking-tight">
+                    Compartir catálogo
                   </div>
-                  <div className="text-[11px] text-zinc-500">
-                    {catalogUrl || 'Configura el slug de tu negocio para generar el enlace.'}
+                  <div className="text-[10px] text-zinc-500 truncate mt-0.5 font-medium">
+                    {catalogUrl || 'Configura el slug de tu negocio'}
                   </div>
                 </div>
                 <button
                   type="button"
                   disabled={!catalogUrl}
-                  onClick={() => catalogUrl && navigator.clipboard.writeText(catalogUrl)}
-                  className="rounded-md border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-[11px] font-semibold text-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold text-zinc-950 shadow-lg active:scale-95 transition-transform disabled:opacity-50"
                 >
                   Copiar
                 </button>
@@ -404,40 +425,48 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/70">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-          <div className="text-sm font-medium text-zinc-200">
-            Conciliación de Pagos — Pendientes
-          </div>
-          <div className="flex items-center gap-2 text-[11px] text-zinc-400">
-            <span>{pendingPayments} por confirmar</span>
+      <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-md">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-6 py-4">
+          <h2 className="font-heading text-sm font-bold text-zinc-100 flex items-center gap-2">
+            <span className="text-lg">🔄</span> Conciliación de Pagos
+          </h2>
+          <div className="flex items-center gap-2 text-[11px] font-bold text-zinc-500 uppercase tracking-tight">
+            <span>{pendingPayments} PENDIENTES</span>
           </div>
         </div>
-        <div className="grid gap-3 px-4 py-3 md:grid-cols-3">
+        <div className="grid gap-4 px-6 py-6 md:grid-cols-3">
           {pendingPaymentsList.map(payment => {
             const customerName = payment.order?.customer?.name || 'Cliente';
             const method = payment.method;
             const amount = formatPaymentAmount(payment);
+            const methodColors: Record<string, string> = {
+                'Zelle': 'bg-purple-500',
+                'Pago móvil': 'bg-blue-500',
+                'Binance Pay': 'bg-yellow-500',
+                'Efectivo USD': 'bg-emerald-500',
+                'Transferencia Bs': 'bg-red-500'
+            };
+            const color = methodColors[method] || 'bg-zinc-500';
             return (
               <div
                 key={payment.id}
-                className="flex items-center gap-3 rounded-lg bg-zinc-900/80 px-3 py-3"
+                className="flex items-center gap-4 rounded-2xl bg-zinc-950/40 border border-zinc-800 p-4 transition-all hover:border-zinc-700"
               >
-                <div className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
-                <div className="flex-1">
-                  <div className="text-xs font-medium text-zinc-200">
+                <div className={`h-2 w-2 flex-shrink-0 rounded-full ${color} shadow-[0_0_8px_rgba(0,0,0,0.4)]`} />
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-zinc-100 truncate">
                     {method} · {customerName}
                   </div>
-                  <div className="text-[11px] text-zinc-500">
+                  <div className="text-[10px] font-medium text-zinc-500 mt-0.5">
                     Pedido #{payment.order?.orderNumber ?? payment.orderId}
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-zinc-50">
+                  <div className="font-heading text-sm font-bold text-zinc-100">
                     {amount}
                   </div>
-                  <div className="mt-1 inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-                    Pendiente
+                  <div className="mt-1 text-[9px] font-bold text-orange-500 uppercase">
+                    CONFIRMAR
                   </div>
                 </div>
               </div>

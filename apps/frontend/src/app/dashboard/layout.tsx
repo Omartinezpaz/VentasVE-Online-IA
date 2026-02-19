@@ -4,6 +4,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { WhatsappStatusBadge } from './WhatsappStatusBadge';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useWebSocket } from '@/lib/hooks/useWebSocket';
 import { ordersApi } from '@/lib/api/orders';
 import { getAccessToken, setAccessToken } from '@/lib/auth/storage';
@@ -72,9 +73,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   });
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50">
+    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors">
       <div className="flex">
-        <aside className="hidden w-56 border-r border-zinc-800 bg-zinc-950/80 px-4 py-4 md:block">
+        <aside className="hidden w-56 border-r border-[var(--border)] bg-[var(--bg-sidebar)] px-4 py-4 md:block">
           <div className="mb-6">
             <div className="text-sm font-semibold tracking-tight">
               Ventas<span className="text-amber-400">VE</span>
@@ -169,17 +170,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
         </aside>
         <main className="flex-1">
-          <header className="border-b border-zinc-800 bg-zinc-950/80 px-4 py-3">
+          <header className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-4 py-3 sticky top-0 z-30">
             <div className="mx-auto flex max-w-6xl items-center justify-between">
               <div>
-                <h1 className="text-sm font-semibold tracking-tight">
-                  Dashboard
+                <h1 className="text-sm font-bold tracking-tight text-[var(--foreground)]">
+                  VentasVE
                 </h1>
-                <p className="text-xs text-zinc-500">
-                  Órdenes y actividad de tu tienda
+                <p className="text-[10px] text-[var(--muted)] font-medium uppercase tracking-widest">
+                  Gestión Comercial
                 </p>
               </div>
               <div className="flex items-center gap-3">
+                <ThemeToggle />
                 <WhatsappStatusBadge />
                 <button
                   type="button"

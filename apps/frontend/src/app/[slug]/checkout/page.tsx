@@ -188,212 +188,138 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_20%_0%,_rgba(245,200,66,0.07),_transparent_55%),_radial-gradient(ellipse_at_80%_100%,_rgba(79,142,247,0.06),_transparent_55%),_#050712] text-zinc-50">
-      <header className="border-b border-zinc-800 bg-zinc-950/70">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Paso 2 de 2 · Confirmar pedido
-            </p>
-            <h1 className="font-heading text-lg font-semibold tracking-tight">
-              Checkout
+    <div className="min-h-screen bg-[var(--bg-light)] text-[var(--dark)]">
+      <header className="border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
+          <Link href={`/${slug}/cart`} className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 text-lg cursor-pointer">
+            <span>‹</span>
+          </Link>
+          <div className="text-center">
+            <h1 className="font-heading text-lg font-bold tracking-tight">
+              ✅ Confirmar
             </h1>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+              Paso 2 de 2
+            </p>
           </div>
-          <div className="rounded-full border border-[var(--accent)]/40 bg-zinc-950/80 px-3 py-1 text-xs">
-            <span className="mr-1 text-zinc-400">Total:</span>
-            <span className="font-heading text-[var(--accent)]">
-              <DualPrice usdCents={totalCents} showBoth />
-            </span>
-          </div>
+          <div className="w-9" />
         </div>
       </header>
-      <main className="mx-auto max-w-4xl px-4 py-5">
-        <div className="grid gap-4 md:grid-cols-[2fr,2.2fr]">
-          <section className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-950/80">
-            <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
-              <div>
-                <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                  Resumen del carrito
+
+      <main className="mx-auto max-w-4xl px-4 py-6">
+        <div className="grid gap-6 lg:grid-cols-[1fr,0.7fr]">
+          <section className="space-y-6">
+            <div className="rounded-[24px] bg-white p-6 shadow-xl ring-1 ring-black/5">
+                <h2 className="font-heading text-lg font-bold mb-5 flex items-center gap-2">
+                   <span className="text-lg">👤</span> Tus datos
                 </h2>
-                <p className="text-xs text-zinc-500">
-                  Revisa los productos y cantidades antes de confirmar.
-                </p>
-              </div>
-            </div>
-            <div className="px-5 py-4 text-xs">
-              <div className="space-y-3">
-                {items.map(item => (
-                  <div
-                    key={item.productId}
-                    className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-950/80 px-3 py-2"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-900 text-sm text-zinc-300">
-                      {item.name.charAt(0).toUpperCase()}
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                    <div className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Nombre completo</label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={event => setName(event.target.value)}
+                                className="w-full rounded-xl border-2 border-black/5 bg-[var(--bg-light)] px-4 py-3 text-sm font-medium outline-none focus:border-[var(--accent)] transition-all"
+                                placeholder="Ej: Juan Pérez"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">WhatsApp</label>
+                            <input
+                                type="tel"
+                                value={phone}
+                                onChange={event => setPhone(event.target.value)}
+                                className="w-full rounded-xl border-2 border-black/5 bg-[var(--bg-light)] px-4 py-3 text-sm font-medium outline-none focus:border-[var(--accent)] transition-all"
+                                placeholder="Ej: 0412 1234567"
+                                required
+                            />
+                        </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="text-sm text-zinc-100">
-                        {item.name}
-                      </div>
-                      <div className="mt-0.5 text-[11px] text-zinc-500">
-                        Cantidad: {item.quantity}
-                      </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Dirección de entrega</label>
+                        <textarea
+                            value={address}
+                            onChange={event => setAddress(event.target.value)}
+                            className="w-full rounded-xl border-2 border-black/5 bg-[var(--bg-light)] px-4 py-3 text-sm font-medium outline-none focus:border-[var(--accent)] transition-all min-h-[80px] resize-none"
+                            placeholder="Calle, edificio, apto..."
+                        />
                     </div>
-                    <div className="text-right text-xs">
-                      <DualPrice
-                        usdCents={item.priceUsdCents * item.quantity}
-                        showBoth
-                      />
+
+                    <div className="pt-4 border-t border-black/5 mt-4">
+                        <h3 className="text-sm font-bold mb-4">Método de pago</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                            {paymentMethods.map(method => (
+                                <button
+                                    key={method.value}
+                                    type="button"
+                                    onClick={() => setPaymentMethod(method.value)}
+                                    className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
+                                        paymentMethod === method.value
+                                        ? 'border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--accent)]'
+                                        : 'border-black/5 bg-white text-zinc-500'
+                                    }`}
+                                >
+                                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === method.value ? 'border-[var(--accent)]' : 'border-zinc-300'}`}>
+                                        {paymentMethod === method.value && <div className="w-2 h-2 rounded-full bg-[var(--accent)]" />}
+                                    </div>
+                                    <span className="text-xs font-bold">{method.label}</span>
+                                </button>
+                            ))}
+                        </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-          <section className="card-elevated rounded-2xl border border-zinc-800 bg-zinc-950/80">
-            <div className="border-b border-zinc-800 px-5 py-4">
-              <h2 className="font-heading text-sm font-semibold text-zinc-50">
-                Tus datos
-              </h2>
-              <p className="text-xs text-zinc-500">
-                Usa tu número de WhatsApp para recibir confirmación del pedido.
-              </p>
-            </div>
-            <form className="px-5 py-4 text-xs" onSubmit={handleSubmit}>
-              <div>
-                <label className="block text-[11px] font-medium text-zinc-300">
-                  Teléfono
-                </label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={event => setPhone(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="Ej: 0414-0000000"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-zinc-300">
-                  Nombre
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={event => setName(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  placeholder="Opcional"
-                />
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-zinc-300">
-                  Dirección
-                </label>
-                <textarea
-                  value={address}
-                  onChange={event => setAddress(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  rows={2}
-                  placeholder="Opcional"
-                />
-              </div>
-              <details className="rounded-xl border border-zinc-800 bg-zinc-950/60 px-3 py-2 text-xs">
-                <summary className="cursor-pointer text-[11px] font-semibold text-zinc-200">
-                  Completar perfil para pedidos más rápidos
-                </summary>
-                <div className="mt-3 space-y-3">
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-300">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={event => setEmail(event.target.value)}
-                      className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                      placeholder="para enviarte factura o confirmación"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-300">
-                      Cédula / RIF
-                    </label>
-                    <input
-                      type="text"
-                      value={identification}
-                      onChange={event => setIdentification(event.target.value)}
-                      className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                      placeholder="V-12345678"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-300">
-                      Referencias de entrega
-                    </label>
-                    <input
-                      type="text"
-                      value={addressNotes}
-                      onChange={event => setAddressNotes(event.target.value)}
-                      className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                      placeholder="Edificio, piso, punto de referencia"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-medium text-zinc-300">
-                      Método de pago preferido
-                    </label>
-                    <select
-                      value={preferredPayment}
-                      onChange={event => setPreferredPayment(event.target.value)}
-                      className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
+
+                    {error && (
+                        <div className="p-3 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-100">
+                            ⚠️ {error}
+                        </div>
+                    )}
+
+                    <button
+                        type="submit"
+                        disabled={submitting}
+                        className="w-full mt-6 rounded-2xl bg-[var(--dark)] py-4 text-center font-heading text-lg font-bold text-white shadow-xl shadow-zinc-950/20 active:scale-[0.98] transition-all disabled:opacity-50"
                     >
-                      {paymentMethods.map(method => (
-                        <option key={method.value} value={method.value}>
-                          {method.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </details>
-              <div>
-                <label className="block text-[11px] font-medium text-zinc-300">
-                  Método de pago
-                </label>
-                <select
-                  value={paymentMethod}
-                  onChange={event => setPaymentMethod(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                >
-                  {paymentMethods.map(method => (
-                    <option key={method.value} value={method.value}>
-                      {method.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-[11px] font-medium text-zinc-300">
-                  Notas
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={event => setNotes(event.target.value)}
-                  className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]"
-                  rows={2}
-                  placeholder="Opcional"
-                />
-              </div>
-              {error && (
-                <p className="text-xs text-red-400">{error}</p>
-              )}
-              <button
-                type="submit"
-                disabled={submitting}
-                className="mt-3 w-full rounded-xl bg-[var(--accent)] px-3 py-2 text-sm font-semibold text-black shadow-md shadow-[rgba(0,0,0,0.6)] disabled:opacity-70"
-              >
-                {submitting ? 'Enviando pedido...' : 'Confirmar pedido'}
-              </button>
-            </form>
+                        {submitting ? 'Procesando...' : 'Finalizar pedido · ' + (totalCents / 100).toFixed(2) + '$'}
+                    </button>
+                </form>
+            </div>
           </section>
+
+          <aside className="space-y-4 lg:sticky lg:top-24 h-fit">
+            <div className="rounded-[24px] bg-white p-6 shadow-xl ring-1 ring-black/5">
+                <h2 className="font-heading text-sm font-bold mb-4 uppercase tracking-wider text-zinc-400">
+                    Tu carrito
+                </h2>
+                <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 no-scrollbar">
+                    {items.map(item => (
+                        <div key={item.productId} className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-lg bg-[var(--bg-light)] flex items-center justify-center font-bold text-zinc-400 flex-shrink-0">
+                                {item.name.charAt(0)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="text-xs font-bold truncate">{item.name}</div>
+                                <div className="text-[10px] text-zinc-400 font-bold">x{item.quantity}</div>
+                            </div>
+                            <div className="text-xs font-bold">
+                                <DualPrice usdCents={item.priceUsdCents * item.quantity} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <div className="mt-6 pt-4 border-t border-black/5">
+                    <div className="flex justify-between items-center">
+                        <span className="font-heading text-base font-bold">Total</span>
+                        <div className="text-right">
+                             <DualPrice usdCents={totalCents} showBoth className="text-lg font-bold text-[var(--accent)]" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+          </aside>
         </div>
       </main>
     </div>
