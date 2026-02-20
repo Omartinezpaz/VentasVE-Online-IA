@@ -5,9 +5,9 @@ import { CartLink } from './CartLink';
 import { DualPrice } from '@/components/ui/DualPrice';
 
 type CatalogPageProps = {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 };
 
 type CatalogOptions = {
@@ -33,7 +33,7 @@ type CatalogProduct = {
 };
 
 export default async function CatalogPage({ params }: CatalogPageProps) {
-  const { slug } = params;
+  const { slug } = await params;
 
   let business: CatalogBusiness;
   let products: CatalogProduct[];

@@ -48,15 +48,14 @@ export const WhatsappStatusBadge = () => {
       ? 'bg-emerald-400'
       : status === 'loading'
         ? 'bg-amber-400'
-        : 'bg-zinc-500';
+        : 'bg-[var(--muted)]';
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1">
+    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1">
       <span className={`h-2 w-2 rounded-full ${dotColor}`} />
-      <span className="text-[11px] font-medium text-zinc-300">
+      <span className="text-[11px] font-medium text-[var(--foreground)]">
         {label}
       </span>
     </div>
   );
 };
-

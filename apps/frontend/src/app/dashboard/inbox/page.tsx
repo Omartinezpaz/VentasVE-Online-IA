@@ -131,7 +131,7 @@ export default function InboxPage() {
 
   if (loading) {
     return (
-      <div className="py-6 text-sm text-zinc-400">
+      <div className="py-6 text-sm text-[var(--muted)]">
         Cargando conversaciones...
       </div>
     );
@@ -147,7 +147,7 @@ export default function InboxPage() {
 
   if (!conversations.length) {
     return (
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-4 text-sm text-zinc-400">
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-4 text-sm text-[var(--muted)]">
         Aún no tienes conversaciones de WhatsApp. Cuando tus clientes te escriban, aparecerán aquí.
       </div>
     );
@@ -174,7 +174,7 @@ export default function InboxPage() {
              <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === f ? 'bg-zinc-800 text-[var(--accent)] shadow-sm' : 'text-zinc-500 hover:text-zinc-300'}`}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === f ? 'bg-[var(--background)] text-[var(--accent)] shadow-sm' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}
              >
                 {f === 'all' ? 'Todos' : f === 'unread' ? 'Sin leer' : f === 'bot' ? 'Bot activo' : 'Humano'}
              </button>
@@ -198,7 +198,7 @@ export default function InboxPage() {
                 >
                   <div className="flex items-center gap-4 flex-1 min-w-0">
                     <div className="relative">
-                        <div className="h-12 w-12 rounded-2xl bg-zinc-800 flex items-center justify-center font-heading text-lg font-bold text-zinc-400 group-hover:bg-zinc-700 transition-colors">
+                        <div className="h-12 w-12 rounded-2xl bg-[var(--surface2)] flex items-center justify-center font-heading text-lg font-bold text-[var(--muted)] group-hover:bg-[var(--background)] transition-colors">
                             {customerName.charAt(0)}
                         </div>
                         <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-[var(--surface)] flex items-center justify-center text-[10px]">
@@ -223,7 +223,7 @@ export default function InboxPage() {
                     <span className="text-[10px] font-medium text-[var(--muted)]">
                         {formatDateTime(conversation.updatedAt).split(',')[1]}
                     </span>
-                    <span className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-tight ${conversation.status === 'BOT' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : 'bg-zinc-800 text-zinc-400'}`}>
+                    <span className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase tracking-tight ${conversation.status === 'BOT' ? 'bg-orange-500/10 text-orange-500 border border-orange-500/20' : 'bg-[var(--surface2)] text-[var(--muted)]'}`}>
                       {conversation.status === 'BOT' ? '🤖 Bot' : '👤 Humano'}
                     </span>
                   </div>

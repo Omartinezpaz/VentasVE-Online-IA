@@ -10,7 +10,9 @@ import customerRoutes from './customers.routes';
 import exchangeRateRoutes from './exchange-rate.routes';
 import dashboardRoutes from './dashboard.routes';
 import settingsRoutes from './settings.routes';
+import geoRoutes from './geo.routes';
 import whatsappRoutes from './whatsapp.routes';
+import metaRoutes from './meta.routes';
 
 const v1Router = Router();
 
@@ -26,5 +28,7 @@ v1Router.use('/exchange-rate', exchangeRateRoutes);
 v1Router.use('/dashboard', dashboardRoutes);
 v1Router.use('/whatsapp', whatsappRoutes);
 v1Router.use('/settings', settingsRoutes);
+v1Router.use('/geo', geoRoutes);
+v1Router.use('/meta', metaRoutes);
 
 export { v1Router };

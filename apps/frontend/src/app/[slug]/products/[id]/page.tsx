@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { catalogApi, PublicOrderPayload } from '@/lib/api/catalog';
+import { catalogApi, PublicOrderPayload, PublicPaymentMethod } from '@/lib/api/catalog';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/hooks/useCart';
 import { DualPrice } from '@/components/ui/DualPrice';
@@ -24,7 +24,7 @@ type Business = {
   name: string;
 };
 
-const paymentMethods = [
+const FALLBACK_PAYMENT_METHODS = [
   { value: 'ZELLE', label: 'Zelle' },
   { value: 'PAGO_MOVIL', label: 'Pago Móvil' },
   { value: 'BINANCE', label: 'Binance' },
@@ -45,6 +45,7 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
   const [phone, setPhone] = useState('');
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
+   const [paymentMethods, setPaymentMethods] = useState<PublicPaymentMethod[]>([]);
   const [paymentMethod, setPaymentMethod] = useState('ZELLE');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -53,12 +54,17 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
   useEffect(() => {
     const load = async () => {
       try {
-        const [businessRes, productRes] = await Promise.all([
+        const [businessRes, productRes, methodsRes] = await Promise.all([
           catalogApi.getBusiness(slug),
-          catalogApi.getProduct(slug, id)
+          catalogApi.getProduct(slug, id),
+          catalogApi.getPaymentMethods(slug),
         ]);
         setBusiness(businessRes.data);
         setProduct(productRes.data);
+        setPaymentMethods(methodsRes.data);
+        if (methodsRes.data.length > 0) {
+          setPaymentMethod(methodsRes.data[0].code);
+        }
       } catch {
         setError('No se pudo cargar el producto');
       } finally {
@@ -252,7 +258,10 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
                   onChange={event => setPaymentMethod(event.target.value)}
                   className="mt-1 w-full rounded border px-3 py-2 text-sm"
                 >
-                  {paymentMethods.map(method => (
+                  {(paymentMethods.length > 0
+                    ? paymentMethods.map(method => ({ value: method.code, label: method.name }))
+                    : FALLBACK_PAYMENT_METHODS
+                  ).map(method => (
                     <option key={method.value} value={method.value}>
                       {method.label}
                     </option>

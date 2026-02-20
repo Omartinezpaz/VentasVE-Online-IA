@@ -46,8 +46,12 @@ export default function NewProductPage() {
         await productsApi.uploadImages(res.data.id, [image]);
       }
       router.push('/dashboard/products');
-    } catch (err: any) {
-      setError(err.message || 'Error al crear el producto');
+    } catch (err) {
+      if (err instanceof Error && err.message) {
+        setError(err.message);
+      } else {
+        setError('Error al crear el producto');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -56,7 +60,7 @@ export default function NewProductPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/products" className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--surface)] border border-[var(--border)] text-xl transition-colors hover:bg-zinc-800">
+        <Link href="/dashboard/products" className="h-10 w-10 flex items-center justify-center rounded-xl bg-[var(--surface)] border border-[var(--border)] text-xl transition-colors hover:bg-[var(--background)]/60">
           ‹
         </Link>
         <h1 className="font-heading text-xl font-bold text-[var(--foreground)]">Nuevo Producto</h1>
@@ -146,7 +150,7 @@ export default function NewProductPage() {
              <button
                 type="button"
                 onClick={() => setIsPublished(!isPublished)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isPublished ? 'bg-[var(--accent-secondary)]' : 'bg-zinc-700'}`}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isPublished ? 'bg-[var(--accent-secondary)]' : 'bg-[var(--surface2)]'}`}
              >
                 <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isPublished ? 'translate-x-5' : 'translate-x-0'}`} />
              </button>

@@ -37,7 +37,7 @@ export default function ReportsPage() {
                 <span className="text-lg">💰</span> Ingresos por Periodo
             </h2>
             <div className="space-y-6">
-                {Object.entries(stats.sales).map(([period, data]: [string, any]) => (
+                {Object.entries(stats.sales).map(([period, data]) => (
                     <div key={period} className="space-y-2">
                         <div className="flex justify-between items-end">
                             <div className="text-[10px] font-bold text-[var(--muted)] uppercase tracking-wider">{period === 'day' ? 'Hoy' : period === 'week' ? 'Semana' : 'Mes'}</div>

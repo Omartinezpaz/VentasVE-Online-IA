@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { PaymentMethod } from '@ventasve/database';
+import prisma, { PaymentMethod } from '@ventasve/database';
 import { catalogService } from '../services/catalog.service';
 import { ordersService } from '../services/orders.service';
 
@@ -65,6 +65,108 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
     await catalogService.invalidateBySlug(slug);
 
     res.status(201).json(order);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDocumentTypes = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = await prisma.$queryRaw<any[]>`
+      SELECT id, codigo, nombre, orden
+      FROM public.tipos_documento
+      WHERE activo = true
+      ORDER BY orden ASC, nombre ASC
+    `;
+    res.json(
+      data.map((r) => ({
+        id: r.id,
+        codigo: r.codigo,
+        nombre: r.nombre,
+        orden: r.orden,
+      }))
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPaymentMethods = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { slug } = req.params;
+
+    const business = await prisma.business.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        paymentMethods: true,
+      },
+    });
+
+    if (!business) {
+      return res.status(404).json({ error: 'Catálogo no encontrado', code: 'CATALOG_NOT_FOUND' });
+    }
+
+    const pm = (business.paymentMethods || {}) as any;
+    const configuredCodes: string[] = [];
+
+    if (pm.zelle && (pm.zelle.email || pm.zelle.name)) {
+      configuredCodes.push('ZELLE');
+    }
+    if (pm.pagoMovil && (pm.pagoMovil.phone || pm.pagoMovil.bank || pm.pagoMovil.id)) {
+      configuredCodes.push('PAGO_MOVIL');
+    }
+    if (pm.binance && pm.binance.id) {
+      configuredCodes.push('BINANCE');
+    }
+    if (pm.transfer && (pm.transfer.account || pm.transfer.name)) {
+      configuredCodes.push('TRANSFER_BS');
+    }
+    if (pm.cashUsd !== undefined && pm.cashUsd !== null && pm.cashUsd !== '') {
+      configuredCodes.push('CASH_USD');
+    }
+
+    const catalogRows = await prisma.$queryRaw<any[]>`
+      SELECT id, codigo, nombre, icono, requiere_cuenta, requiere_comprobante, orden
+      FROM public.metodos_pago
+      WHERE activo = true
+      ORDER BY orden ASC, nombre ASC
+    `;
+
+    const available = catalogRows
+      .filter((row) => configuredCodes.includes(row.codigo))
+      .map((row) => ({
+        id: row.id,
+        code: row.codigo,
+        name: row.nombre,
+        icon: row.icono,
+        requiresAccount: row.requiere_cuenta,
+        requiresProof: row.requiere_comprobante,
+        order: row.orden,
+      }));
+
+    res.json(available);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getPaymentConfig = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { slug } = req.params;
+
+    const business = await prisma.business.findUnique({
+      where: { slug },
+      select: {
+        paymentMethods: true,
+      },
+    });
+
+    if (!business) {
+      return res.status(404).json({ error: 'Catálogo no encontrado', code: 'CATALOG_NOT_FOUND' });
+    }
+
+    res.json(business.paymentMethods || {});
   } catch (error) {
     next(error);
   }

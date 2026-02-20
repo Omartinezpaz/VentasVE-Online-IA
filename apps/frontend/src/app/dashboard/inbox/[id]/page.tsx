@@ -1,320 +1,224 @@
+// apps/frontend/src/app/dashboard/inbox/[id]/page.tsx
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { chatApi, Conversation, Message } from '@/lib/api/chat';
-import { getAccessToken } from '@/lib/auth/storage';
-import { useWebSocket } from '@/lib/hooks/useWebSocket';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { ChatSidebar } from '@/components/chatbot/ChatSidebar';
+import { ChatMessage } from '@/components/chatbot/ChatMessage';
+import { BotStatusBadge } from '@/components/chatbot/BotStatusBadge';
+import { Button } from '@/components/ui/Button';
 
-type NewMessageEvent = {
-  conversation: {
-    id: string;
-    channel: string;
-    status: string;
-    botActive?: boolean;
-    updatedAt: string;
-  };
-  customer?: {
-    id: string;
-    name: string | null;
-    phone: string | null;
-  };
-  message: {
-    id: string;
-    role: string;
-    content: string;
-    createdAt: string;
-  };
-};
+interface Chat {
+  id: string;
+  name: string;
+  avatar: string;
+  lastMessage: string;
+  time: string;
+  unread: number;
+  source: 'wa' | 'ig' | 'web';
+  botStatus: 'auto' | 'human' | 'done';
+}
 
-const formatDateTime = (value: string) => {
-  const date = new Date(value);
-  return date.toLocaleString('es-VE', {
-    dateStyle: 'short',
-    timeStyle: 'short'
-  });
-};
+interface Message {
+  id: string;
+  sender: 'client' | 'bot' | 'human';
+  text: string;
+  time: string;
+  attachments?: Array<{ type: 'image' | 'file'; name: string; size: string }>;
+  orderPreview?: { items: Array<{ name: string; qty: number; price: number }>; total: number };
+  paymentPreview?: { method: string; ref: string; amount: string };
+}
 
-export default function ConversationPage() {
+// Datos de ejemplo
+const CHATS: Chat[] = [
+  { id: 'c1', name: 'María Alejandra', avatar: '👩', lastMessage: '¿Tienen el polo en azul talla M?', time: '10:42', unread: 2, source: 'wa', botStatus: 'auto' },
+  { id: 'c2', name: 'Carlos Instagram', avatar: '👨', lastMessage: 'Quiero hacer un pedido grande', time: '10:28', unread: 1, source: 'ig', botStatus: 'human' },
+  { id: 'c3', name: 'Luisa Fernández', avatar: '👩‍💼', lastMessage: 'Ya hice el pago móvil 🙏', time: '10:18', unread: 4, source: 'wa', botStatus: 'auto' },
+];
+
+const MESSAGES: Message[] = [
+  { id: 'm1', sender: 'client', text: 'Hola buenas! Quería preguntar si tienen el polo classic en azul talla M disponible?', time: '10:38' },
+  { id: 'm2', sender: 'bot', text: '¡Hola María! Soy Valeria de Mis Modas 2025 👋\n\n¡Claro que sí! Tenemos el Polo Classic Premium disponible en azul talla M. Precio: $12.00 (Bs. 438,000)\n\n¿Cuántas unidades te interesan?', time: '10:38' },
+  { id: 'm3', sender: 'client', text: 'Me interesan 2 unidades y también vi un bolso rosa en el catálogo', time: '10:40' },
+  { id: 'm4', sender: 'bot', text: '¡Perfecto! Déjame confirmarte:\n\n✅ 2x Polo Classic Premium Azul M = $24.00\n✅ 1x Bolso Elegante Rosa disponible = $22.00\n\n🛒 Total: $46.00 (Bs. 1,679,000)', time: '10:40', orderPreview: { items: [{ name: 'Polo Classic x2', qty: 2, price: 24 }, { name: 'Bolso Elegante x1', qty: 1, price: 22 }], total: 46 } },
+  { id: 'm5', sender: 'bot', text: '¿Confirmas este pedido? ¿Cómo prefieres pagar? 💳', time: '10:40', quickReplies: ['💸 Zelle', '📱 Pago Móvil', '⚡ Binance', '💵 Efectivo'] },
+  { id: 'm6', sender: 'client', text: 'Voy a pagar por Zelle 💸', time: '10:41' },
+  { id: 'm7', sender: 'bot', text: '¡Excelente! Estos son los datos para el pago:', time: '10:41', paymentPreview: { method: 'Zelle', ref: 'juan@gmail.com', amount: '$46.00 USD' } },
+  { id: 'm8', sender: 'bot', text: 'Una vez que hagas el pago, envíame la captura del comprobante 📸 y confirmo tu pedido en segundos ⚡', time: '10:41' },
+  { id: 'm9', sender: 'client', text: 'Listo! Ya hice el pago, te mando la foto', time: '10:42' },
+  { id: 'm10', sender: 'client', text: '', time: '10:42', attachments: [{ type: 'image', name: 'comprobante_zelle.jpg', size: '248 KB' }] },
+  { id: 'm11', sender: 'bot', text: '', time: '10:42', isTyping: true },
+];
+
+export default function ChatInboxPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const params = useParams<{ id: string }>();
-  const conversationId = useMemo(() => params.id, [params.id]);
+  const chatId = params.id;
+  
+  const [chats, setChats] = useState<Chat[]>(CHATS);
+  const [messages, setMessages] = useState<Message[]>(MESSAGES);
+  const [activeChat, setActiveChat] = useState(chatId || CHATS[0].id);
+  const [botActive, setBotActive] = useState(true);
+  const [inputValue, setInputValue] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [replyContent, setReplyContent] = useState('');
-  const [replySending, setReplySending] = useState(false);
-  const [replyMessage, setReplyMessage] = useState<string | null>(null);
-  const [botToggling, setBotToggling] = useState(false);
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
-      router.replace('/auth/login');
-      return;
-    }
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
-    const load = async () => {
-      try {
-        const [conversationsResponse, messagesResponse] = await Promise.all([
-          chatApi.list({ page: 1, limit: 100 }),
-          chatApi.getMessages(conversationId, { page: 1, limit: 100 })
-        ]);
-
-        const found = conversationsResponse.data.data.find(item => item.id === conversationId);
-
-        if (!found) {
-          setError('Conversación no encontrada');
-          return;
-        }
-
-        if (found.channel !== 'WHATSAPP') {
-          setError('Esta conversación no es de WhatsApp');
-          return;
-        }
-
-        setConversation(found);
-        setMessages(messagesResponse.data.data);
-      } catch {
-        setError('No se pudo cargar la conversación');
-      } finally {
-        setLoading(false);
-      }
+  const handleSendMessage = useCallback(() => {
+    if (!inputValue.trim()) return;
+    
+    const newMessage: Message = {
+      id: `m${Date.now()}`,
+      sender: 'human',
+      text: inputValue,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
-
-    load();
-  }, [router, conversationId]);
-
-  useWebSocket<NewMessageEvent>('new_message', payload => {
-    if (payload.conversation.id !== conversationId) {
-      return;
+    
+    setMessages(prev => [...prev, newMessage]);
+    setInputValue('');
+    
+    // Simular respuesta del bot si está activo
+    if (botActive) {
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          id: `m${Date.now() + 1}`,
+          sender: 'bot',
+          text: `✅ "${inputValue}" registrado y confirmado. Tu pedido ha sido actualizado. 📱`,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        }]);
+      }, 1200);
     }
+  }, [inputValue, botActive]);
 
-    setConversation(prev => {
-      if (!prev) {
-        return prev;
-      }
-      return {
-        ...prev,
-        status: payload.conversation.status,
-        botActive: payload.conversation.botActive ?? prev.botActive,
-        updatedAt: payload.message.createdAt,
-        customer: payload.customer
-          ? {
-              id: payload.customer.id,
-              name: payload.customer.name,
-              phone: payload.customer.phone
-            }
-          : prev.customer,
-        messages: [
-          {
-            id: payload.message.id,
-            role: payload.message.role,
-            content: payload.message.content,
-            createdAt: payload.message.createdAt
-          }
-        ]
-      };
-    });
+  const handleQuickReply = useCallback((text: string) => {
+    setInputValue(text);
+  }, []);
 
-    setMessages(prev => {
-      const exists = prev.some(message => message.id === payload.message.id);
-      if (exists) {
-        return prev;
-      }
-      return [
-        ...prev,
-        {
-          id: payload.message.id,
-          role: payload.message.role,
-          content: payload.message.content,
-          createdAt: payload.message.createdAt
-        }
-      ];
-    });
-  });
+  const toggleBot = useCallback(() => {
+    setBotActive(prev => !prev);
+  }, []);
 
-  const handleSend = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!conversation) return;
-    const content = replyContent.trim();
-    if (!content) return;
+  const handleChatSelect = useCallback((chatId: string) => {
+    setActiveChat(chatId);
+    router.push(`/dashboard/inbox/${chatId}`);
+  }, [router]);
 
-    setReplySending(true);
-    setReplyMessage(null);
-
-    try {
-      const response = await chatApi.sendMessage(conversation.id, content);
-      const message = response.data;
-
-      setMessages(prev => {
-        const exists = prev.some(item => item.id === message.id);
-        if (exists) {
-          return prev;
-        }
-        return [...prev, message];
-      });
-
-      setConversation(prev => {
-        if (!prev) {
-          return prev;
-        }
-        return {
-          ...prev,
-          updatedAt: message.createdAt,
-          messages: [message]
-        };
-      });
-
-      setReplyContent('');
-      setReplyMessage('Mensaje enviado por WhatsApp');
-    } catch {
-      setReplyMessage('No se pudo enviar el mensaje');
-    } finally {
-      setReplySending(false);
-    }
-  };
-
-  const handleToggleBot = async () => {
-    if (!conversation) return;
-
-    setBotToggling(true);
-
-    try {
-      const response = await chatApi.toggleBot(conversation.id);
-      const updated = response.data;
-      setConversation(prev =>
-        prev
-          ? {
-              ...prev,
-              status: updated.status,
-              botActive: updated.botActive,
-              updatedAt: updated.updatedAt
-            }
-          : prev
-      );
-    } catch {
-      setReplyMessage('No se pudo cambiar el modo del bot');
-    } finally {
-      setBotToggling(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="py-6 text-sm text-zinc-400">
-        Cargando conversación...
-      </div>
-    );
-  }
-
-  if (error || !conversation) {
-    return (
-      <div className="rounded-lg border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-200">
-        {error || 'Conversación no encontrada'}
-      </div>
-    );
-  }
-
-  const customerName = conversation.customer?.name || 'Cliente WhatsApp';
-  const customerPhone = conversation.customer?.phone || 'Sin teléfono';
-  const botActive = conversation.botActive ?? false;
+  const currentChat = chats.find(c => c.id === activeChat);
 
   return (
-    <div className="flex h-[calc(100vh-120px)] flex-col rounded-lg border border-zinc-800 bg-zinc-900/80">
-      <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-        <div>
-          <div className="text-xs font-semibold text-zinc-50">
-            {customerName}
-          </div>
-          <div className="text-[11px] text-zinc-500">
-            {customerPhone}
-          </div>
-          <div className="mt-1 text-[11px] text-zinc-500">
-            Última actividad: {formatDateTime(conversation.updatedAt)}
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-200">
-            {botActive ? 'Bot' : 'Humano'}
-          </span>
-          <button
-            type="button"
-            onClick={handleToggleBot}
-            disabled={botToggling}
-            className="rounded bg-zinc-800 px-2 py-1 text-[11px] font-medium text-zinc-100 disabled:opacity-70"
-          >
-            {botActive ? 'Pasar a humano' : 'Pasar a bot'}
-          </button>
-        </div>
-      </header>
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-3 text-xs">
-        {messages.map(message => {
-          const isCustomer = message.role === 'CUSTOMER';
-          const isAgent = message.role === 'AGENT';
-          const isBot = message.role === 'BOT';
+    <div className="h-screen flex bg-[var(--bg)] text-[var(--text)] font-body">
+      {/* Sidebar */}
+      <ChatSidebar 
+        chats={chats}
+        activeChat={activeChat}
+        onSelect={handleChatSelect}
+      />
 
-          const label = isCustomer ? 'Cliente' : isAgent ? 'Tú' : 'Bot';
-
-          return (
-            <div
-              key={message.id}
-              className={`flex ${isCustomer ? 'justify-start' : 'justify-end'}`}
-            >
-              <div
-                className={`max-w-xs rounded-lg px-3 py-2 ${
-                  isCustomer
-                    ? 'bg-zinc-800 text-zinc-50'
-                    : isBot
-                      ? 'bg-emerald-500 text-zinc-950'
-                      : 'bg-blue-500 text-zinc-50'
-                }`}
-              >
-                <div className="mb-1 text-[10px] opacity-80">
-                  {label}
-                </div>
-                <div>
-                  {message.content}
-                </div>
-                <div className="mt-1 text-[9px] opacity-70">
-                  {formatDateTime(message.createdAt)}
-                </div>
-              </div>
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar */}
+        <div className="chat-topbar px-5 py-4 border-b border-[var(--border)] bg-[var(--bg2)] flex items-center gap-4 flex-shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-[var(--surface2)] flex items-center justify-center text-lg border border-[var(--border)]">
+            {currentChat?.avatar}
+          </div>
+          <div>
+            <div className="font-bold text-sm">{currentChat?.name}</div>
+            <div className="text-xs text-[var(--green)] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-blink" />
+              En línea · WhatsApp
             </div>
-          );
-        })}
-        {!messages.length && (
-          <div className="py-4 text-center text-[11px] text-zinc-500">
-            Aún no hay mensajes en esta conversación.
           </div>
-        )}
-      </div>
-      <form onSubmit={handleSend} className="border-t border-zinc-800 p-3">
-        <div className="flex items-end gap-2">
-          <textarea
-            value={replyContent}
-            onChange={event => setReplyContent(event.target.value)}
-            rows={2}
-            className="flex-1 rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
-            placeholder="Escribe un mensaje para este cliente..."
-          />
-          <button
-            type="submit"
-            disabled={replySending || !replyContent.trim()}
-            className="rounded bg-emerald-500 px-3 py-1.5 text-xs font-medium text-zinc-950 disabled:opacity-70"
-          >
-            {replySending ? 'Enviando...' : 'Enviar'}
-          </button>
+          <div className="ml-auto flex gap-2">
+            <button className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-sm hover:border-[var(--accent)] transition">📋</button>
+            <button className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-sm hover:border-[var(--accent)] transition">👤</button>
+            <button className="w-8 h-8 rounded-lg bg-[var(--surface)] border border-[var(--border)] flex items-center justify-center text-sm hover:border-[var(--accent)] transition">📦</button>
+          </div>
         </div>
-        {replyMessage && (
-          <div className="mt-1 text-[11px] text-zinc-400">
-            {replyMessage}
+
+        {/* Bot Status Bar */}
+        <BotStatusBadge 
+          active={botActive} 
+          onToggle={toggleBot}
+          botName="Valeria"
+        />
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-1">
+          {messages.map((msg, i) => (
+            <ChatMessage 
+              key={msg.id} 
+              message={msg}
+              isBot={msg.sender === 'bot'}
+              isHuman={msg.sender === 'human'}
+              onQuickReply={handleQuickReply}
+            />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Quick Replies */}
+        {messages[messages.length - 2]?.quickReplies && (
+          <div className="px-5 pb-2 flex gap-2 flex-wrap">
+            {messages[messages.length - 2].quickReplies?.map((reply, i) => (
+              <button
+                key={i}
+                onClick={() => handleQuickReply(reply)}
+                className="px-4 py-1.5 bg-[var(--surface2)] border border-[var(--purple)]/30 rounded-full text-sm font-medium text-[var(--purple)] hover:bg-[var(--purple)]/12 hover:border-[var(--purple)] transition"
+              >
+                {reply}
+              </button>
+            ))}
           </div>
         )}
-      </form>
+
+        {/* Input */}
+        <div className="chat-input-area px-5 py-4 border-t border-[var(--border)] bg-[var(--bg2)] flex-shrink-0">
+          {/* Quick Actions */}
+          <div className="flex gap-2 mb-2 flex-wrap">
+            {['✅ Pago confirmado', '🚴 En camino', '📦 Pedido listo', '🏠 Entregado'].map((reply, i) => (
+              <button
+                key={i}
+                onClick={() => setInputValue(reply)}
+                className="px-3 py-1 bg-[var(--surface2)] border border-[var(--border2)] rounded-lg text-xs text-[var(--text2)] hover:border-[var(--accent)] hover:text-[var(--accent)] transition"
+              >
+                {reply}
+              </button>
+            ))}
+          </div>
+          
+          {/* Input Row */}
+          <div className="flex items-center gap-3 bg-[var(--surface)] border border-[var(--border2)] rounded-xl px-4 py-2 focus-within:border-[var(--purple)]/50 transition">
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder={botActive ? "Escribe un mensaje..." : "Escribe (modo manual)..."}
+              className="flex-1 bg-transparent border-none outline-none text-sm resize-none max-h-24 font-body"
+              rows={1}
+            />
+            <div className="flex items-center gap-1">
+              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text2)] hover:text-[var(--text)] transition">😊</button>
+              <button className="w-8 h-8 rounded-lg flex items-center justify-center text-sm text-[var(--text2)] hover:text-[var(--text)] transition">📎</button>
+              <button 
+                onClick={handleSendMessage}
+                className="w-9 h-9 rounded-lg bg-[var(--accent)] flex items-center justify-center text-sm text-white hover:scale-105 transition shadow-lg shadow-[var(--accent)]/30"
+              >
+                ➤
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-

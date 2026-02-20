@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import { customersApi, Customer } from '@/lib/api/customers';
 import { getAccessToken } from '@/lib/auth/storage';
 import { chatApi } from '@/lib/api/chat';
+import { catalogApi, DocumentType } from '@/lib/api/catalog';
+import { parseIdentification, composeIdentification } from '@/lib/identification';
 
 const formatDateTime = (value: string) => {
   const date = new Date(value);
@@ -33,6 +35,9 @@ export default function CustomerDetailPage() {
   const [address, setAddress] = useState('');
   const [addressNotes, setAddressNotes] = useState('');
   const [identification, setIdentification] = useState('');
+  const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
+  const [docType, setDocType] = useState('');
+  const [docNumber, setDocNumber] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
@@ -48,8 +53,12 @@ export default function CustomerDetailPage() {
 
     const load = async () => {
       try {
-        const response = await customersApi.getById(id);
-        const data = response.data;
+        const [customerRes, docTypesRes] = await Promise.all([
+          customersApi.getById(id),
+          catalogApi.getDocumentTypes(),
+        ]);
+
+        const data = customerRes.data;
         setCustomer(data);
         setName(data.name ?? '');
         setPhone(data.phone ?? '');
@@ -57,6 +66,15 @@ export default function CustomerDetailPage() {
         setAddress(data.address ?? '');
         setAddressNotes(data.addressNotes ?? '');
         setIdentification(data.identification ?? '');
+
+        const docs = docTypesRes.data;
+        setDocumentTypes(docs);
+        if (docs.length > 0) {
+          const firstType = docs[0].codigo;
+          const parsed = parseIdentification(data.identification ?? '', firstType);
+          setDocType(parsed.type);
+          setDocNumber(parsed.number);
+        }
       } catch {
         setError('No se pudo cargar el cliente');
       } finally {
@@ -75,13 +93,15 @@ export default function CustomerDetailPage() {
     setSaveMessage(null);
 
     try {
+      const composedId = composeIdentification(docType, docNumber) ?? (identification || null);
+
       const response = await customersApi.update(customer.id, {
         name: name || null,
         phone: phone || null,
         email: email || null,
         address: address || null,
         addressNotes: addressNotes || null,
-        identification: identification || null
+        identification: composedId
       });
       setCustomer(response.data);
       setSaveMessage('Perfil actualizado');
@@ -94,7 +114,7 @@ export default function CustomerDetailPage() {
 
   if (loading) {
     return (
-      <div className="py-6 text-sm text-zinc-400">
+      <div className="py-6 text-sm text-[var(--muted)]">
         Cargando cliente...
       </div>
     );
@@ -155,93 +175,106 @@ export default function CustomerDetailPage() {
     <div className="space-y-6">
       <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <h1 className="text-lg font-semibold text-zinc-50">
+          <h1 className="text-lg font-semibold text-[var(--foreground)]">
             {customer.name || 'Cliente sin nombre'}
           </h1>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-[var(--muted)]">
             Perfil del cliente y actividad reciente
           </p>
         </div>
-        <div className="text-xs text-zinc-500">
+        <div className="text-xs text-[var(--muted)]">
           Creado el {formatDateTime(customer.createdAt)}
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[2fr,3fr]">
         <section className="space-y-4">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/80 p-4">
-            <h2 className="text-sm font-semibold text-zinc-50">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">
               Perfil
             </h2>
             <form className="mt-3 space-y-3" onSubmit={handleSave}>
               <div>
-                <label className="block text-xs text-zinc-400">
+                <label className="block text-xs text-[var(--muted)]">
                   Nombre
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={event => setName(event.target.value)}
-                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--foreground)]"
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400">
+                <label className="block text-xs text-[var(--muted)]">
                   Teléfono
                 </label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={event => setPhone(event.target.value)}
-                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--foreground)]"
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400">
+                <label className="block text-xs text-[var(--muted)]">
                   Email
                 </label>
                 <input
                   type="email"
                   value={email}
                   onChange={event => setEmail(event.target.value)}
-                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--foreground)]"
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400">
+                <label className="block text-xs text-[var(--muted)]">
                   Dirección
                 </label>
                 <textarea
                   value={address}
                   onChange={event => setAddress(event.target.value)}
-                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--foreground)]"
                   rows={2}
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400">
+                <label className="block text-xs text-[var(--muted)]">
                   Referencias de entrega
                 </label>
                 <textarea
                   value={addressNotes}
                   onChange={event => setAddressNotes(event.target.value)}
-                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--foreground)]"
                   rows={2}
                 />
               </div>
               <div>
-                <label className="block text-xs text-zinc-400">
+                <label className="block text-xs text-[var(--muted)]">
                   Cédula / RIF
                 </label>
-                <input
-                  type="text"
-                  value={identification}
-                  onChange={event => setIdentification(event.target.value)}
-                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
-                />
+                <div className="mt-1 flex gap-2">
+                  <select
+                    value={docType}
+                    onChange={event => setDocType(event.target.value)}
+                    className="w-20 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-xs text-[var(--foreground)]"
+                  >
+                    {documentTypes.map(dt => (
+                      <option key={dt.id} value={dt.codigo}>
+                        {dt.codigo}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="text"
+                    value={docNumber}
+                    onChange={event => setDocNumber(event.target.value)}
+                    className="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--foreground)]"
+                  />
+                </div>
               </div>
               {saveMessage && (
-                <p className="text-xs text-zinc-400">
+                <p className="text-xs text-[var(--muted)]">
                   {saveMessage}
                 </p>
               )}
@@ -255,13 +288,13 @@ export default function CustomerDetailPage() {
             </form>
           </div>
 
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/80 p-4">
-            <h2 className="text-sm font-semibold text-zinc-50">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+            <h2 className="text-sm font-semibold text-[var(--foreground)]">
               Últimos mensajes
             </h2>
-            <div className="mt-3 space-y-2 text-xs text-zinc-300">
+            <div className="mt-3 space-y-2 text-xs text-[var(--foreground)]">
               {!lastConversations.length && (
-                <p className="text-zinc-500">
+                <p className="text-[var(--muted)]">
                   Aún no hay mensajes registrados para este cliente.
                 </p>
               )}
@@ -279,20 +312,20 @@ export default function CustomerDetailPage() {
                 return (
                   <div
                     key={conversation.id}
-                    className="rounded border border-zinc-800 bg-zinc-950/60 px-3 py-2"
+                    className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-wide text-zinc-500">
+                      <span className="text-[10px] uppercase tracking-wide text-[var(--muted)]">
                         WhatsApp
                       </span>
-                      <span className="text-[10px] text-zinc-500">
+                      <span className="text-[10px] text-[var(--muted)]">
                         {formatDateTime(lastMessage.createdAt)}
                       </span>
                     </div>
-                    <div className="mt-1 text-[11px] text-zinc-400">
+                    <div className="mt-1 text-[11px] text-[var(--muted)]">
                       {roleLabel}
                     </div>
-                    <div className="mt-1 text-xs text-zinc-100">
+                    <div className="mt-1 text-xs text-[var(--foreground)]">
                       {lastMessage.content}
                     </div>
                   </div>
@@ -302,20 +335,20 @@ export default function CustomerDetailPage() {
             {primaryConversation && (
               <form
                 onSubmit={handleReply}
-                className="mt-4 space-y-2 rounded border border-zinc-800 bg-zinc-950/80 p-3"
+                className="mt-4 space-y-2 rounded border border-[var(--border)] bg-[var(--surface)] p-3"
               >
-                <label className="block text-[11px] text-zinc-400">
+                <label className="block text-[11px] text-[var(--muted)]">
                   Responder por WhatsApp
                 </label>
                 <textarea
                   value={replyContent}
                   onChange={event => setReplyContent(event.target.value)}
                   rows={2}
-                  className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs text-zinc-100"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--foreground)]"
                   placeholder="Escribe un mensaje para este cliente..."
                 />
                 {replyMessage && (
-                  <p className="text-[11px] text-zinc-400">
+                  <p className="text-[11px] text-[var(--muted)]">
                     {replyMessage}
                   </p>
                 )}
@@ -331,43 +364,43 @@ export default function CustomerDetailPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-zinc-800 bg-zinc-900/80 p-4">
-          <h2 className="text-sm font-semibold text-zinc-50">
+        <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">
             Órdenes
           </h2>
-          <div className="mt-3 overflow-hidden rounded border border-zinc-800">
+          <div className="mt-3 overflow-hidden rounded border border-[var(--border)]">
             {!customer.orders?.length && (
-              <div className="px-3 py-2 text-xs text-zinc-500">
+              <div className="px-3 py-2 text-xs text-[var(--muted)]">
                 Este cliente aún no tiene órdenes.
               </div>
             )}
             {customer.orders && customer.orders.length > 0 && (
-              <table className="min-w-full divide-y divide-zinc-800 text-xs">
-                <thead className="bg-zinc-950/80">
+              <table className="min-w-full divide-y divide-[var(--border)] text-xs">
+                <thead className="bg-[var(--background)]">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-zinc-500">
+                    <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
                       Fecha
                     </th>
-                    <th className="px-3 py-2 text-left font-medium text-zinc-500">
+                    <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
                       Monto
                     </th>
-                    <th className="px-3 py-2 text-left font-medium text-zinc-500">
+                    <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
                       Productos
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-800">
+                <tbody className="divide-y divide-[var(--border)]">
                   {customer.orders.map(order => {
                     const products = order.items;
                     return (
                       <tr key={order.createdAt}>
-                        <td className="px-3 py-2 text-zinc-200">
+                        <td className="px-3 py-2 text-[var(--foreground)]">
                           {formatDateTime(order.createdAt)}
                         </td>
-                        <td className="px-3 py-2 text-zinc-200">
+                        <td className="px-3 py-2 text-[var(--foreground)]">
                           ${formatCurrency(order.totalCents)}
                         </td>
-                        <td className="px-3 py-2 text-zinc-300">
+                        <td className="px-3 py-2 text-[var(--foreground)]">
                           {products && products.length > 0
                             ? products
                                 .map(item => `${item.quantity} x ${item.product.name}`)

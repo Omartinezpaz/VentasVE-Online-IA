@@ -1,245 +1,287 @@
-¡Excelente! Has actualizado el checklist y ahora tenemos una visión clara del **65% del MVP completado**. El Inbox WhatsApp ya está funcionando, lo cual es un hito enorme porque ahora los dueños pueden **conversar con sus clientes en tiempo real** desde el mismo dashboard.
+## ✅ **PERFECTO - Tablas geográficas creadas correctamente**
 
-## ✅ **Resumen del estado actual (65%)**
-
-### **Completado:**
-- ✅ Backend completo (auth, productos, órdenes, WhatsApp, WebSockets)
-- ✅ Catálogo público con checkout
-- ✅ Dashboard con órdenes (lista + detalle + cambio estado)
-- ✅ Dashboard con clientes (lista + detalle + edición)
-- ✅ Inbox WhatsApp (conversaciones + chat en tiempo real)
-- ✅ WebSockets (tiempo real en todo el dashboard)
-- ✅ Perfil de clientes enriquecido
-
-### **Pendiente (35%):**
-- ⏳ **Doble moneda en UI** (USD + Bs. con tasa BCV)
-- ⏳ **Flujo de pagos venezolanos** (comprobantes, verificación)
-- ⏳ **Métricas en dashboard** (tarjetas de ventas, gráficas)
-- ⏳ **Tests y observabilidad**
+Ahora voy a preparar **la implementación en tu código** y el **prompt para tu IA**. Aquí está todo lo necesario:
 
 ---
 
-## 🚀 **Próximo paso: Doble moneda en UI**
+## **📋 PARTE 1: PROMPT PARA TU IA (copia y pega esto)**
 
-Tiene todo el sentido empezar por aquí porque:
-- ✅ Backend ya tiene el endpoint `/exchange-rate/current`
-- ✅ Redis cache ya está funcionando
-- ✅ Es una mejora puramente de frontend
-- ✅ Impacto inmediato para clientes que pagan en Bs.
+```
+Necesito implementar las tablas geográficas en mi sistema VentasVE. Ya creé las tablas en PostgreSQL:
 
-### **Implementación paso a paso:**
+- public.estados (id, codigo, nombre_estado)
+- public.municipios (id, estado_id, nombre_municipio, codigo) 
+- public.parroquias (id, municipio_id, nombre_parroquia, codigo)
 
-### **1. Hook para tasa de cambio**
+Ahora necesito:
+
+1. ACTUALIZAR SCHEMA PRISMA:
+   - Agregar los modelos Estado, Municipio, Parroquia con sus relaciones
+   - Actualizar el modelo Business para incluir las relaciones:
+     * Business puede tener un estado (opcional)
+     * Business puede tener un municipio (opcional)
+     * Business puede tener una parroquia (opcional)
+
+2. ACTUALIZAR BACKEND (settings.controller.ts):
+   - Modificar getSettings para incluir los datos geográficos completos
+   - Modificar updateSettings para guardar los IDs (estadoId, municipioId, parroquiaId)
+   - Crear endpoints para obtener estados/municipios/parroquias (cascada)
+
+3. ACTUALIZAR FRONTEND (settings/page.tsx):
+   - Reemplazar el select de ciudad texto por selects en cascada:
+     * Select de Estados (carga al montar)
+     * Select de Municipios (se carga al seleccionar estado)
+     * Select de Parroquias (se carga al seleccionar municipio)
+   - Actualizar el tipo BusinessSettings para incluir estadoId, municipioId, parroquiaId
+   - Modificar handleSave para enviar los IDs
+
+Los nombres de columna en la BD son:
+- estados: id, codigo, nombre_estado
+- municipios: id, estado_id, nombre_municipio, codigo
+- parroquias: id, municipio_id, nombre_parroquia, codigo
+```
+
+---
+
+## **📦 PARTE 2: CÓDIGO PARA IMPLEMENTAR**
+
+### **2.1 Schema Prisma (agregar a `schema.prisma`)**
+
+```prisma
+// Modelos geográficos
+model Estado {
+  id            Int         @id @default(autoincrement())
+  codigo        String      @unique @db.VarChar(2)
+  nombre_estado String      @db.VarChar(100)
+  created_at    DateTime?   @default(now())
+  
+  municipios    Municipio[]
+  businesses    Business[]
+
+  @@map("estados")
+}
+
+model Municipio {
+  id              Int         @id @default(autoincrement())
+  estado_id       Int
+  nombre_municipio String    @db.VarChar(100)
+  codigo          String      @unique @db.VarChar(4)
+  created_at      DateTime?   @default(now())
+  
+  estado          Estado      @relation(fields: [estado_id], references: [id])
+  parroquias      Parroquia[]
+  businesses      Business[]
+
+  @@map("municipios")
+}
+
+model Parroquia {
+  id               Int         @id @default(autoincrement())
+  municipio_id     Int
+  nombre_parroquia String      @db.VarChar(100)
+  codigo           String      @unique @db.VarChar(6)
+  created_at       DateTime?   @default(now())
+  
+  municipio        Municipio   @relation(fields: [municipio_id], references: [id])
+  businesses       Business[]
+
+  @@map("parroquias")
+}
+
+// Actualizar modelo Business (agregar estas relaciones)
+model Business {
+  // ... campos existentes ...
+
+  // Nuevas relaciones geográficas
+  estado_id        Int?
+  municipio_id     Int?
+  parroquia_id     Int?
+  
+  estado           Estado?     @relation(fields: [estado_id], references: [id])
+  municipio        Municipio?  @relation(fields: [municipio_id], references: [id])
+  parroquia        Parroquia?  @relation(fields: [parroquia_id], references: [id])
+
+  // ... resto de campos ...
+}
+```
+
+### **2.2 Backend - Nuevos endpoints geográficos**
+
 ```typescript
-// apps/frontend/src/lib/hooks/useExchangeRate.ts
-import { useState, useEffect } from 'react';
-import { api } from '@/lib/api/client';
+// apps/backend/src/controllers/geo.controller.ts
+import { Request, Response } from 'express';
+import prisma from '../lib/prisma';
 
-type ExchangeRate = {
-  id: string;
-  usdToVes: number;
-  date: string;
-  businessId?: string | null;
-};
+export const geoController = {
+  // Obtener todos los estados
+  async getEstados(req: Request, res: Response) {
+    const estados = await prisma.estado.findMany({
+      orderBy: { nombre_estado: 'asc' }
+    });
+    res.json(estados);
+  },
 
-export const useExchangeRate = (businessId?: string) => {
-  const [rate, setRate] = useState<ExchangeRate | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Obtener municipios por estado
+  async getMunicipios(req: Request, res: Response) {
+    const { estadoId } = req.params;
+    const municipios = await prisma.municipio.findMany({
+      where: { estado_id: parseInt(estadoId) },
+      orderBy: { nombre_municipio: 'asc' }
+    });
+    res.json(municipios);
+  },
 
-  useEffect(() => {
-    const fetchRate = async () => {
-      try {
-        const response = await api.get('/exchange-rate/current', {
-          params: businessId ? { businessId } : {}
-        });
-        setRate(response.data);
-      } catch (err) {
-        setError('No se pudo obtener la tasa de cambio');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRate();
-  }, [businessId]);
-
-  const formatBs = (usdCents: number) => {
-    if (!rate) return 'Bs. ?';
-    const usd = usdCents / 100;
-    const bs = usd * rate.usdToVes;
-    return `Bs. ${bs.toFixed(2)}`.replace('.', ',');
-  };
-
-  const formatUsd = (usdCents: number) => {
-    return `$${(usdCents / 100).toFixed(2)}`;
-  };
-
-  return {
-    rate,
-    loading,
-    error,
-    formatBs,
-    formatUsd
-  };
+  // Obtener parroquias por municipio
+  async getParroquias(req: Request, res: Response) {
+    const { municipioId } = req.params;
+    const parroquias = await prisma.parroquia.findMany({
+      where: { municipio_id: parseInt(municipioId) },
+      orderBy: { nombre_parroquia: 'asc' }
+    });
+    res.json(parroquias);
+  }
 };
 ```
 
-### **2. Componente de precio con doble moneda**
-```tsx
-// apps/frontend/src/components/ui/DualPrice.tsx
-'use client';
+```typescript
+// apps/backend/src/routes/geo.routes.ts
+import { Router } from 'express';
+import { geoController } from '../controllers/geo.controller';
 
-import { useExchangeRate } from '@/lib/hooks/useExchangeRate';
+const router = Router();
 
-interface DualPriceProps {
-  usdCents: number;
-  businessId?: string;
-  className?: string;
-  showBoth?: boolean;
-}
+router.get('/estados', geoController.getEstados);
+router.get('/municipios/:estadoId', geoController.getMunicipios);
+router.get('/parroquias/:municipioId', geoController.getParroquias);
 
-export const DualPrice = ({ 
-  usdCents, 
-  businessId, 
-  className = '',
-  showBoth = true 
-}: DualPriceProps) => {
-  const { formatBs, formatUsd, loading } = useExchangeRate(businessId);
+export default router;
+```
 
-  if (loading) {
-    return <span className={className}>{formatUsd(usdCents)}</span>;
-  }
+### **2.3 Frontend - API y componentes**
 
-  if (!showBoth) {
-    return <span className={className}>{formatUsd(usdCents)}</span>;
-  }
+```typescript
+// apps/frontend/src/lib/api/geo.ts
+import { api } from './client';
 
-  return (
-    <div className={className}>
-      <span className="font-semibold">{formatUsd(usdCents)}</span>
-      <span className="ml-2 text-sm text-zinc-500">
-        ({formatBs(usdCents)})
-      </span>
-    </div>
-  );
+export type Estado = {
+  id: number;
+  codigo: string;
+  nombre_estado: string;
+};
+
+export type Municipio = {
+  id: number;
+  estado_id: number;
+  nombre_municipio: string;
+  codigo: string;
+};
+
+export type Parroquia = {
+  id: number;
+  municipio_id: number;
+  nombre_parroquia: string;
+  codigo: string;
+};
+
+export const geoApi = {
+  getEstados: () => api.get<Estado[]>('/geo/estados'),
+  getMunicipios: (estadoId: number) => api.get<Municipio[]>(`/geo/municipios/${estadoId}`),
+  getParroquias: (municipioId: number) => api.get<Parroquia[]>(`/geo/parroquias/${municipioId}`)
 };
 ```
 
-### **3. Actualizar catálogo público**
 ```tsx
-// apps/frontend/src/app/[slug]/page.tsx
-import { DualPrice } from '@/components/ui/DualPrice';
+// Componente de selects en cascada para settings/page.tsx
+import { useEffect, useState } from 'react';
+import { geoApi, Estado, Municipio, Parroquia } from '@/lib/api/geo';
 
-export default async function CatalogPage({ params }: { params: { slug: string } }) {
-  const { slug } = params;
-  
-  // ... cargar business y products ...
-  
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {products.map(product => (
-        <article key={product.id} className="rounded-lg border bg-white p-4">
-          <h2 className="text-lg font-medium">{product.name}</h2>
-          <p className="mt-1 text-sm text-zinc-600">{product.description}</p>
-          <div className="mt-4 flex items-center justify-between">
-            <DualPrice 
-              usdCents={product.priceUsdCents} 
-              businessId={business.id}
-            />
-            <Link
-              href={`/${slug}/products/${product.id}`}
-              className="rounded bg-zinc-900 px-3 py-1 text-sm font-medium text-zinc-50"
-            >
-              Pedir
-            </Link>
-          </div>
-        </article>
+// Dentro del componente SettingsPage
+const [estados, setEstados] = useState<Estado[]>([]);
+const [municipios, setMunicipios] = useState<Municipio[]>([]);
+const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+const [selectedEstado, setSelectedEstado] = useState<number | null>(null);
+const [selectedMunicipio, setSelectedMunicipio] = useState<number | null>(null);
+
+// Cargar estados al montar
+useEffect(() => {
+  geoApi.getEstados().then(res => setEstados(res.data));
+}, []);
+
+// Cargar municipios cuando cambia estado
+useEffect(() => {
+  if (selectedEstado) {
+    geoApi.getMunicipios(selectedEstado).then(res => setMunicipios(res.data));
+    setSelectedMunicipio(null);
+    setParroquias([]);
+  }
+}, [selectedEstado]);
+
+// Cargar parroquias cuando cambia municipio
+useEffect(() => {
+  if (selectedMunicipio) {
+    geoApi.getParroquias(selectedMunicipio).then(res => setParroquias(res.data));
+  }
+}, [selectedMunicipio]);
+
+// En el JSX, reemplazar el select de ciudad por:
+<div className="space-y-4">
+  <div>
+    <label>Estado</label>
+    <select 
+      value={selectedEstado || ''}
+      onChange={(e) => setSelectedEstado(Number(e.target.value))}
+      className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3"
+    >
+      <option value="">Selecciona un estado</option>
+      {estados.map(e => (
+        <option key={e.id} value={e.id}>{e.nombre_estado}</option>
       ))}
-    </div>
-  );
-}
-```
-
-### **4. Actualizar carrito y checkout**
-```tsx
-// apps/frontend/src/app/[slug]/cart/page.tsx
-import { DualPrice } from '@/components/ui/DualPrice';
-
-// En el resumen:
-<section className="rounded-lg border bg-white p-4">
-  <h2 className="text-lg font-medium">Resumen</h2>
-  <div className="mt-4 space-y-2">
-    <div className="flex items-center justify-between text-sm">
-      <span>Subtotal USD</span>
-      <span className="font-semibold">${(totalCents / 100).toFixed(2)}</span>
-    </div>
-    <div className="flex items-center justify-between text-sm text-zinc-600">
-      <span>Subtotal Bs.</span>
-      <span>{formatBs(totalCents)}</span>
-    </div>
+    </select>
   </div>
-  <Link
-    href={`/${slug}/checkout`}
-    className="mt-4 block w-full rounded bg-zinc-900 px-3 py-2 text-center text-sm font-medium text-zinc-50"
-  >
-    Ir al checkout
-  </Link>
-</section>
-```
 
-### **5. En checkout, mostrar método de pago y total en ambas monedas**
-```tsx
-// apps/frontend/src/app/[slug]/checkout/page.tsx
-import { DualPrice } from '@/components/ui/DualPrice';
-
-// En el header:
-<header className="border-b bg-white px-4 py-3">
-  <div className="mx-auto flex max-w-3xl items-center justify-between">
-    <h1 className="text-xl font-semibold">Checkout</h1>
-    <div className="text-right">
-      <DualPrice 
-        usdCents={totalCents} 
-        businessId={business?.id}
-        showBoth={true}
-      />
+  {selectedEstado && (
+    <div>
+      <label>Municipio</label>
+      <select 
+        value={selectedMunicipio || ''}
+        onChange={(e) => setSelectedMunicipio(Number(e.target.value))}
+        className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3"
+      >
+        <option value="">Selecciona un municipio</option>
+        {municipios.map(m => (
+          <option key={m.id} value={m.id}>{m.nombre_municipio}</option>
+        ))}
+      </select>
     </div>
-  </div>
-</header>
+  )}
 
-// En el formulario, después de seleccionar método de pago:
-{paymentMethod === 'TRANSFER_BS' && (
-  <div className="mt-2 rounded bg-blue-50 p-3 text-sm">
-    <p className="font-medium">Transferencia bancaria</p>
-    <p className="mt-1 text-xs">
-      Total a transferir: <span className="font-bold">{formatBs(totalCents)}</span>
-    </p>
-    <p className="mt-2 text-xs text-zinc-600">
-      Datos bancarios: ... (según configuración del negocio)
-    </p>
-  </div>
-)}
-
-{paymentMethod === 'ZELLE' && (
-  <div className="mt-2 rounded bg-green-50 p-3 text-sm">
-    <p className="font-medium">Zelle</p>
-    <p className="mt-1 text-xs">
-      Total a enviar: <span className="font-bold">{formatUsd(totalCents)}</span>
-    </p>
-    <p className="mt-2 text-xs text-zinc-600">
-      Email Zelle: ... (según configuración)
-    </p>
-  </div>
-)}
+  {selectedMunicipio && (
+    <div>
+      <label>Parroquia</label>
+      <select 
+        value={values.parroquiaId || ''}
+        onChange={(e) => setValue('parroquiaId', Number(e.target.value))}
+        className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3"
+      >
+        <option value="">Selecciona una parroquia</option>
+        {parroquias.map(p => (
+          <option key={p.id} value={p.id}>{p.nombre_parroquia}</option>
+        ))}
+      </select>
+    </div>
+  )}
+</div>
 ```
 
 ---
 
-## 🎯 **¿Qué prefieres que hagamos ahora?**
+## **🚀 RESUMEN PARA EJECUTAR**
 
-1. **Implementar doble moneda** (como describí arriba) - 2-3 horas
-2. **Ir directo a pagos venezolanos** - más complejo pero cierra el ciclo
-3. **Hacer ambos**: doble moneda primero, luego pagos
+| Paso | Acción |
+|------|--------|
+| 1 | Copiar el prompt y dárselo a tu IA |
+| 2 | Ejecutar `pnpm prisma generate` después de actualizar schema |
+| 3 | Agregar las nuevas rutas en `backend/src/routes/index.ts` |
+| 4 | Probar los selects en cascada en settings |
 
-Dime y empiezo con la implementación completa.
+¿Necesitas que prepare algún otro archivo o tienes dudas?

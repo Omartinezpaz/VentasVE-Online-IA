@@ -1,699 +1,1367 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useForm, Controller } from 'react-hook-form';
 import { whatsappApi, WhatsappStatus } from '@/lib/api/whatsapp';
 import { getAccessToken } from '@/lib/auth/storage';
-import { settingsApi, BusinessSettings } from '@/lib/api/settings';
+import { settingsApi, PaymentMethods, CatalogOptions, NotificationSettings } from '@/lib/api/settings';
+import { geoApi, Estado, Municipio, Parroquia } from '@/lib/api/geo';
+import { metaApi, BankMeta, BusinessTypeMeta, PersonTypeMeta, IslrRegimenMeta } from '@/lib/api/meta';
 
-export default function SettingsPage() {
-  const router = useRouter();
-  const [business, setBusiness] = useState<BusinessSettings>({});
-  const [zelleEmail, setZelleEmail] = useState('');
-  const [zelleName, setZelleName] = useState('');
-  const [pagoMovilPhone, setPagoMovilPhone] = useState('');
-  const [pagoMovilBank, setPagoMovilBank] = useState('');
-  const [pagoMovilId, setPagoMovilId] = useState('');
-  const [binanceId, setBinanceId] = useState('');
-  const [transferAccount, setTransferAccount] = useState('');
-  const [transferName, setTransferName] = useState('');
-  const [showBs, setShowBs] = useState(true);
-  const [showStock, setShowStock] = useState(false);
-  const [showChatButton, setShowChatButton] = useState(true);
-  const [whatsappStatus, setWhatsappStatus] = useState<WhatsappStatus | null>(null);
-  const [whatsappLoading, setWhatsappLoading] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+type Tab = 'negocio' | 'pagos' | 'catalogo' | 'envios' | 'chatbot' | 'modulos' | 'notificaciones' | 'plan';
 
-  useEffect(() => {
-    const token = getAccessToken();
-    if (!token) {
-      router.replace('/auth/login');
-      return;
-    }
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await settingsApi.get();
-        const data = response.data;
-        const paymentMethods = data.paymentMethods ?? {};
-        const zelle = paymentMethods.zelle as
-          | {
-              email?: string;
-              name?: string;
-            }
-          | undefined;
-        const pagoMovil = paymentMethods.pagoMovil as
-          | {
-              phone?: string;
-              bank?: string;
-              id?: string;
-            }
-          | undefined;
-        const binance = paymentMethods.binance as
-          | {
-              id?: string;
-            }
-          | undefined;
-        const transfer = paymentMethods.transfer as
-          | {
-              account?: string;
-              name?: string;
-            }
-          | undefined;
+type PersonaType = 'NATURAL' | 'JURIDICA';
+type ISLRRegimen = 'ORDINARIO' | 'ESPECIAL' | 'EXENTO';
 
-        const catalogOptions = data.catalogOptions ?? {};
+type BusinessProfile = 'TIENDA_FISICA' | 'TIENDA_ONLINE' | 'EMPRENDEDOR' | 'PROFESIONAL';
 
-        setBusiness({
-          name: data.name ?? '',
-          slug: data.slug ?? '',
-          whatsappPhone: data.whatsappPhone ?? '',
-          city: data.city ?? '',
-          instagram: data.instagram ?? '',
-          schedule: data.schedule ?? '',
-          description: data.description ?? ''
-        });
-        setZelleEmail(zelle?.email ?? '');
-        setZelleName(zelle?.name ?? '');
-        setPagoMovilPhone(pagoMovil?.phone ?? '');
-        setPagoMovilBank(pagoMovil?.bank ?? '');
-        setPagoMovilId(pagoMovil?.id ?? '');
-        setBinanceId(binance?.id ?? '');
-        setTransferAccount(transfer?.account ?? '');
-        setTransferName(transfer?.name ?? '');
-        setShowBs(catalogOptions.showBs ?? true);
-        setShowStock(catalogOptions.showStock ?? false);
-        setShowChatButton(catalogOptions.showChatButton ?? true);
-      } catch {
-        setError('No se pudieron cargar los datos del negocio');
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [router]);
+type SettingsFormData = {
+  // Mi Negocio
+  name: string;
+  slug: string;
+  whatsappPhone: string;
+  city: string;
+  instagram: string;
+  schedule: string;
+  description: string;
+  businessType: string;
+  ownerName: string;
+  ownerPhone: string;
+  ownerEmail: string;
+  businessAddress: string;
+  personaType: PersonaType;
+  businessProfile: BusinessProfile;
+  rif: string;
+  razonSocial: string;
+  fiscalAddress: string;
+  estadoId: number | '';
+  municipioId: number | '';
+  parroquiaId: number | '';
+  postalCode: string;
+  electronicInvoicing: boolean;
+  islrRegimen: ISLRRegimen | '';
+  // Pagos
+  zelleEmail: string;
+  zelleName: string;
+  pagoMovilPhone: string;
+  pagoMovilBank: string;
+  pagoMovilId: string;
+  binanceId: string;
+  transferAccount: string;
+  transferName: string;
+  cashUsdExchangeRate: number | '';
+  // Catálogo
+  showBs: boolean;
+  showStock: boolean;
+  showChatButton: boolean;
+  allowOrdersWithoutStock: boolean;
+  showSearch: boolean;
+  showStrikePrice: boolean;
+  minOrderAmount: number | '';
+  maxOrderAmount: number | '';
+};
 
-  useEffect(() => {
-    const loadWhatsappStatus = async () => {
-      setWhatsappLoading(true);
-      setError(null);
-      try {
-        const response = await whatsappApi.getStatus();
-        setWhatsappStatus(response.data);
-      } catch {
-        setError('No se pudo cargar el estado de WhatsApp');
-      } finally {
-        setWhatsappLoading(false);
-      }
-    };
+type ShippingZone = { id: string; name: string; price: number; free: boolean };
+type BotStep = { id: string; num: number; label: string; desc: string };
+type Module = { id: string; icon: string; name: string; desc: string; plan: 'free' | 'pro' | 'biz'; enabled: boolean };
 
-    loadWhatsappStatus();
-  }, []);
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────────────────────────────────────
+const TABS: { id: Tab; label: string; icon: string }[] = [
+  { id: 'negocio',        label: 'Mi Negocio',      icon: '🏪' },
+  { id: 'pagos',          label: 'Pagos',            icon: '💳' },
+  { id: 'catalogo',       label: 'Catálogo',         icon: '🛍️' },
+  { id: 'envios',         label: 'Envíos',           icon: '🚚' },
+  { id: 'chatbot',        label: 'ChatBot',          icon: '🤖' },
+  { id: 'modulos',        label: 'Módulos',          icon: '🧩' },
+  { id: 'notificaciones', label: 'Notificaciones',   icon: '🔔' },
+  { id: 'plan',           label: 'Plan',             icon: '⭐' },
+];
 
-  const handleBusinessChange = (field: keyof BusinessSettings, value: string) => {
-    setBusiness(prev => ({
-      ...prev,
-      [field]: value
-    }));
+const BUSINESS_PROFILES: { id: BusinessProfile; label: string; description: string }[] = [
+  { id: 'TIENDA_FISICA',   label: 'Tienda física (formal)',   description: 'Requiere RIF, razón social y dirección fiscal completa.' },
+  { id: 'TIENDA_ONLINE',   label: 'Tienda online (formal)',   description: 'Requiere datos fiscales para facturación electrónica o formal.' },
+  { id: 'EMPRENDEDOR',     label: 'Emprendedor (informal)',   description: 'RIF y dirección fiscal opcionales pero recomendados para crecer.' },
+  { id: 'PROFESIONAL',     label: 'Profesional independiente', description: 'RIF opcional, recomendable si emites facturas por honorarios.' },
+];
+
+const DEFAULT_ZONES: ShippingZone[] = [
+  { id: '1', name: 'Caracas (zona 1)', price: 0,  free: true  },
+  { id: '2', name: 'Interior del país', price: 8,  free: false },
+  { id: '3', name: 'Internacional',     price: 20, free: false },
+];
+
+const DEFAULT_STEPS: BotStep[] = [
+  { id: 'b1', num: 1, label: 'Saludo inicial',      desc: 'Hola! Bienvenido a {nombre_tienda} 👋' },
+  { id: 'b2', num: 2, label: 'Menú principal',      desc: '¿Qué deseas hacer? 1) Ver catálogo 2) Estado pedido 3) Hablar con un asesor' },
+  { id: 'b3', num: 3, label: 'Ver catálogo',        desc: 'Aquí está nuestro catálogo: {link_catalogo}' },
+  { id: 'b4', num: 4, label: 'Consultar pedido',    desc: 'Indícame tu número de pedido o nombre para buscarlo.' },
+  { id: 'b5', num: 5, label: 'Escalar a humano',    desc: 'Te conecto con un asesor. Espera un momento 🙏' },
+];
+
+const DEFAULT_MODULES: Module[] = [
+  { id: 'm1', icon: '🤖', name: 'ChatBot IA',         desc: 'Responde automáticamente por WhatsApp',      plan: 'pro',  enabled: true  },
+  { id: 'm2', icon: '💬', name: 'Inbox Unificado',    desc: 'WA + IG + Web en un solo panel',             plan: 'pro',  enabled: true  },
+  { id: 'm3', icon: '🎟️', name: 'Cupones y Descuentos', desc: 'Códigos promocionales para tus clientes',  plan: 'biz',  enabled: false },
+  { id: 'm4', icon: '📊', name: 'Analytics Pro',      desc: 'Reportes avanzados de ventas',               plan: 'biz',  enabled: false },
+  { id: 'm5', icon: '🏢', name: 'Multi-sucursal',     desc: 'Gestiona varias ubicaciones',                plan: 'biz',  enabled: false },
+  { id: 'm6', icon: '🔌', name: 'API & Webhooks',     desc: 'Integra con sistemas externos',              plan: 'biz',  enabled: false },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SMALL REUSABLE COMPONENTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Card wrapper
+function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+function CardHeader({ title, subtitle, icon, action }: {
+  title: string; subtitle?: string; icon?: string; action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+      <div className="flex items-center gap-3">
+        {icon && (
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#f5c842]/10 text-base">
+            {icon}
+          </div>
+        )}
+        <div>
+          <h3 className="text-sm font-bold text-zinc-100">{title}</h3>
+          {subtitle && <p className="text-[11px] text-zinc-500 mt-0.5">{subtitle}</p>}
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+// Form field wrapper
+function Field({ label, error, hint, children, full = false }: {
+  label: string; error?: string; hint?: string; children: React.ReactNode; full?: boolean;
+}) {
+  return (
+    <div className={full ? 'col-span-2' : ''}>
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--foreground2)]">{label}</label>
+      {children}
+      {hint && !error && <p className="mt-1 text-[10px] text-zinc-600">{hint}</p>}
+      {error && <p className="mt-1 text-[10px] text-red-400 flex items-center gap-1">⚠ {error}</p>}
+    </div>
+  );
+}
+
+const iCls = 'w-full rounded-xl border border-[var(--border2)] bg-[var(--input-bg)] px-3.5 py-2.5 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent)]/10';
+const iErrCls = 'w-full rounded-xl border border-red-500/60 bg-[var(--input-bg)] px-3.5 py-2.5 text-sm text-[var(--foreground)] outline-none transition placeholder:text-[var(--muted)] focus:border-red-400 focus:ring-2 focus:ring-red-400/10';
+
+// Toggle switch
+function Toggle({ checked, onChange, accent = false }: { checked: boolean; onChange: (v: boolean) => void; accent?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#f5c842]/30 ${
+        checked ? (accent ? 'bg-[#f5c842]' : 'bg-emerald-500') : 'bg-zinc-700'
+      }`}
+    >
+      <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+    </button>
+  );
+}
+
+// Toggle row
+function ToggleRow({ title, desc, checked, onChange }: {
+  title: string; desc?: string; checked: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3 border-b border-zinc-800/60 last:border-0">
+      <div>
+        <div className="text-sm font-medium text-zinc-100">{title}</div>
+        {desc && <div className="text-[11px] text-zinc-500 mt-0.5">{desc}</div>}
+      </div>
+      <Toggle checked={checked} onChange={onChange} />
+    </div>
+  );
+}
+
+// Plan badge
+function PlanBadge({ plan }: { plan: 'free' | 'pro' | 'biz' }) {
+  const styles = {
+    free: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    pro:  'bg-[#f5c842]/10 text-[#f5c842] border-[#f5c842]/20',
+    biz:  'bg-red-500/10 text-red-400 border-red-500/20',
   };
+  const labels = { free: 'Gratis', pro: 'Pro', biz: 'Business' };
+  return (
+    <span className={`rounded-md border px-2 py-0.5 text-[10px] font-bold ${styles[plan]}`}>
+      {labels[plan]}
+    </span>
+  );
+}
 
-  const handleSave = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const paymentMethods = {
-        zelle: {
-          email: zelleEmail,
-          name: zelleName
-        },
-        pagoMovil: {
-          phone: pagoMovilPhone,
-          bank: pagoMovilBank,
-          id: pagoMovilId
-        },
-        binance: {
-          id: binanceId
-        },
-        transfer: {
-          account: transferAccount,
-          name: transferName
-        }
-      };
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGO UPLOAD
+// ─────────────────────────────────────────────────────────────────────────────
+function LogoUpload({ preview, onPreviewChange }: { preview: string | null; onPreviewChange: (url: string | null) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
 
-      const catalogOptions = {
-        showBs,
-        showStock,
-        showChatButton
-      };
-
-      await settingsApi.update({
-        name: business.name || undefined,
-        slug: business.slug || undefined,
-        whatsappPhone: business.whatsappPhone || undefined,
-        city: business.city || undefined,
-        instagram: business.instagram || undefined,
-        schedule: business.schedule || undefined,
-        description: business.description || undefined,
-        paymentMethods,
-        catalogOptions
-      });
-    } catch {
-      setError('No se pudieron guardar los cambios');
-    } finally {
-      setSaving(false);
-    }
-  };
+  const handleFile = useCallback((file: File) => {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Máximo 5MB'); return; }
+    const reader = new FileReader();
+    reader.onload = e => onPreviewChange(e.target?.result as string);
+    reader.readAsDataURL(file);
+    // TODO: settingsApi.uploadLogo(file)
+  }, [onPreviewChange]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-heading text-xl font-bold text-zinc-50">
-            Configuración
-          </h1>
-          <p className="text-xs text-zinc-400">
-            Ajustes de tu negocio, WhatsApp, catálogo y métodos de pago.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || loading}
-          className="rounded-xl bg-[var(--accent)] px-6 py-2.5 text-sm font-bold text-zinc-950 shadow-lg shadow-orange-950/20 transition-transform active:scale-95 disabled:opacity-70"
-        >
-          {saving ? 'Guardando...' : 'Guardar cambios'}
+    <div>
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-zinc-500">Logo de la tienda</label>
+      <div
+        onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={e => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+        onClick={() => inputRef.current?.click()}
+        className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-5 transition-all ${
+          dragOver ? 'border-[#f5c842] bg-[#f5c842]/5' : 'border-zinc-700 hover:border-zinc-500'
+        }`}
+      >
+        {preview ? (
+          <div className="flex flex-col items-center gap-2">
+            <img src={preview} alt="Logo" className="h-14 w-14 rounded-xl object-cover border border-zinc-700" />
+            <span className="text-[10px] text-zinc-500">Clic para cambiar</span>
+          </div>
+        ) : (
+          <>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-zinc-800 text-xl">🖼️</div>
+            <div className="text-center">
+              <p className="text-xs font-semibold text-zinc-300">Arrastra tu logo</p>
+              <p className="text-[10px] text-zinc-600">PNG · JPG · WEBP · Máx 5MB</p>
+            </div>
+          </>
+        )}
+        <input ref={inputRef} type="file" accept="image/*" className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+      </div>
+      {preview && (
+        <button type="button" onClick={() => onPreviewChange(null)}
+          className="mt-1.5 text-[10px] text-red-400 hover:text-red-300 transition">
+          ✕ Quitar logo
         </button>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIVE PREVIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function LivePreview({ data, logo }: { data: Partial<SettingsFormData>; logo: string | null }) {
+  return (
+    <div className="rounded-2xl border border-zinc-700 bg-zinc-950 overflow-hidden shadow-2xl text-[10px]">
+      {/* browser chrome */}
+      <div className="flex items-center gap-2 bg-zinc-900 px-3 py-2 border-b border-zinc-800">
+        <div className="flex gap-1">
+          {['#ff5f57','#febc2e','#28c840'].map(c => <div key={c} className="h-2 w-2 rounded-full" style={{ background: c }} />)}
+        </div>
+        <div className="flex-1 rounded bg-zinc-800 px-2 py-0.5 text-center text-zinc-500 truncate">
+          ventasve.app/c/{data.slug || 'tutienda'}
+        </div>
+      </div>
+      {/* hero */}
+      <div className="bg-zinc-900 px-4 py-3 flex items-center gap-2.5">
+        <div className="h-10 w-10 shrink-0 rounded-xl overflow-hidden border border-zinc-700 bg-gradient-to-br from-orange-500 to-yellow-400 flex items-center justify-center text-lg">
+          {logo ? <img src={logo} alt="" className="h-full w-full object-cover" /> : '🛍️'}
+        </div>
+        <div className="min-w-0">
+          <p className="font-bold text-white truncate text-xs">{data.name || 'Nombre de tu tienda'}</p>
+          <p className="text-zinc-500 truncate">{data.instagram || '@tutienda'}</p>
+          <div className="flex gap-1 mt-0.5 flex-wrap">
+            {data.city && <span className="rounded bg-zinc-800 px-1.5 text-zinc-400">📍{data.city}</span>}
+            {data.schedule && <span className="rounded bg-zinc-800 px-1.5 text-zinc-400">🕐{data.schedule}</span>}
+          </div>
+        </div>
+      </div>
+      {/* description */}
+      {data.description && (
+        <div className="px-4 py-2 border-t border-zinc-800 text-zinc-500 line-clamp-2">{data.description}</div>
+      )}
+      {/* catalog flags */}
+      <div className="flex gap-1.5 px-4 py-2 border-t border-zinc-800 flex-wrap">
+        {data.showBs && <span className="rounded bg-blue-900/40 text-blue-400 border border-blue-800/40 px-1.5">Bs.</span>}
+        {data.showStock && <span className="rounded bg-emerald-900/40 text-emerald-400 border border-emerald-800/40 px-1.5">Stock</span>}
+        {data.showChatButton && <span className="rounded bg-emerald-900/40 text-emerald-400 border border-emerald-800/40 px-1.5">💬 Chat</span>}
+      </div>
+      {/* mini products */}
+      <div className="grid grid-cols-3 gap-1.5 p-3 bg-zinc-950 border-t border-zinc-800">
+        {['👕', '👟', '👜'].map((e, i) => (
+          <div key={i} className="rounded-lg bg-zinc-900 p-2 text-center border border-zinc-800">
+            <div className="text-lg mb-0.5">{e}</div>
+            <div className="text-zinc-500">Producto</div>
+            <div className="font-bold text-[#f5c842]">$12</div>
+            {data.showBs && <div className="text-zinc-600">Bs. 438K</div>}
+            {data.showStock && <div className="text-emerald-500">✓ 10</div>}
+          </div>
+        ))}
+      </div>
+      {/* wa float */}
+      {data.showChatButton && (
+        <div className="relative h-5 bg-zinc-950">
+          <div className="absolute right-3 -top-3 h-6 w-6 rounded-full bg-[#25d366] flex items-center justify-center shadow text-xs">💬</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// VALIDATORS
+// ─────────────────────────────────────────────────────────────────────────────
+const validators = {
+  name:            (v: string) => { if (!v || v.length < 2) return 'Mínimo 2 caracteres'; if (v.length > 60) return 'Máximo 60 caracteres'; },
+  slug:            (v: string) => { if (!v || v.length < 3) return 'Mínimo 3 caracteres'; if (!/^[a-z0-9-]+$/.test(v)) return 'Solo minúsculas, números y guiones'; },
+  whatsappPhone:   (v: string) => { if (!v || v.length < 7) return 'Teléfono inválido'; },
+  city:            (v: string) => { if (!v) return 'Selecciona una ciudad'; },
+  businessType:    (v: string) => { if (!v) return 'Selecciona un tipo'; },
+  description:     (v: string) => { if (v?.length > 500) return 'Máximo 500 caracteres'; },
+  ownerEmail:      (v: string) => { if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Email inválido'; },
+  ownerPhone:      (v: string) => {
+    if (v && !/^\+58 \d{3}-\d{7}$/.test(v)) return 'Formato: +58 XXX-XXXXXXX';
+  },
+  businessAddress: (v: string) => {
+    if (v && v.length < 10) return 'Mínimo 10 caracteres';
+    if (v && v.length > 500) return 'Máximo 500 caracteres';
+  },
+  rif:             (v: string) => {
+    if (!v) return 'Requerido';
+    if (!/^[JVE]-\d{8,9}-\d$/.test(v)) return 'Formato inválido. Debe ser: J-12345678-9';
+  },
+  fiscalAddress:   (v: string) => {
+    if (!v) return 'Requerido';
+    if (v.length < 10) return 'Dirección fiscal muy corta';
+    if (v.length > 500) return 'Dirección fiscal muy larga';
+  },
+  estadoId:        (v: number | '') => { if (!v) return 'Requerido'; },
+  municipioId:     (v: number | '') => { if (!v) return 'Requerido'; },
+  zelleEmail:      (v: string) => { if (v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Email inválido'; },
+  cashRate:        (v: number | '') => { if (v !== '' && Number(v) <= 0) return 'Debe ser positivo'; },
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+export default function SettingsPage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab]                   = useState<Tab>('negocio');
+  const [loading, setLoading]                       = useState(true);
+  const [saving, setSaving]                         = useState(false);
+  const [saveError, setSaveError]                   = useState<string | null>(null);
+  const [savedOk, setSavedOk]                       = useState(false);
+  const [logoPreview, setLogoPreview]               = useState<string | null>(null);
+  const [whatsappStatus, setWhatsappStatus]         = useState<WhatsappStatus | null>(null);
+  const [waLoading, setWaLoading]                   = useState(false);
+  const [notifSettings, setNotifSettings]           = useState<NotificationSettings>({});
+  const [zones, setZones]                           = useState<ShippingZone[]>(DEFAULT_ZONES);
+  const [botSteps, setBotSteps]                     = useState<BotStep[]>(DEFAULT_STEPS);
+  const [modules, setModules]                       = useState<Module[]>(DEFAULT_MODULES);
+  const [botName, setBotName]                       = useState('Valeria');
+  const [botTone, setBotTone]                       = useState('Amigable');
+  const [outOfHours, setOutOfHours]                 = useState(true);
+  const [escalate, setEscalate]                     = useState(true);
+  const [quickReplies, setQuickReplies]             = useState(true);
+  const [freeShippingEnabled, setFreeShippingEnabled] = useState(false);
+  const [freeShippingMin, setFreeShippingMin]       = useState<number | ''>('');
+  const [pickupEnabled, setPickupEnabled]           = useState(false);
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+  const [banks, setBanks] = useState<BankMeta[]>([]);
+  const [bizTypes, setBizTypes] = useState<BusinessTypeMeta[]>([]);
+   const [personTypes, setPersonTypes] = useState<PersonTypeMeta[]>([]);
+   const [islrRegimens, setIslrRegimens] = useState<IslrRegimenMeta[]>([]);
+  const [catalogsLoading, setCatalogsLoading] = useState(false);
+  const [catalogsError, setCatalogsError] = useState<string | null>(null);
+
+  const {
+    register, handleSubmit, control, watch, reset,
+    formState: { errors, isDirty, dirtyFields },
+  } = useForm<SettingsFormData>({
+    defaultValues: {
+      name: '', slug: '', whatsappPhone: '', city: '', instagram: '', schedule: '',
+      description: '', businessType: '', ownerName: '', ownerPhone: '', ownerEmail: '', businessAddress: '',
+      personaType: 'NATURAL', businessProfile: 'TIENDA_FISICA',
+      rif: '', razonSocial: '', fiscalAddress: '',
+      estadoId: '', municipioId: '', parroquiaId: '',
+      postalCode: '', electronicInvoicing: false, islrRegimen: '',
+      zelleEmail: '', zelleName: '',
+      pagoMovilPhone: '', pagoMovilBank: '', pagoMovilId: '', binanceId: '',
+      transferAccount: '', transferName: '', cashUsdExchangeRate: '',
+      showBs: true, showStock: false, showChatButton: true,
+      allowOrdersWithoutStock: false, showSearch: true, showStrikePrice: false,
+      minOrderAmount: '', maxOrderAmount: '',
+    },
+  });
+
+  const watchedValues = watch();
+  const dirtyCount = Object.keys(dirtyFields).length;
+
+  // ── Load settings ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) { router.replace('/auth/login'); return; }
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await settingsApi.get();
+        const d = res.data;
+        const pm: PaymentMethods = d.paymentMethods ?? {};
+        const co: CatalogOptions = d.catalogOptions ?? {};
+        reset({
+          name: d.name ?? '', slug: d.slug ?? '', whatsappPhone: d.whatsappPhone ?? '',
+          city: d.city ?? '', instagram: d.instagram ?? '', schedule: d.schedule ?? '',
+          description: d.description ?? '', businessType: d.businessType ?? '',
+          ownerName: d.ownerName ?? '', ownerPhone: d.ownerPhone ?? '', ownerEmail: d.ownerEmail ?? '',
+          businessAddress: d.businessAddress ?? '',
+          personaType: d.personaType ? (String(d.personaType).toUpperCase() as PersonaType) : 'NATURAL',
+          businessProfile: (d.businessProfile as BusinessProfile) ?? 'TIENDA_FISICA',
+          rif: d.rif ?? '', razonSocial: d.razonSocial ?? '', fiscalAddress: d.fiscalAddress ?? '',
+          estadoId: d.estadoId ?? '',
+          municipioId: d.municipioId ?? '',
+          parroquiaId: d.parroquiaId ?? '',
+          postalCode: d.postalCode ?? '',
+          electronicInvoicing: d.electronicInvoicing ?? false,
+          islrRegimen: d.islrRegimen ? (String(d.islrRegimen).toUpperCase() as ISLRRegimen) : '',
+          zelleEmail: pm.zelle?.email ?? '', zelleName: pm.zelle?.name ?? '',
+          pagoMovilPhone: pm.pagoMovil?.phone ?? '', pagoMovilBank: pm.pagoMovil?.bank ?? '',
+          pagoMovilId: pm.pagoMovil?.id ?? '', binanceId: pm.binance?.id ?? '',
+          transferAccount: pm.transfer?.account ?? '', transferName: pm.transfer?.name ?? '',
+          cashUsdExchangeRate: d.cashUsdExchangeRate ?? '',
+          showBs: co.showBs ?? true, showStock: co.showStock ?? false,
+          showChatButton: co.showChatButton ?? true,
+          allowOrdersWithoutStock: co.allowOrdersWithoutStock ?? false,
+          showSearch: co.showSearch ?? true, showStrikePrice: co.showStrikePrice ?? false,
+          minOrderAmount: co.minOrderAmount ?? '', maxOrderAmount: co.maxOrderAmount ?? '',
+        });
+        setNotifSettings(d.notificationSettings ?? {});
+      } catch { /* silent — form keeps defaults */ }
+      finally { setLoading(false); }
+    };
+    load();
+  }, [router, reset]);
+
+  useEffect(() => {
+    geoApi.getEstados().then(res => setEstados(res.data));
+  }, []);
+
+  useEffect(() => {
+    setCatalogsLoading(true);
+    setCatalogsError(null);
+    Promise.all([
+      metaApi.getBanks(),
+      metaApi.getBusinessTypes(),
+      metaApi.getPersonTypes(),
+      metaApi.getIslrRegimens(),
+    ])
+      .then(([banksRes, typesRes, personTypesRes, islrRes]) => {
+        setBanks(banksRes.data);
+        setBizTypes(typesRes.data);
+        setPersonTypes(personTypesRes.data);
+        setIslrRegimens(islrRes.data);
+      })
+      .catch(() => setCatalogsError('No se pudieron cargar catálogos'))
+      .finally(() => setCatalogsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const id = watchedValues.estadoId;
+    if (id) {
+      geoApi.getMunicipios(Number(id)).then(res => {
+        setMunicipios(res.data);
+        setParroquias([]);
+      });
+    } else {
+      setMunicipios([]);
+      setParroquias([]);
+    }
+  }, [watchedValues.estadoId]);
+
+  useEffect(() => {
+    const id = watchedValues.municipioId;
+    if (id) {
+      geoApi.getParroquias(Number(id)).then(res => {
+        setParroquias(res.data);
+      });
+    } else {
+      setParroquias([]);
+    }
+  }, [watchedValues.municipioId]);
+
+  // ── Load WhatsApp ────────────────────────────────────────────────────────
+  useEffect(() => {
+    setWaLoading(true);
+    whatsappApi.getStatus()
+      .then(r => setWhatsappStatus(r.data))
+      .catch(() => {})
+      .finally(() => setWaLoading(false));
+  }, []);
+
+  // ── Save ─────────────────────────────────────────────────────────────────
+  const onSubmit = async (values: SettingsFormData) => {
+    setSaving(true);
+    setSaveError(null);
+    setSavedOk(false);
+    try {
+      await settingsApi.update({
+        name: values.name, slug: values.slug, whatsappPhone: values.whatsappPhone,
+        city: values.city, instagram: values.instagram, schedule: values.schedule,
+        description: values.description, businessType: values.businessType,
+        ownerName: values.ownerName || undefined,
+        ownerPhone: values.ownerPhone || undefined,
+        ownerEmail: values.ownerEmail || undefined,
+        businessAddress: values.businessAddress || undefined,
+        personaType: values.personaType || undefined,
+        businessProfile: values.businessProfile || undefined,
+        rif: values.rif || undefined,
+        razonSocial: values.razonSocial || undefined,
+        fiscalAddress: values.fiscalAddress || undefined,
+        state: values.state || undefined,
+        municipio: values.municipio || undefined,
+        parroquia: values.parroquia || undefined,
+        estadoId: values.estadoId || undefined,
+        municipioId: values.municipioId || undefined,
+        parroquiaId: values.parroquiaId || undefined,
+        postalCode: values.postalCode || undefined,
+        electronicInvoicing: values.electronicInvoicing || undefined,
+        islrRegimen: values.islrRegimen || undefined,
+        cashUsdExchangeRate: values.cashUsdExchangeRate || undefined,
+        paymentMethods: {
+          zelle:    { email: values.zelleEmail, name: values.zelleName },
+          pagoMovil:{ phone: values.pagoMovilPhone, bank: values.pagoMovilBank, id: values.pagoMovilId },
+          binance:  { id: values.binanceId },
+          transfer: { account: values.transferAccount, name: values.transferName },
+        },
+        catalogOptions: {
+          showBs: values.showBs, showStock: values.showStock,
+          showChatButton: values.showChatButton,
+        },
+        notificationSettings: notifSettings,
+      });
+      setSavedOk(true);
+      reset(values);
+      setTimeout(() => setSavedOk(false), 3000);
+    } catch {
+      setSaveError('No se pudieron guardar los cambios. Intenta de nuevo.');
+    } finally { setSaving(false); }
+  };
+
+  const handleNotif = (ch: string, ev: string, val: boolean) =>
+    setNotifSettings(p => ({ ...p, [ch]: { ...(p[ch] ?? {}), [ev]: val } }));
+
+  const toggleModule = (id: string) =>
+    setModules(p => p.map(m => m.id === id ? { ...m, enabled: !m.enabled } : m));
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 pb-20">
+
+      {/* ── STICKY HEADER ─────────────────────────────────────────────────── */}
+      <div className="sticky top-0 z-40 -mx-6 border-b border-zinc-800 bg-zinc-950/95 px-6 py-4 backdrop-blur-md">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-zinc-50">Configuración</h1>
+            <p className="text-xs text-zinc-500">Ajusta tu negocio, catálogo, pagos y más.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {isDirty && (
+              <div className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+                <span className="text-[11px] font-medium text-amber-400">
+                  {dirtyCount} sin guardar
+                </span>
+              </div>
+            )}
+            {savedOk && (
+              <div className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5">
+                <span className="text-[11px] font-medium text-emerald-400">✓ Guardado</span>
+              </div>
+            )}
+            <button
+              type="submit"
+              disabled={saving || loading || !isDirty}
+              className="flex items-center gap-2 rounded-xl bg-[#f5c842] px-5 py-2.5 text-sm font-bold text-zinc-950 shadow-lg shadow-yellow-950/30 transition hover:bg-[#f5c842]/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {saving ? (
+                <><svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                </svg>Guardando...</>
+              ) : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
       </div>
 
-      {error && (
-        <div className="rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-100 shadow-xl">
-          {error}
+      {/* ── ERROR BANNER ──────────────────────────────────────────────────── */}
+      {saveError && (
+        <div className="flex items-center justify-between rounded-xl border border-red-500/40 bg-red-950/40 px-4 py-3 text-sm text-red-300">
+          <span>⚠ {saveError}</span>
+          <button type="button" onClick={() => setSaveError(null)} className="text-red-400 hover:text-red-200">✕</button>
         </div>
       )}
 
-      {loading && !error && (
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/70 px-4 py-3 text-sm text-zinc-400 shadow-xl">
-          Cargando configuración del negocio...
+      {/* ── SKELETON ──────────────────────────────────────────────────────── */}
+      {loading ? (
+        <div className="space-y-3 animate-pulse">
+          <div className="h-12 rounded-xl bg-zinc-800" />
+          {[1,2,3].map(i => <div key={i} className="h-28 rounded-2xl bg-zinc-800/70" />)}
         </div>
-      )}
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
 
-      <section className="grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
-        <div className="space-y-6">
-          {/* TIPO DE NEGOCIO */}
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-[var(--border)] px-6 py-5">
-              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
-                🏪 Tipo de Negocio
-              </h2>
-              <p className="text-xs text-[var(--muted)]">
-                Define tu ramo para activar funciones específicas.
-              </p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {[
-                  { id: 'FASHION', name: 'Moda y Ropa', icon: '👗' },
-                  { id: 'FOOD', name: 'Comida', icon: '🍔' },
-                  { id: 'BEAUTY', name: 'Belleza', icon: '💄' },
-                  { id: 'TECH', name: 'Tecnología', icon: '📱' },
-                  { id: 'GROCERY', name: 'Abastos', icon: '🛒' },
-                  { id: 'HOME', name: 'Hogar', icon: '🏠' },
-                  { id: 'HEALTH', name: 'Salud', icon: '🌿' },
-                  { id: 'EDUCATION', name: 'Educación', icon: '📚' },
-                  { id: 'AUTO', name: 'Automotriz', icon: '🚗' },
-                  { id: 'SERVICE', name: 'Servicios', icon: '🔧' },
-                  { id: 'PET', name: 'Mascotas', icon: '🐾' },
-                  { id: 'OTHER', name: 'Otro', icon: '⚡' },
-                ].map(ramo => (
-                  <button
-                    key={ramo.id}
-                    onClick={() => setBusiness(prev => ({ ...prev, type: ramo.id as any }))}
-                    className={`p-4 rounded-2xl border-2 transition-all text-center flex flex-col items-center gap-2 active:scale-95 ${business.type === ramo.id ? 'border-[var(--accent)] bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--background)]/40 hover:border-[var(--muted)]'}`}
-                  >
-                    <span className="text-2xl">{ramo.icon}</span>
-                    <div className="text-[10px] font-bold uppercase tracking-tight text-[var(--foreground)]">{ramo.name}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* ── LEFT COLUMN ───────────────────────────────────────────────── */}
+          <div className="space-y-5 min-w-0">
 
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-[var(--border)] px-6 py-5">
-              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
-                🏷️ Datos de la Tienda
-              </h2>
-              <p className="text-xs text-[var(--muted)]">
-                Datos que verán tus clientes en el catálogo público.
-              </p>
-            </div>
-            <div className="grid gap-5 px-6 py-6 md:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold tracking-wider text-[var(--muted)] uppercase">
-                  Nombre de la tienda
-                </label>
-                <input
-                  type="text"
-                  value={business.name}
-                  onChange={event => handleBusinessChange('name', event.target.value)}
-                  className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm text-[var(--foreground)] outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
-                  placeholder="Mis Modas 2025"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                  Usuario / slug (URL)
-                </label>
-                <input
-                  type="text"
-                  value={business.slug}
-                  onChange={event => handleBusinessChange('slug', event.target.value)}
-                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
-                  placeholder="mismodas2025"
-                />
-                <p className="mt-1.5 text-[10px] text-zinc-500 font-medium">
-                  ventasve.app/c/{business.slug || 'tutienda'}
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                  Teléfono WhatsApp
-                </label>
-                <input
-                  type="tel"
-                  value={business.whatsappPhone}
-                  onChange={event => handleBusinessChange('whatsappPhone', event.target.value)}
-                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
-                  placeholder="+58 412-555-0123"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                  Ciudad principal
-                </label>
-                <select
-                  value={business.city}
-                  onChange={event => handleBusinessChange('city', event.target.value)}
-                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 appearance-none"
+            {/* Tab bar */}
+            <div className="flex gap-1 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-900 p-1 scrollbar-hide">
+              {TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-medium transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? 'bg-zinc-950 text-zinc-100 shadow-sm'
+                      : 'text-zinc-500 hover:text-zinc-300'
+                  }`}
                 >
-                  <option value="">Selecciona una ciudad</option>
-                  <option value="Caracas">Caracas</option>
-                  <option value="Maracaibo">Maracaibo</option>
-                  <option value="Valencia">Valencia</option>
-                  <option value="Barquisimeto">Barquisimeto</option>
-                  <option value="Maturín">Maturín</option>
-                  <option value="Barcelona">Barcelona</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                  Instagram
-                </label>
-                <input
-                  type="text"
-                  value={business.instagram}
-                  onChange={event => handleBusinessChange('instagram', event.target.value)}
-                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
-                  placeholder="@mismodas2025"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                  Horario de atención
-                </label>
-                <input
-                  type="text"
-                  value={business.schedule}
-                  onChange={event => handleBusinessChange('schedule', event.target.value)}
-                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10"
-                  placeholder="Lun–Sáb 8am–6pm"
-                />
-              </div>
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="text-[11px] font-bold tracking-wider text-zinc-400 uppercase">
-                  Descripción de la tienda
-                </label>
-                <textarea
-                  value={business.description}
-                  onChange={event => handleBusinessChange('description', event.target.value)}
-                  className="min-h-[100px] w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition-all focus:border-[var(--accent)] focus:ring-4 focus:ring-[var(--accent)]/10 resize-none"
-                  placeholder="Cuenta brevemente qué vendes y cómo atiendes a tus clientes."
-                />
-              </div>
+                  <span>{tab.icon}</span>{tab.label}
+                </button>
+              ))}
             </div>
-          </div>
 
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-zinc-800 px-6 py-5">
-              <h2 className="font-heading text-lg font-bold text-zinc-50">
-                Métodos de pago
-              </h2>
-              <p className="text-xs text-zinc-500">
-                Define cómo pueden pagarte tus clientes.
-              </p>
-            </div>
-            <div className="grid gap-4 px-6 py-6 md:grid-cols-2">
-              <div className="space-y-3 rounded-2xl border-2 border-[var(--border)] bg-[var(--background)]/40 p-5 transition-all hover:border-[var(--muted)]">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">💸</span>
-                    <span className="text-sm font-bold text-[var(--foreground)]">Zelle</span>
-                  </div>
-                  <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
-                    ACTIVO
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={zelleEmail}
-                    onChange={event => setZelleEmail(event.target.value)}
-                    className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--foreground)] outline-none focus:border-[var(--accent)] transition-all"
-                    placeholder="Email o teléfono Zelle"
-                  />
-                  <input
-                    type="text"
-                    value={zelleName}
-                    onChange={event => setZelleName(event.target.value)}
-                    className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] px-3 py-2 text-xs text-[var(--foreground)] outline-none focus:border-[var(--accent)] transition-all"
-                    placeholder="Nombre del titular"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-2xl border-2 border-zinc-800 bg-zinc-950/40 p-5 transition-all hover:border-zinc-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">📱</span>
-                    <span className="text-sm font-bold text-zinc-100">Pago móvil</span>
-                  </div>
-                  <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
-                    ACTIVO
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={pagoMovilPhone}
-                    onChange={event => setPagoMovilPhone(event.target.value)}
-                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
-                    placeholder="Número de teléfono"
-                  />
-                  <select
-                    value={pagoMovilBank}
-                    onChange={event => setPagoMovilBank(event.target.value)}
-                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all appearance-none"
-                  >
-                    <option value="">Selecciona un banco</option>
-                    <option value="Banesco">Banesco</option>
-                    <option value="Banco de Venezuela">Banco de Venezuela</option>
-                    <option value="Mercantil">Mercantil</option>
-                    <option value="Provincial">Provincial</option>
-                    <option value="Otro banco">Otro banco</option>
-                  </select>
-                  <input
-                    type="text"
-                    value={pagoMovilId}
-                    onChange={event => setPagoMovilId(event.target.value)}
-                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
-                    placeholder="Cédula del titular"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-2xl border-2 border-zinc-800 bg-zinc-950/40 p-5 transition-all hover:border-zinc-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">⚡</span>
-                    <span className="text-sm font-bold text-zinc-100">Binance Pay</span>
-                  </div>
-                  <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[10px] font-bold text-emerald-400 border border-emerald-500/20">
-                    ACTIVO
-                  </span>
-                </div>
-                <input
-                  type="text"
-                  value={binanceId}
-                  onChange={event => setBinanceId(event.target.value)}
-                  className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
-                  placeholder="Binance Pay ID o email"
-                />
-              </div>
-
-              <div className="space-y-3 rounded-2xl border-2 border-zinc-800 bg-zinc-950/40 p-5 transition-all hover:border-zinc-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🏦</span>
-                    <span className="text-sm font-bold text-zinc-100">Transferencia</span>
-                  </div>
-                  <span className="rounded-lg bg-zinc-800 px-2 py-1 text-[10px] font-bold text-zinc-500 border border-zinc-700">
-                    OPCIONAL
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    value={transferAccount}
-                    onChange={event => setTransferAccount(event.target.value)}
-                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
-                    placeholder="Número de cuenta"
-                  />
-                  <input
-                    type="text"
-                    value={transferName}
-                    onChange={event => setTransferName(event.target.value)}
-                    className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
-                    placeholder="Titular"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          {/* ENVÍOS */}
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-[var(--border)] px-6 py-5">
-              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
-                🚚 Zonas de Envío
-              </h2>
-            </div>
-            <div className="p-6 space-y-4">
-               {[
-                 { name: 'Caracas (mismo día)', price: '$2.00', free: '>$20' },
-                 { name: 'Interior del país', price: '$6.00', free: 'MRW/Zoom' }
-               ].map(zone => (
-                 <div key={zone.name} className="flex items-center justify-between p-4 rounded-xl bg-[var(--background)]/40 border border-[var(--border)]">
-                    <div className="flex-1">
-                        <div className="text-sm font-bold text-[var(--foreground)]">{zone.name}</div>
-                        <div className="text-[10px] font-bold text-emerald-500 uppercase">Envío: {zone.price} · {zone.free}</div>
-                    </div>
-                    <button className="text-[10px] font-bold text-[var(--accent)] border border-[var(--accent)]/30 px-3 py-1.5 rounded-lg uppercase">Editar</button>
-                 </div>
-               ))}
-               <button className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-xs font-bold text-[var(--muted)] uppercase hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all">
-                 + Agregar nueva zona
-               </button>
-            </div>
-          </div>
-
-          {/* CHATBOT FLOW BUILDER */}
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-[var(--border)] px-6 py-5 flex items-center justify-between">
-              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
-                🤖 Flujo de ChatBot
-              </h2>
-              <span className="rounded-lg bg-emerald-500/10 px-2 py-1 text-[9px] font-bold text-emerald-500 border border-emerald-500/20 uppercase tracking-widest">Activo</span>
-            </div>
-            <div className="p-6 space-y-3">
-               {[
-                 { step: 1, title: 'Saludo y menú', type: 'MENÚ', color: 'bg-purple-500' },
-                 { step: 2, title: 'Enviar link catálogo', type: 'AUTO', color: 'bg-blue-500' },
-                 { step: 3, title: 'Capturar pedido', type: 'MSJ', color: 'bg-emerald-500' },
-               ].map(flow => (
-                 <div key={flow.step} className="flex items-center gap-4 p-4 rounded-xl bg-[var(--background)]/40 border border-[var(--border)] cursor-grab active:cursor-grabbing">
-                    <div className="h-8 w-8 rounded-lg bg-[var(--accent)] flex items-center justify-center font-heading font-black text-black text-xs">{flow.step}</div>
-                    <div className="flex-1 text-sm font-bold text-[var(--foreground)]">{flow.title}</div>
-                    <div className={`px-2 py-1 rounded text-[9px] font-bold text-white ${flow.color}`}>{flow.type}</div>
-                    <div className="text-[var(--muted)] opacity-30">⋮⋮</div>
-                 </div>
-               ))}
-               <button className="w-full py-3 rounded-xl border-2 border-dashed border-[var(--border)] text-xs font-bold text-[var(--muted)] uppercase hover:border-[var(--accent)] hover:text-[var(--accent)] transition-all">
-                 + Nuevo paso
-               </button>
-            </div>
-          </div>
-
-          {/* MÓDULOS */}
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-[var(--border)] px-6 py-5">
-              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
-                🧩 Módulos Activos
-              </h2>
-            </div>
-            <div className="p-6 grid grid-cols-2 gap-4">
-               {[
-                 { name: 'Gestión Pedidos', plan: 'FREE', icon: '📦', active: true },
-                 { name: 'Catálogo Online', plan: 'FREE', icon: '🛍️', active: true },
-                 { name: 'Inbox Unificado', plan: 'PRO', icon: '💬', active: true },
-                 { name: 'ChatBot IA', plan: 'PRO', icon: '🤖', active: true },
-                 { name: 'Reportes Pro', plan: 'BIZ', icon: '📊', active: false },
-                 { name: 'Marketing', plan: 'BIZ', icon: '🎁', active: false },
-               ].map(mod => (
-                 <div key={mod.name} className={`p-4 rounded-2xl border-2 transition-all flex flex-col gap-3 ${mod.active ? 'border-[var(--accent)]/30 bg-[var(--accent)]/5' : 'border-[var(--border)] bg-[var(--background)]/20 opacity-60'}`}>
-                    <div className="flex justify-between items-start">
-                        <span className="text-2xl">{mod.icon}</span>
-                        <span className={`px-2 py-0.5 rounded text-[8px] font-black tracking-widest ${mod.plan === 'FREE' ? 'bg-emerald-500/20 text-emerald-500' : mod.plan === 'PRO' ? 'bg-orange-500/20 text-orange-500' : 'bg-red-500/20 text-red-500'}`}>{mod.plan}</span>
-                    </div>
-                    <div className="text-[11px] font-bold text-[var(--foreground)] uppercase truncate">{mod.name}</div>
-                    <div className="flex justify-between items-center mt-2">
-                        <span className="text-[9px] font-bold text-[var(--muted)] uppercase">{mod.active ? 'Activo' : 'Inactivo'}</span>
-                        <div className={`w-8 h-4 rounded-full relative transition-colors ${mod.active ? 'bg-emerald-500' : 'bg-zinc-700'}`}>
-                            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${mod.active ? 'right-0.5' : 'left-0.5'}`} />
-                        </div>
-                    </div>
-                 </div>
-               ))}
-            </div>
-          </div>
-
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-zinc-800 bg-zinc-900/60 shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-zinc-800 px-6 py-5">
-              <h2 className="font-heading text-lg font-bold text-zinc-50">
-                WhatsApp
-              </h2>
-              <p className="text-xs text-zinc-500">
-                Conecta tu número para recibir pedidos.
-              </p>
-            </div>
-            <div className="space-y-4 px-6 py-6">
-              <div className="flex items-center justify-between rounded-2xl border-2 border-zinc-800 bg-zinc-950/40 px-4 py-4">
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-zinc-100 uppercase tracking-tight">
-                    Estado de conexión
-                  </div>
-                  <div className="text-[11px] text-zinc-500 leading-relaxed max-w-[180px]">
-                    {whatsappLoading
-                      ? 'Verificando conexión...'
-                      : whatsappStatus?.connected
-                        ? 'Tu negocio está conectado a WhatsApp.'
-                        : 'Conecta tu WhatsApp para empezar a recibir pedidos.'}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                   {whatsappStatus?.connected && <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
-                  <span
-                    className={
-                      whatsappStatus?.connected
-                        ? 'text-xs font-bold text-emerald-400'
-                        : 'text-xs font-bold text-zinc-500'
-                    }
-                  >
-                    {whatsappStatus?.connected ? 'Conectado' : 'Desconectado'}
-                  </span>
-                </div>
-              </div>
-
-              {!whatsappStatus?.connected && whatsappStatus?.qr && (
-                <div className="space-y-6 rounded-[28px] border-2 border-dashed border-[var(--border)] bg-[var(--background)]/20 p-8 text-center transition-all hover:border-[var(--accent)]/50">
-                  <div className="space-y-2">
-                    <div className="text-sm font-bold text-[var(--foreground)] font-heading">
-                      Escanea el código QR
-                    </div>
-                    <p className="text-[10px] text-[var(--muted)] leading-relaxed max-w-[200px] mx-auto">
-                      Abre WhatsApp en tu teléfono &gt; Dispositivos vinculados &gt; Vincular un dispositivo.
-                    </p>
-                  </div>
-                  <div className="relative mx-auto inline-block">
-                    <div className="absolute -inset-4 rounded-[32px] border-2 border-dashed border-[var(--accent)]/20 animate-[spin_10s_linear_infinite]" />
-                    <div className="relative rounded-2xl bg-white p-4 shadow-2xl">
-                      <Image
-                        src={whatsappStatus.qr}
-                        alt="Código QR de WhatsApp"
-                        width={180}
-                        height={180}
-                        className="h-40 w-40"
-                        unoptimized
+            {/* ══════════════════════════════════════════════════════════════
+                TAB: MI NEGOCIO
+            ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'negocio' && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader title="Datos de la tienda" subtitle="Información visible en tu catálogo público" icon="🏷️" />
+                  <div className="grid grid-cols-2 gap-4 p-5">
+                    <Field label="Nombre de la tienda" error={errors.name?.message}>
+                      <input {...register('name', { validate: validators.name })}
+                        className={errors.name ? iErrCls : iCls} placeholder="Mis Modas 2025" />
+                    </Field>
+                    <Field label="Slug / URL" error={errors.slug?.message}
+                      hint={`ventasve.app/c/${watchedValues.slug || 'tutienda'}`}>
+                      <input {...register('slug', { validate: validators.slug })}
+                        className={errors.slug ? iErrCls : iCls} placeholder="mismodas2025" />
+                    </Field>
+                    <Field label="Teléfono WhatsApp" error={errors.whatsappPhone?.message}>
+                      <input {...register('whatsappPhone', { validate: validators.whatsappPhone })}
+                        type="tel" className={errors.whatsappPhone ? iErrCls : iCls} placeholder="+58 412-555-0123" />
+                    </Field>
+                    <Field label="Ciudad principal" error={errors.city?.message}>
+                      <input
+                        {...register('city', { validate: validators.city })}
+                        className={errors.city ? iErrCls : iCls}
+                        placeholder="Ej: Caracas, Distrito Capital"
                       />
+                    </Field>
+                    <Field label="Instagram">
+                      <input {...register('instagram')} className={iCls} placeholder="@mismodas2025" />
+                    </Field>
+                    <Field label="Horario de atención">
+                      <input {...register('schedule')} className={iCls} placeholder="Lun–Sáb 8am–6pm" />
+                    </Field>
+                    <Field label="Tipo de negocio" error={errors.businessType?.message} full>
+                      <select {...register('businessType', { validate: validators.businessType })}
+                        className={errors.businessType ? iErrCls : iCls} style={{ appearance:'none' }} disabled={catalogsLoading || bizTypes.length === 0}>
+                        <option value="">Seleccionar...</option>
+                        {bizTypes.map(t => (
+                          <option key={t.id} value={t.codigo}>
+                            {t.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      {catalogsError && <p className="mt-1 text-[10px] text-red-400">⚠ {catalogsError}</p>}
+                    </Field>
+                    <div className="col-span-2">
+                      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                        Descripción
+                        <span className="float-right font-normal text-zinc-600">{(watchedValues.description || '').length}/300</span>
+                      </label>
+                      <textarea {...register('description', { validate: validators.description })}
+                        className={`min-h-[90px] resize-none ${errors.description ? iErrCls : iCls}`}
+                        placeholder="Describe brevemente tu tienda..." />
+                      {errors.description && <p className="mt-1 text-[10px] text-red-400">⚠ {errors.description.message}</p>}
+                    </div>
+                    <div className="col-span-2">
+                      <LogoUpload preview={logoPreview} onPreviewChange={setLogoPreview} />
                     </div>
                   </div>
-                  <button className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-widest mt-4">Actualizar QR</button>
+                </Card>
+                <Card>
+                  <CardHeader title="Ubicación" subtitle="Información de dirección para clientes y logística" icon="📍" />
+                  <div className="grid grid-cols-2 gap-4 p-5">
+                    <Field label="Dirección del negocio" error={errors.businessAddress?.message} full>
+                      <input
+                        {...register('businessAddress', { validate: validators.businessAddress })}
+                        className={errors.businessAddress ? iErrCls : iCls}
+                        placeholder="Calle, edificio, local... (máx. 200 caracteres)"
+                      />
+                    </Field>
+                    <Field label="Estado" error={errors.estadoId?.message}>
+                      <select
+                        {...register('estadoId', { validate: validators.estadoId })}
+                        className={errors.estadoId ? iErrCls : iCls}
+                        style={{ appearance: 'none' }}
+                      >
+                        <option value="">Seleccionar estado...</option>
+                        {estados.map(e => (
+                          <option key={e.id} value={e.id}>{e.nombre_estado}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Municipio" error={errors.municipioId?.message}>
+                      <select
+                        {...register('municipioId', { validate: validators.municipioId })}
+                        className={errors.municipioId ? iErrCls : iCls}
+                        style={{ appearance: 'none' }}
+                        disabled={!watchedValues.estadoId}
+                      >
+                        <option value="">Seleccionar municipio...</option>
+                        {municipios.map(m => (
+                          <option key={m.id} value={m.id}>{m.nombre_municipio}</option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field label="Parroquia">
+                      <select
+                        {...register('parroquiaId')}
+                        className={iCls}
+                        style={{ appearance: 'none' }}
+                        disabled={!watchedValues.municipioId}
+                      >
+                        <option value="">Seleccionar parroquia...</option>
+                        {parroquias.map(p => (
+                          <option key={p.id} value={p.id}>{p.nombre_parroquia}</option>
+                        ))}
+                      </select>
+                    </Field>
+                  </div>
+                </Card>
+                <Card>
+                  <CardHeader title="Datos fiscales" subtitle="Información para facturación e identificación tributaria" icon="🧾" />
+                  <div className="grid grid-cols-2 gap-4 p-5">
+                    <div className="col-span-2">
+                      <Field label="Perfil fiscal del negocio" full>
+                        <select
+                          {...register('businessProfile')}
+                          className={iCls}
+                          style={{ appearance: 'none' }}
+                        >
+                          {BUSINESS_PROFILES.map(p => (
+                            <option key={p.id} value={p.id}>{p.label}</option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[10px] text-amber-400">
+                          {BUSINESS_PROFILES.find(p => p.id === watchedValues.businessProfile)?.description}
+                        </p>
+                      </Field>
+                    </div>
+                    <div className="col-span-2">
+                      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--foreground2)]">Tipo de persona</label>
+                      <div className="flex flex-wrap items-center gap-4">
+                        {personTypes.map(p => (
+                          <label key={p.id} className="flex items-center gap-2 text-sm text-[var(--foreground)]">
+                            <input
+                              type="radio"
+                              value={p.codigo}
+                              {...register('personaType')}
+                              className="accent-[var(--accent)]"
+                            />
+                            {p.nombre}
+                          </label>
+                        ))}
+                      </div>
+                      {catalogsError && (
+                        <p className="mt-1 text-[10px] text-red-400">⚠ {catalogsError}</p>
+                      )}
+                    </div>
+                    <Field label="RIF" error={errors.rif?.message}>
+                      <input {...register('rif', { validate: validators.rif })} className={errors.rif ? iErrCls : iCls} placeholder="J-12345678-9" />
+                    </Field>
+                    <Field label="Razón social">
+                      <input {...register('razonSocial')} className={iCls} placeholder="Nombre legal de la empresa" />
+                    </Field>
+                    <Field label="Dirección fiscal" error={errors.fiscalAddress?.message} full>
+                      <input {...register('fiscalAddress', { validate: validators.fiscalAddress })} className={errors.fiscalAddress ? iErrCls : iCls} placeholder="Dirección completa para facturación" />
+                    </Field>
+                    <Field label="Código postal">
+                      <input {...register('postalCode')} className={iCls} placeholder="Ej: 1010" />
+                    </Field>
+                    <div className="col-span-2">
+                      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wider text-[var(--foreground2)]">Opciones</label>
+                      <div className="flex items-center gap-6">
+                        <label className="flex items-center gap-2 text-sm text-[var(--foreground)]">
+                          <input type="checkbox" {...register('electronicInvoicing')} className="accent-[var(--accent)]" />
+                          Requiere facturación electrónica
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-[var(--foreground2)]">Régimen ISLR</span>
+                          <select
+                            {...register('islrRegimen')}
+                            className={iCls}
+                            style={{ appearance: 'none' }}
+                            disabled={catalogsLoading || islrRegimens.length === 0}
+                          >
+                            <option value="">Seleccionar...</option>
+                            {islrRegimens.map(r => (
+                              <option key={r.id} value={r.codigo}>
+                                {r.nombre}
+                              </option>
+                            ))}
+                          </select>
+                          {catalogsError && (
+                            <p className="mt-1 text-[10px] text-red-400">⚠ {catalogsError}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+                <Card>
+                  <CardHeader title="Administrador" subtitle="Datos del propietario/administrador para contacto y notificaciones" icon="👤" />
+                  <div className="grid grid-cols-2 gap-4 p-5">
+                    <Field label="Nombre completo">
+                      <input {...register('ownerName')} className={iCls} placeholder="Nombre y apellido" />
+                    </Field>
+                    <Field label="Email" error={errors.ownerEmail?.message}>
+                      <input {...register('ownerEmail', { validate: validators.ownerEmail })} type="email" className={errors.ownerEmail ? iErrCls : iCls} placeholder="admin@tienda.com" />
+                    </Field>
+                    <Field label="Teléfono" error={errors.ownerPhone?.message}>
+                      <input {...register('ownerPhone', { validate: validators.ownerPhone })} className={errors.ownerPhone ? iErrCls : iCls} placeholder="+58 412-555-0123" />
+                    </Field>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                TAB: PAGOS
+            ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'pagos' && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader title="Métodos de pago" subtitle="Configura cómo recibes el dinero de tus clientes" icon="💳" />
+                  <div className="grid grid-cols-2 gap-4 p-5">
+
+                    {/* Zelle */}
+                    <div className="col-span-1 space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2"><span className="text-lg">💸</span><span className="text-sm font-bold text-zinc-100">Zelle</span></div>
+                        <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">ACTIVO</span>
+                      </div>
+                      <Field label="Email o teléfono" error={errors.zelleEmail?.message}>
+                        <input {...register('zelleEmail', { validate: validators.zelleEmail })}
+                          className={`text-xs py-2 ${errors.zelleEmail ? iErrCls : iCls}`} placeholder="email@ejemplo.com" />
+                      </Field>
+                      <Field label="Nombre del titular">
+                        <input {...register('zelleName')} className={`text-xs py-2 ${iCls}`} placeholder="Juan Martínez" />
+                      </Field>
+                    </div>
+
+                    {/* Pago Móvil */}
+                    <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2"><span className="text-lg">📱</span><span className="text-sm font-bold text-zinc-100">Pago Móvil</span></div>
+                        <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">ACTIVO</span>
+                      </div>
+                      <input {...register('pagoMovilPhone')} className={`text-xs py-2 ${iCls}`} placeholder="Número de teléfono" />
+                      <select {...register('pagoMovilBank')} className={`text-xs py-2 ${iCls}`} style={{ appearance:'none' }} disabled={catalogsLoading || banks.length === 0}>
+                        <option value="">Seleccionar banco...</option>
+                        {banks.map(b => (
+                          <option key={b.id} value={b.nombre_corto || b.nombre}>
+                            {b.nombre_corto || b.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      {catalogsError && <p className="mt-1 text-[10px] text-red-400">⚠ {catalogsError}</p>}
+                      <input {...register('pagoMovilId')} className={`text-xs py-2 ${iCls}`} placeholder="Cédula del titular" />
+                    </div>
+
+                    {/* Binance */}
+                    <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2"><span className="text-lg">⚡</span><span className="text-sm font-bold text-zinc-100">Binance Pay</span></div>
+                        <span className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-400">ACTIVO</span>
+                      </div>
+                      <input {...register('binanceId')} className={`text-xs py-2 ${iCls}`} placeholder="Binance Pay ID o email" />
+                    </div>
+
+                    {/* Transferencia */}
+                    <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2"><span className="text-lg">🏦</span><span className="text-sm font-bold text-zinc-100">Transferencia</span></div>
+                        <span className="rounded-lg border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[10px] font-bold text-zinc-500">OPCIONAL</span>
+                      </div>
+                      <input {...register('transferAccount')} className={`text-xs py-2 ${iCls}`} placeholder="Número de cuenta" />
+                      <input {...register('transferName')} className={`text-xs py-2 ${iCls}`} placeholder="Titular" />
+                    </div>
+
+                    {/* Efectivo USD */}
+                    <div className="col-span-2 space-y-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-4">
+                      <div className="flex items-center gap-2"><span className="text-lg">💵</span><span className="text-sm font-bold text-zinc-100">Efectivo USD</span></div>
+                      <Field label="Tasa de cambio (USD → Bs)" error={errors.cashUsdExchangeRate?.message}
+                        hint="Usada para mostrar el equivalente en Bs. al cliente">
+                        <input {...register('cashUsdExchangeRate', { validate: validators.cashRate })}
+                          type="number" step="0.01" className={errors.cashUsdExchangeRate ? iErrCls : iCls} placeholder="Ej: 36500" />
+                      </Field>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                TAB: CATÁLOGO
+            ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'catalogo' && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader title="Opciones del catálogo" subtitle="Controla qué ve el cliente en tu tienda pública" icon="🛍️" />
+                  <div className="px-5 py-3">
+                    <Controller name="showBs" control={control} render={({ field }) => (
+                      <ToggleRow title="Mostrar precios en Bs." desc="Conversión automática al tipo de cambio BCV"
+                        checked={!!field.value} onChange={field.onChange} />
+                    )} />
+                    <Controller name="showStock" control={control} render={({ field }) => (
+                      <ToggleRow title="Mostrar stock disponible" desc="El cliente verá las unidades disponibles"
+                        checked={!!field.value} onChange={field.onChange} />
+                    )} />
+                    <Controller name="showChatButton" control={control} render={({ field }) => (
+                      <ToggleRow title="Botón flotante de WhatsApp" desc="Acceso rápido al chat en el catálogo"
+                        checked={!!field.value} onChange={field.onChange} />
+                    )} />
+                    <Controller name="allowOrdersWithoutStock" control={control} render={({ field }) => (
+                      <ToggleRow title="Permitir pedidos sin stock" desc="El cliente puede pedir aunque no haya existencias"
+                        checked={!!field.value} onChange={field.onChange} />
+                    )} />
+                    <Controller name="showSearch" control={control} render={({ field }) => (
+                      <ToggleRow title="Búsqueda de productos" desc="Barra de búsqueda visible en el catálogo"
+                        checked={!!field.value} onChange={field.onChange} />
+                    )} />
+                    <Controller name="showStrikePrice" control={control} render={({ field }) => (
+                      <ToggleRow title="Precio tachado en ofertas" desc="Muestra el precio original junto al precio de oferta"
+                        checked={!!field.value} onChange={field.onChange} />
+                    )} />
+                  </div>
+                </Card>
+
+                <Card>
+                  <CardHeader title="Límites de pedido" subtitle="Montos mínimos y máximos por orden" icon="🎯" />
+                  <div className="grid grid-cols-2 gap-4 p-5">
+                    <Field label="Monto mínimo de pedido ($)" error={errors.minOrderAmount?.message}>
+                      <input {...register('minOrderAmount')} type="number" step="0.01"
+                        className={iCls} placeholder="0.00" />
+                    </Field>
+                    <Field label="Monto máximo de pedido ($)" error={errors.maxOrderAmount?.message}>
+                      <input {...register('maxOrderAmount')} type="number" step="0.01"
+                        className={iCls} placeholder="Sin límite" />
+                    </Field>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                TAB: ENVÍOS
+            ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'envios' && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader title="Zonas de envío" subtitle="Define los costos según la ubicación del cliente" icon="🚚"
+                    action={
+                      <button type="button"
+                        onClick={() => setZones(p => [...p, { id: Date.now().toString(), name: 'Nueva zona', price: 5, free: false }])}
+                        className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-400 hover:border-[#f5c842] hover:text-[#f5c842] transition">
+                        + Agregar zona
+                      </button>
+                    }
+                  />
+                  <div className="divide-y divide-zinc-800 p-2">
+                    {zones.map(zone => (
+                      <div key={zone.id} className="flex items-center gap-3 rounded-xl px-3 py-3 hover:bg-zinc-800/30 transition">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-800 text-sm">🗺️</div>
+                        <input
+                          value={zone.name}
+                          onChange={e => setZones(p => p.map(z => z.id === zone.id ? { ...z, name: e.target.value } : z))}
+                          className="flex-1 bg-transparent text-sm font-medium text-zinc-100 outline-none border-b border-transparent focus:border-zinc-700"
+                        />
+                        {zone.free ? (
+                          <span className="rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-1 text-[10px] font-bold text-emerald-400">GRATIS</span>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs text-zinc-500">$</span>
+                            <input
+                              type="number"
+                              value={zone.price}
+                              onChange={e => setZones(p => p.map(z => z.id === zone.id ? { ...z, price: +e.target.value } : z))}
+                              className="w-16 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs text-zinc-100 outline-none focus:border-[#f5c842]"
+                            />
+                          </div>
+                        )}
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-zinc-500">
+                          <input type="checkbox" checked={zone.free}
+                            onChange={e => setZones(p => p.map(z => z.id === zone.id ? { ...z, free: e.target.checked } : z))}
+                            className="rounded border-zinc-700 bg-zinc-800 accent-[#f5c842]"
+                          />
+                          Gratis
+                        </label>
+                        <button type="button"
+                          onClick={() => setZones(p => p.filter(z => z.id !== zone.id))}
+                          className="text-zinc-600 hover:text-red-400 transition text-xs">✕</button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                <Card>
+                  <CardHeader title="Opciones de envío" icon="⚙️" />
+                  <div className="px-5 py-3">
+                    <ToggleRow title="Envío gratuito por monto mínimo" desc="Aplica envío gratis cuando el pedido supera cierto valor"
+                      checked={freeShippingEnabled} onChange={setFreeShippingEnabled} />
+                    {freeShippingEnabled && (
+                      <div className="mb-3 ml-0 mt-2">
+                        <Field label="Monto mínimo para envío gratis ($)">
+                          <input type="number" value={freeShippingMin}
+                            onChange={e => setFreeShippingMin(+e.target.value)}
+                            className={`${iCls} py-2 text-xs`} placeholder="Ej: 50" />
+                        </Field>
+                      </div>
+                    )}
+                    <ToggleRow title="Pickup / Retiro en tienda" desc="El cliente puede retirar personalmente"
+                      checked={pickupEnabled} onChange={setPickupEnabled} />
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                TAB: CHATBOT
+            ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'chatbot' && (
+              <div className="space-y-4">
+                <Card>
+                  <CardHeader title="Flujo del bot" subtitle="Pasos que seguirá el asistente al conversar con clientes" icon="🤖" />
+                  <div className="space-y-2 p-4">
+                    {botSteps.map((step, idx) => (
+                      <div key={step.id} className="flex items-start gap-3 rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f5c842] text-[11px] font-black text-zinc-950">{step.num}</div>
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <input
+                            value={step.label}
+                            onChange={e => setBotSteps(p => p.map(s => s.id === step.id ? { ...s, label: e.target.value } : s))}
+                            className="w-full bg-transparent text-sm font-semibold text-zinc-100 outline-none"
+                          />
+                          <input
+                            value={step.desc}
+                            onChange={e => setBotSteps(p => p.map(s => s.id === step.id ? { ...s, desc: e.target.value } : s))}
+                            className="w-full bg-transparent text-xs text-zinc-500 outline-none"
+                          />
+                        </div>
+                        <button type="button"
+                          onClick={() => setBotSteps(p => p.filter(s => s.id !== step.id))}
+                          className="text-zinc-700 hover:text-red-400 transition text-xs shrink-0">✕</button>
+                      </div>
+                    ))}
+                    <button type="button"
+                      onClick={() => setBotSteps(p => [...p, { id: Date.now().toString(), num: p.length + 1, label: 'Nuevo paso', desc: 'Descripción del paso' }])}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-zinc-700 py-3 text-xs font-medium text-zinc-500 hover:border-[#f5c842] hover:text-[#f5c842] transition">
+                      + Agregar paso
+                    </button>
+                  </div>
+                </Card>
+
+                <Card>
+                  <CardHeader title="Personalidad del bot" icon="✨" />
+                  <div className="grid grid-cols-2 gap-4 p-5">
+                    <Field label="Nombre del bot">
+                      <input value={botName} onChange={e => setBotName(e.target.value)}
+                        className={iCls} placeholder="Valeria" />
+                    </Field>
+                    <Field label="Tono de respuesta">
+                      <select value={botTone} onChange={e => setBotTone(e.target.value)}
+                        className={iCls} style={{ appearance:'none' }}>
+                        {['Profesional', 'Amigable', 'Casual', 'Formal'].map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </Field>
+                  </div>
+                  <div className="border-t border-zinc-800 px-5 py-3">
+                    <ToggleRow title="Respuesta fuera de horario" desc="El bot avisa cuando la tienda está cerrada"
+                      checked={outOfHours} onChange={setOutOfHours} />
+                    <ToggleRow title="Escalar a humano automáticamente" desc="Si el cliente no recibe respuesta en 30 min"
+                      checked={escalate} onChange={setEscalate} />
+                    <ToggleRow title="Respuestas rápidas sugeridas" desc="Muestra opciones de respuesta al cliente"
+                      checked={quickReplies} onChange={setQuickReplies} />
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                TAB: MÓDULOS
+            ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'modulos' && (
+              <Card>
+                <CardHeader title="Módulos activos" subtitle="Activa o desactiva funcionalidades de la plataforma" icon="🧩" />
+                <div className="grid grid-cols-2 gap-3 p-5">
+                  {modules.map(mod => (
+                    <div key={mod.id}
+                      className={`relative rounded-xl border p-4 transition-all ${
+                        mod.enabled ? 'border-[#f5c842]/30 bg-[#f5c842]/5' : 'border-zinc-800 bg-zinc-950/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <div className="text-2xl mb-1">{mod.icon}</div>
+                          <div className="text-sm font-bold text-zinc-100">{mod.name}</div>
+                        </div>
+                        <Toggle checked={mod.enabled} onChange={() => toggleModule(mod.id)} accent />
+                      </div>
+                      <p className="text-[11px] text-zinc-500 mb-2 leading-relaxed">{mod.desc}</p>
+                      <PlanBadge plan={mod.plan} />
+                    </div>
+                  ))}
                 </div>
-              )}
+              </Card>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                TAB: NOTIFICACIONES
+            ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'notificaciones' && (
+              <div className="space-y-4">
+                {/* WhatsApp */}
+                <Card>
+                  <CardHeader title="WhatsApp" icon="💬" />
+                  <div className="px-5 py-3">
+                    {[
+                      ['newOrder',          'Nuevo pedido recibido'],
+                      ['orderStatusUpdate', 'Actualización de estado del pedido'],
+                      ['newMessage',        'Mensaje de cliente sin responder 30 min'],
+                      ['lowStock',          'Producto con stock bajo (<5 unidades)'],
+                      ['dailySummary',      'Resumen diario de ventas (8 AM)'],
+                      ['botEscalation',     'Bot escaló conversación a humano'],
+                    ].map(([ev, label]) => (
+                      <ToggleRow key={ev} title={label as string}
+                        checked={notifSettings.whatsapp?.[ev] ?? true}
+                        onChange={val => handleNotif('whatsapp', ev, val)} />
+                    ))}
+                  </div>
+                </Card>
+
+                {/* SMS */}
+                <Card>
+                  <CardHeader title="SMS" icon="📱" />
+                  <div className="px-5 py-3">
+                    {[
+                      ['newOrder',          'Nuevo pedido recibido'],
+                      ['orderStatusUpdate', 'Actualización de estado'],
+                    ].map(([ev, label]) => (
+                      <ToggleRow key={ev} title={label as string}
+                        checked={notifSettings.sms?.[ev] ?? false}
+                        onChange={val => handleNotif('sms', ev, val)} />
+                    ))}
+                  </div>
+                </Card>
+
+                {/* Email */}
+                <Card>
+                  <CardHeader title="Email" icon="📧" />
+                  <div className="px-5 py-3">
+                    {[
+                      ['newOrder',    'Nuevo pedido recibido'],
+                      ['weeklyReport','Reporte semanal de ventas'],
+                    ].map(([ev, label]) => (
+                      <ToggleRow key={ev} title={label as string}
+                        checked={notifSettings.email?.[ev] ?? false}
+                        onChange={val => handleNotif('email', ev, val)} />
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* ══════════════════════════════════════════════════════════════
+                TAB: PLAN
+            ══════════════════════════════════════════════════════════════ */}
+            {activeTab === 'plan' && (
+              <div className="space-y-4">
+                {/* Plan cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  {[
+                    {
+                      name: 'Básico', price: 'Gratis', period: 'Para siempre', current: false,
+                      features: ['Catálogo hasta 20 productos', 'Pagos básicos'],
+                      missing: ['ChatBot IA', 'Inbox unificado'],
+                    },
+                    {
+                      name: 'Pro', price: '$19', period: '/mes', current: true,
+                      features: ['Productos ilimitados', 'Todos los métodos de pago', 'ChatBot IA WhatsApp', 'Inbox WA + IG + Web'],
+                      missing: [],
+                    },
+                    {
+                      name: 'Business', price: '$49', period: '/mes', current: false,
+                      features: ['Todo lo de Pro', 'Cupones y marketing', 'Multi-sucursal', 'API y webhooks'],
+                      missing: [],
+                    },
+                  ].map(plan => (
+                    <div key={plan.name}
+                      className={`rounded-2xl border p-5 transition-all ${
+                        plan.current
+                          ? 'border-[#f5c842]/50 bg-[#f5c842]/5 shadow-lg shadow-[#f5c842]/5'
+                          : 'border-zinc-800 bg-zinc-900/60'
+                      }`}
+                    >
+                      {plan.current && (
+                        <div className="mb-3 inline-block rounded-md bg-[#f5c842] px-2 py-0.5 text-[10px] font-black text-zinc-950">PLAN ACTUAL</div>
+                      )}
+                      <div className="text-sm font-bold text-zinc-300">{plan.name}</div>
+                      <div className="mt-1 flex items-baseline gap-1">
+                        <span className="text-3xl font-black text-zinc-50">{plan.price}</span>
+                        <span className="text-xs text-zinc-500">{plan.period}</span>
+                      </div>
+                      <div className="my-4 space-y-1.5">
+                        {plan.features.map(f => (
+                          <div key={f} className="flex items-center gap-2 text-xs text-zinc-300">
+                            <span className="text-emerald-400">✓</span>{f}
+                          </div>
+                        ))}
+                        {plan.missing.map(f => (
+                          <div key={f} className="flex items-center gap-2 text-xs text-zinc-600">
+                            <span>✗</span>{f}
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={plan.current}
+                        className={`w-full rounded-xl py-2 text-xs font-bold transition ${
+                          plan.current
+                            ? 'cursor-default bg-zinc-800 text-zinc-500'
+                            : 'bg-[#f5c842] text-zinc-950 hover:bg-[#f5c842]/90 active:scale-95'
+                        }`}
+                      >
+                        {plan.current ? 'Plan actual' : plan.name === 'Básico' ? 'Plan anterior' : `Mejorar a ${plan.name}`}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Zona de peligro */}
+                <Card>
+                  <CardHeader title="Zona de peligro" icon="⚠️"
+                    subtitle="Estas acciones pueden afectar permanentemente tu cuenta"
+                  />
+                  <div className="divide-y divide-zinc-800 p-4">
+                    {[
+                      { title: 'Exportar todos mis datos', desc: 'Descarga pedidos, clientes y configuración en un archivo', btn: 'Exportar', style: 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10' },
+                      { title: 'Pausar mi tienda temporalmente', desc: 'El catálogo mostrará "Temporalmente cerrado"', btn: 'Pausar', style: 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10' },
+                      { title: 'Eliminar cuenta y todos los datos', desc: 'Acción irreversible. Se borrarán productos, pedidos y clientes.', btn: 'Eliminar cuenta', style: 'border-red-500/40 text-red-400 hover:bg-red-500/10' },
+                    ].map(item => (
+                      <div key={item.title} className="flex items-center justify-between gap-4 py-4">
+                        <div>
+                          <p className="text-sm font-semibold text-zinc-100">{item.title}</p>
+                          <p className="text-[11px] text-zinc-500 mt-0.5">{item.desc}</p>
+                        </div>
+                        <button type="button"
+                          className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition ${item.style}`}>
+                          {item.btn}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+
+                {/* WhatsApp connection in Plan tab */}
+                <Card>
+                  <CardHeader title="Conexión WhatsApp" subtitle="Estado de vinculación de tu número de negocio" icon="💬" />
+                  <div className="space-y-4 p-5">
+                    <div className="flex items-center justify-between rounded-xl border border-zinc-800 bg-zinc-950/40 px-4 py-3">
+                      <div>
+                        <p className="text-xs font-bold text-zinc-100 uppercase tracking-tight">Estado</p>
+                        <p className="text-[11px] text-zinc-500 mt-0.5 max-w-[200px]">
+                          {waLoading ? 'Verificando...' : whatsappStatus?.connected ? 'Conectado a WhatsApp' : 'No conectado'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {whatsappStatus?.connected && <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
+                        <span className={`text-xs font-bold ${whatsappStatus?.connected ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                          {waLoading ? '...' : whatsappStatus?.connected ? 'Conectado' : 'Desconectado'}
+                        </span>
+                      </div>
+                    </div>
+                    {!whatsappStatus?.connected && whatsappStatus?.qr && (
+                      <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-zinc-700 p-6 text-center">
+                        <p className="text-xs font-bold text-zinc-100">Escanea el código QR</p>
+                        <p className="text-[10px] text-zinc-500">WhatsApp → Dispositivos vinculados → Escanear QR</p>
+                        <div className="rounded-2xl bg-white p-3 shadow-2xl">
+                          <Image src={whatsappStatus.qr} alt="QR" width={160} height={160} unoptimized className="h-40 w-40" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            )}
+
+          </div>
+
+          {/* ── RIGHT COLUMN: LIVE PREVIEW ───────────────────────────────── */}
+          <div>
+            <div className="sticky top-24 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-[#f5c842] animate-pulse" />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Preview en vivo</span>
+              </div>
+              <LivePreview data={watchedValues} logo={logoPreview} />
+              <p className="text-center text-[10px] text-zinc-600">Vista aproximada del catálogo público</p>
             </div>
           </div>
 
-          <div className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-2xl backdrop-blur-xl">
-            <div className="border-b border-[var(--border)] px-6 py-5">
-              <h2 className="font-heading text-lg font-bold text-[var(--foreground)]">
-                🛍️ Catálogo público
-              </h2>
-              <p className="text-xs text-[var(--muted)]">
-                Preferencias básicas del catálogo.
-              </p>
-            </div>
-            <div className="space-y-1 px-4 py-4">
-              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors">
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-zinc-100">
-                    Precios en bolívares
-                  </div>
-                  <div className="text-[10px] text-zinc-500">
-                    Conversión BCV en tiempo real.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowBs(prev => !prev)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showBs ? 'bg-[var(--accent-secondary)]' : 'bg-zinc-700'}`}
-                >
-                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${showBs ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors">
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-zinc-100">
-                    Mostrar stock
-                  </div>
-                  <div className="text-[10px] text-zinc-500">
-                    Visibilidad de unidades disponibles.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowStock(prev => !prev)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showStock ? 'bg-[var(--accent-secondary)]' : 'bg-zinc-700'}`}
-                >
-                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${showStock ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-2xl hover:bg-zinc-800/30 transition-colors">
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-zinc-100">
-                    Botón de WhatsApp
-                  </div>
-                  <div className="text-[10px] text-zinc-500">
-                    Chat flotante en el catálogo.
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowChatButton(prev => !prev)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${showChatButton ? 'bg-[var(--accent-secondary)]' : 'bg-zinc-700'}`}
-                >
-                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${showChatButton ? 'translate-x-5' : 'translate-x-0'}`} />
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
-      </section>
-    </div>
+      )}
+      {(savedOk || saveError) && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+          {savedOk && (
+            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500 text-white px-4 py-3 text-sm font-semibold shadow-lg shadow-emerald-500/30">
+              ✓ Configuración guardada con éxito
+            </div>
+          )}
+          {saveError && (
+            <div className="rounded-xl border border-red-500/40 bg-red-600 text-white px-4 py-3 text-sm font-semibold shadow-lg shadow-red-500/30">
+              ⚠ {saveError}
+            </div>
+          )}
+        </div>
+      )}
+    </form>
   );
 }

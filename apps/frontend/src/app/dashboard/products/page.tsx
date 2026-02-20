@@ -65,7 +65,7 @@ export default function ProductsPage() {
             <div className="p-5 flex-1 flex flex-col">
               <div className="flex justify-between items-start mb-2">
                 <h3 className="font-heading text-base font-bold text-[var(--foreground)] truncate pr-2">{product.name}</h3>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${product.isPublished ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-zinc-800 text-zinc-500 border border-zinc-700'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${product.isPublished ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-[var(--surface2)] text-[var(--muted)] border border-[var(--border)]'}`}>
                   {product.isPublished ? 'Publicado' : 'Borrador'}
                 </span>
               </div>
@@ -86,7 +86,7 @@ export default function ProductsPage() {
                 <div className="pt-3 border-t border-[var(--border)] flex gap-2">
                   <Link
                     href={`/dashboard/products/${product.id}/edit`}
-                    className="flex-1 py-2 rounded-lg bg-zinc-800 text-center text-xs font-bold text-zinc-300 hover:bg-zinc-700 transition-colors"
+                    className="flex-1 py-2 rounded-lg bg-[var(--surface2)] text-center text-xs font-bold text-[var(--foreground)] hover:bg-[var(--background)]/60 transition-colors"
                   >
                     Editar
                   </Link>

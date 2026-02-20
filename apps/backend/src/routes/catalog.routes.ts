@@ -10,6 +10,9 @@ const setCache = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
+router.get('/document-types', setCache, CatalogController.getDocumentTypes);
+router.get('/:slug/payment-methods', setCache, CatalogController.getPaymentMethods);
+router.get('/:slug/payment-config', setCache, CatalogController.getPaymentConfig);
 router.get('/:slug', setCache, CatalogController.getCatalogBySlug);
 router.get('/:slug/products', setCache, CatalogController.getProducts);
 router.get('/:slug/products/:id', setCache, CatalogController.getProductById);

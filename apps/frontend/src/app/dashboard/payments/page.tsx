@@ -59,7 +59,7 @@ export default function PaymentsPage() {
 
   if (loading) {
     return (
-      <div className="py-6 text-sm text-zinc-400">
+      <div className="py-6 text-sm text-[var(--muted)]">
         Cargando pagos...
       </div>
     );
@@ -77,24 +77,24 @@ export default function PaymentsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sm font-semibold text-zinc-50">
+          <h2 className="text-sm font-semibold text-[var(--foreground)]">
             Pagos pendientes
           </h2>
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-[var(--muted)]">
             Verifica comprobantes y confirma pedidos.
           </p>
         </div>
       </div>
       {!payments.length ? (
-        <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-4 text-sm text-zinc-400">
+        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-4 text-sm text-[var(--muted)]">
           No hay pagos pendientes por verificar.
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {payments.map(payment => (
-            <div key={payment.id} className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
+            <div key={payment.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-400">
+                <span className="text-sm text-[var(--muted)]">
                   Orden #{payment.order?.orderNumber || payment.orderId.slice(0, 8)}
                 </span>
                 <span className="text-lg font-semibold">
@@ -102,12 +102,12 @@ export default function PaymentsPage() {
                 </span>
               </div>
               <div className="mt-2 text-sm">
-                <p className="text-zinc-300">{payment.method}</p>
+                <p className="text-[var(--foreground)]">{payment.method}</p>
                 {payment.reference && (
-                  <p className="text-xs text-zinc-500">Ref: {payment.reference}</p>
+                  <p className="text-xs text-[var(--muted)]">Ref: {payment.reference}</p>
                 )}
                 {payment.order?.customer?.phone && (
-                  <p className="text-[11px] text-zinc-500">
+                  <p className="text-[11px] text-[var(--muted)]">
                     {payment.order.customer.name || 'Cliente'} · {payment.order.customer.phone}
                   </p>
                 )}
@@ -118,7 +118,7 @@ export default function PaymentsPage() {
                   alt="Comprobante"
                   width={400}
                   height={200}
-                  className="mt-3 max-h-32 w-full rounded border border-zinc-700 object-cover"
+                  className="mt-3 max-h-32 w-full rounded border border-[var(--border)] object-cover"
                   unoptimized
                 />
               )}

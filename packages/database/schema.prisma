@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ── ENUMS ────────────────────────────────────────────
@@ -86,6 +85,17 @@ enum MsgRole {
   AGENT
 }
 
+enum PersonaType {
+  NATURAL
+  JURIDICA
+}
+
+enum ISLRRegimen {
+  ORDINARIO
+  ESPECIAL
+  EXENTO
+}
+
 // ── MODELS ───────────────────────────────────────────
 model Business {
   id             String       @id @default(uuid())
@@ -98,11 +108,36 @@ model Business {
   description    String?
   instagram      String?
   schedule       String?
-  settings       Json         @default("{}")  // colores, módulos, campos del ramo
-  paymentMethods Json?
-  catalogOptions Json?
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
+
+  ownerName           String?      @map("owner_name")
+  ownerPhone          String?      @map("owner_phone")
+  ownerEmail          String?      @map("owner_email")
+  businessAddress     String?      @map("business_address")
+  personaType         PersonaType? @map("persona_type")
+  rif                 String?      @map("rif")
+  razonSocial         String?      @map("razon_social")
+  fiscalAddress       String?      @map("fiscal_address")
+
+  // Campos geográficos normalizados
+  estadoId        Int?       @map("estado_id")
+  municipioId     Int?       @map("municipio_id")
+  parroquiaId     Int?       @map("parroquia_id")
+
+  // Campos legacy en texto (mantener por compatibilidad)
+  state           String?
+  municipio       String?
+  parroquia       String?
+
+  postalCode          String?      @map("postal_code")
+  electronicInvoicing Boolean?     @map("electronic_invoicing") @default(false)
+  islrRegimen         ISLRRegimen? @map("islr_regimen")
+
+  settings            Json         @default("{}")  // colores, módulos, campos del ramo
+  paymentMethods      Json?
+  catalogOptions      Json?
+  notificationSettings Json?
+  isActive            Boolean      @default(true)
+  createdAt           DateTime     @default(now())
 
   // Relaciones
   users         User[]
@@ -114,6 +149,49 @@ model Business {
   conversations Conversation[]
   paymentConfig PaymentConfig[]
   exchangeRates ExchangeRate[]
+
+  estadoRel     Estado?    @relation("BusinessEstado", fields: [estadoId], references: [id])
+  municipioRel  Municipio? @relation("BusinessMunicipio", fields: [municipioId], references: [id])
+  parroquiaRel  Parroquia? @relation("BusinessParroquia", fields: [parroquiaId], references: [id])
+}
+
+model Estado {
+  id            Int        @id @default(autoincrement())
+  codigo        String     @unique @db.VarChar(2)
+  nombreEstado  String     @map("nombre_estado") @db.VarChar(100)
+  createdAt     DateTime?  @map("created_at") @default(now())
+
+  municipios Municipio[]
+  businesses Business[] @relation("BusinessEstado")
+
+  @@map("estados")
+}
+
+model Municipio {
+  id             Int        @id @default(autoincrement())
+  estadoId       Int        @map("estado_id")
+  nombreMunicipio String    @map("nombre_municipio") @db.VarChar(100)
+  codigo         String     @unique @db.VarChar(4)
+  createdAt      DateTime?  @map("created_at") @default(now())
+
+  estado      Estado      @relation(fields: [estadoId], references: [id])
+  parroquias  Parroquia[]
+  businesses  Business[]  @relation("BusinessMunicipio")
+
+  @@map("municipios")
+}
+
+model Parroquia {
+  id               Int        @id @default(autoincrement())
+  municipioId      Int        @map("municipio_id")
+  nombreParroquia  String     @map("nombre_parroquia") @db.VarChar(100)
+  codigo           String     @unique @db.VarChar(6)
+  createdAt        DateTime?  @map("created_at") @default(now())
+
+  municipio   Municipio  @relation(fields: [municipioId], references: [id])
+  businesses  Business[] @relation("BusinessParroquia")
+
+  @@map("parroquias")
 }
 
 model User {
@@ -249,6 +327,7 @@ model Payment {
   reference      String?       // n° transacción Zelle, teléfono PM, hash…
   proofImageUrl  String?
   status         PaymentStatus @default(PENDING)
+  notes          String?
   verifiedAt     DateTime?
   verifiedBy     String?      // userId o null (bot)
   createdAt      DateTime     @default(now())

@@ -2,7 +2,8 @@ export class AppError extends Error {
   constructor(
     public message: string,
     public statusCode: number = 500,
-    public code?: string        // 'PRODUCT_NOT_FOUND', 'SLUG_TAKEN', etc.
+    public code?: string,        // 'PRODUCT_NOT_FOUND', 'SLUG_TAKEN', etc.
+    public field?: string        // Campo específico relacionado al error
   ) {
     super(message);
     this.name = 'AppError';
@@ -20,6 +21,6 @@ export const Errors = {
     new AppError('Sin permisos para esta acción', 403, 'FORBIDDEN'),
   Conflict: (msg: string) =>
     new AppError(msg, 409, 'CONFLICT'),
-  Validation: (msg: string) =>
-    new AppError(msg, 422, 'VALIDATION_ERROR'),
+  Validation: (msg: string, field?: string) =>
+    new AppError(msg, 422, 'VALIDATION_ERROR', field),
 };

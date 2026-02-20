@@ -2,7 +2,7 @@
 
 import { ReactNode, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { WhatsappStatusBadge } from './WhatsappStatusBadge';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useWebSocket } from '@/lib/hooks/useWebSocket';
@@ -20,6 +20,17 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
+  const pathname = usePathname();
+
+  const isActive = (href: string, exact = false) => {
+    if (exact) return pathname === href;
+    return pathname === href || pathname.startsWith(href + '/');
+  };
+
+  const baseLink =
+    'flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors';
+  const activeLink = 'bg-[var(--surface2)] text-[var(--foreground)]';
+  const inactiveLink = 'text-[var(--muted)] hover:bg-[var(--background)]/60';
 
   const handleLogout = () => {
     setAccessToken(null);
@@ -75,144 +86,131 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors">
       <div className="flex">
-        <aside className="hidden w-[240px] h-screen border-r border-[var(--border)] bg-[var(--sidebar)] px-3 py-4 md:flex flex-col fixed left-0 top-0 z-50 transition-colors">
+        <aside className="hidden w-56 border-r border-[var(--border)] bg-[var(--bg-sidebar)] px-4 py-4 md:block">
           <div className="mb-6">
-            <div className="text-sm font-semibold tracking-tight">
+            <div className="text-sm font-semibold tracking-tight text-[var(--foreground)]">
               Ventas<span className="text-amber-400">VE</span>
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+            <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
               Panel del negocio
             </div>
           </div>
           <nav className="space-y-4 text-sm">
             <div>
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] px-3">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Principal
               </div>
               <Link
                 href="/dashboard"
-                className="flex items-center rounded-xl px-3 py-2 text-xs font-bold text-[var(--accent)] bg-[var(--accent)]/10 border-l-4 border-[var(--accent)]"
+                className={`${baseLink} ${isActive('/dashboard', true) ? activeLink : inactiveLink}`}
               >
-                <span className="mr-3 opacity-70">📊</span> Dashboard
+                Dashboard
               </Link>
+            </div>
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                Ventas
+              </div>
               <Link
                 href="/dashboard/orders"
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+                className={`${baseLink} justify-between ${isActive('/dashboard/orders') ? activeLink : inactiveLink}`}
               >
-                <div className="flex items-center">
-                    <span className="mr-3 opacity-50">📦</span> Pedidos
-                </div>
-                <span className="rounded-lg bg-[var(--accent-red)] px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">
-                    12
-                </span>
+                <span>Órdenes</span>
+                {newOrdersCount > 0 && (
+                  <span className="rounded-full bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
+                    {newOrdersCount}
+                  </span>
+                )}
               </Link>
               <Link
                 href="/dashboard/products"
-                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+                className={`${baseLink} ${isActive('/dashboard/products') ? activeLink : inactiveLink}`}
               >
-                <span className="mr-3 opacity-50">🛍️</span> Catálogo
-              </Link>
-              <Link
-                href="/dashboard/categories"
-                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
-              >
-                <span className="mr-3 opacity-50">🏷️</span> Categorías
+                Catálogo
               </Link>
             </div>
-
             <div>
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] px-3">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                Clientes
+              </div>
+              <Link
+                href="/dashboard/customers"
+                className={`${baseLink} ${isActive('/dashboard/customers') ? activeLink : inactiveLink}`}
+              >
+                Clientes
+              </Link>
+            </div>
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                Mensajes
+              </div>
+              <Link
+                href="/dashboard/inbox"
+                className={`${baseLink} justify-between ${isActive('/dashboard/inbox') ? activeLink : inactiveLink}`}
+              >
+                <span>WhatsApp</span>
+                {unreadCount > 0 && (
+                  <span className="rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    {unreadCount}
+                  </span>
+                )}
+              </Link>
+            </div>
+            <div>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Pagos
               </div>
               <Link
                 href="/dashboard/payments"
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+                className={`${baseLink} justify-between ${isActive('/dashboard/payments') ? activeLink : inactiveLink}`}
               >
-                <div className="flex items-center">
-                    <span className="mr-3 opacity-50">💳</span> Transacciones
-                </div>
-              </Link>
-              <Link
-                href="/dashboard/conciliation"
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
-              >
-                <div className="flex items-center">
-                    <span className="mr-3 opacity-50">🔄</span> Conciliación
-                </div>
-                <span className="rounded-lg bg-[var(--accent-secondary)] px-2 py-0.5 text-[10px] font-bold text-black shadow-lg">
-                    3
-                </span>
-              </Link>
-              <Link
-                href="/dashboard/exchange-rate"
-                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
-              >
-                <span className="mr-3 opacity-50">💵</span> Tasa BCV
+                <span>Pagos</span>
+                {pendingPaymentsCount > 0 && (
+                  <span className="rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] font-bold text-black">
+                    {pendingPaymentsCount}
+                  </span>
+                )}
               </Link>
             </div>
-
             <div>
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] px-3">
-                Comunicación
-              </div>
-              <Link
-                href="/dashboard/inbox"
-                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
-              >
-                <div className="flex items-center">
-                    <span className="mr-3 opacity-50">💬</span> Inbox Unificado
-                </div>
-                <span className="rounded-lg bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-lg">
-                    7
-                </span>
-              </Link>
-              <Link
-                href="/dashboard/chatbot"
-                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
-              >
-                <span className="mr-3 opacity-50">🤖</span> ChatBot IA
-              </Link>
-            </div>
-
-            <div>
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-widest text-[var(--muted)] px-3">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Negocio
               </div>
               <Link
-                href="/dashboard/customers"
-                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+                href="/dashboard/settings"
+                className={`${baseLink} ${isActive('/dashboard/settings') ? activeLink : inactiveLink}`}
               >
-                <span className="mr-3 opacity-50">👥</span> Clientes
+                Configuración
+              </Link>
+              <Link
+                href="/dashboard/exchange-rate"
+                className={`${baseLink} ${isActive('/dashboard/exchange-rate') ? activeLink : inactiveLink}`}
+              >
+                Tasa de Cambio
               </Link>
               <Link
                 href="/dashboard/reports"
-                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
+                className={`${baseLink} ${isActive('/dashboard/reports') ? activeLink : inactiveLink}`}
               >
-                <span className="mr-3 opacity-50">📈</span> Reportes
-              </Link>
-              <Link
-                href="/dashboard/settings"
-                className="flex items-center rounded-xl px-3 py-2 text-xs font-medium text-[var(--muted)] hover:bg-zinc-900 transition-colors"
-              >
-                <span className="mr-3 opacity-50">⚙️</span> Configuración
+                Reportes
               </Link>
             </div>
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Cuenta
               </div>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-zinc-400 hover:bg-zinc-900"
+                className="w-full rounded-md px-2.5 py-1.5 text-left text-xs font-medium text-[var(--muted)] hover:bg-[var(--background)]/60"
               >
                 Salir
               </button>
             </div>
           </nav>
         </aside>
-        <main className="flex-1 ml-[240px] min-h-screen">
-          <header className="border-b border-[var(--border)] bg-[var(--sidebar)]/80 backdrop-blur-md px-8 py-4 sticky top-0 z-30">
+        <main className="flex-1">
+          <header className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-4 py-3 sticky top-0 z-30">
             <div className="mx-auto flex max-w-6xl items-center justify-between">
               <div>
                 <h1 className="text-sm font-bold tracking-tight text-[var(--foreground)]">
@@ -228,7 +226,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="rounded-full border border-zinc-700 bg-zinc-900/80 px-3 py-1 text-[11px] font-medium text-zinc-200 hover:border-red-500/60 hover:text-red-200"
+                  className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-[var(--foreground)] hover:border-red-500/60 hover:text-red-200"
                 >
                   Cerrar sesión
                 </button>

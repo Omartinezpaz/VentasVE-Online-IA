@@ -12,6 +12,7 @@ export const errorHandler = (err: any, req: Request, res: Response, next: NextFu
     return res.status(err.statusCode).json({
       error: err.message,
       code: err.code,
+      field: err.field,
       requestId
     });
   }

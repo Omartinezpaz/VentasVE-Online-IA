@@ -3,8 +3,14 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api/client';
 
+type ExchangeRate = {
+  usdToVes: number | string;
+  source: string;
+  date: string;
+};
+
 export default function ExchangeRatePage() {
-  const [currentRate, setCurrentRate] = useState<any>(null);
+  const [currentRate, setCurrentRate] = useState<ExchangeRate | null>(null);
   const [newRate, setNewRate] = useState('');
   const [source, setSource] = useState('MANUAL');
   const [loading, setLoading] = useState(true);
@@ -12,7 +18,7 @@ export default function ExchangeRatePage() {
 
   const loadRate = async () => {
     try {
-      const res = await api.get('/exchange-rate/current');
+      const res = await api.get<ExchangeRate | null>('/exchange-rate/current');
       setCurrentRate(res.data);
       if (res.data) {
           setNewRate(res.data.usdToVes.toString());
@@ -57,7 +63,16 @@ export default function ExchangeRatePage() {
         <div className="text-center space-y-2">
             <div className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-widest">Tasa Actual</div>
             <div className="font-heading text-5xl font-black text-[var(--accent)]">
-                {loading ? '...' : currentRate ? `Bs. ${parseFloat(currentRate.usdToVes).toLocaleString('es-VE')}` : 'No definida'}
+                {loading
+                  ? '...'
+                  : currentRate
+                    ? `Bs. ${
+                        (typeof currentRate.usdToVes === 'number'
+                          ? currentRate.usdToVes
+                          : parseFloat(currentRate.usdToVes)
+                        ).toLocaleString('es-VE')
+                      }`
+                    : 'No definida'}
             </div>
             <div className="text-[10px] text-[var(--muted)] font-medium">
                 Última actualización: {currentRate ? new Date(currentRate.date).toLocaleString() : 'N/A'}

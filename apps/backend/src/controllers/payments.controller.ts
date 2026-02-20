@@ -1,19 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma from '@ventasve/database';
+import prisma, { PaymentMethod, PaymentStatus } from '@ventasve/database';
 import { z } from 'zod';
 import { AuthRequest } from '../middleware/auth';
 import { emitToBusiness } from '../lib/websocket';
 
 const createPaymentSchema = z.object({
   orderId: z.string().uuid(),
-  method: z.enum(['ZELLE', 'PAGO_MOVIL', 'TRANSFER_BS', 'BINANCE', 'CASH_USD', 'TRANSFER_BS']),
+  method: z.nativeEnum(PaymentMethod),
   reference: z.string().optional(),
-  imageUrl: z.string().url().optional(),
+  proofImageUrl: z.string().url().optional(),
   notes: z.string().optional()
 });
 
 const verifyPaymentSchema = z.object({
-  status: z.enum(['VERIFIED', 'REJECTED']),
+  status: z.nativeEnum(PaymentStatus),
   notes: z.string().optional()
 });
 
@@ -85,11 +85,12 @@ export const createPayment = async (req: Request, res: Response, next: NextFunct
     const payment = await prisma.payment.create({
       data: {
         orderId: data.orderId,
+        businessId: businessId,
         method: data.method,
         amountCents: order.totalCents,
         currency: 'USD',
         reference: data.reference,
-        imageUrl: data.imageUrl,
+        proofImageUrl: data.proofImageUrl,
         notes: data.notes
       },
       include: {
@@ -131,7 +132,7 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
       where: { id },
       data: {
         status: data.status,
-        verifiedBy: authReq.user!.id,
+        verifiedBy: authReq.user!.userId,
         verifiedAt: new Date(),
         notes: data.notes ? `${payment.notes || ''}\nVerificación: ${data.notes}` : payment.notes
       },
@@ -186,7 +187,7 @@ export const rejectPayment = async (req: Request, res: Response, next: NextFunct
       where: { id },
       data: {
         status: 'REJECTED',
-        verifiedBy: authReq.user!.id,
+        verifiedBy: authReq.user!.userId,
         verifiedAt: new Date()
       },
       include: {
