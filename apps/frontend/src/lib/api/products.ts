@@ -22,6 +22,7 @@ export type CreateProductInput = {
   stock?: number;
   categoryId?: string;
   isPublished?: boolean;
+  images?: string[];
 };
 
 export const productsApi = {

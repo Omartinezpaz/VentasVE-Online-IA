@@ -17,5 +17,6 @@ router.get('/:slug', setCache, CatalogController.getCatalogBySlug);
 router.get('/:slug/products', setCache, CatalogController.getProducts);
 router.get('/:slug/products/:id', setCache, CatalogController.getProductById);
 router.post('/:slug/orders', CatalogController.createOrder);
+router.get('/:slug/shipping-zones', setCache, CatalogController.getShippingZones);
 
 export default router;

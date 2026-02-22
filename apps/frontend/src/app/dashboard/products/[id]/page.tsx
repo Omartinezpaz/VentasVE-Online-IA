@@ -1,9 +1,23 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRouter, useParams } from 'next/navigation';
 import { productsApi, Product } from '@/lib/api/products';
 import { getAccessToken } from '@/lib/auth/storage';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const apiBaseUrl = new URL(API_BASE);
+const IMAGE_BASE_ORIGIN = `${apiBaseUrl.protocol}//${apiBaseUrl.host}`;
+
+const resolveImageUrl = (src: string) => {
+  if (!src) return src;
+  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:') || src.startsWith('data:')) {
+    return src;
+  }
+  if (!src.startsWith('/')) return src;
+  return `${IMAGE_BASE_ORIGIN}${src}`;
+};
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -19,6 +33,9 @@ export default function EditProductPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [newImages, setNewImages] = useState<File[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -36,6 +53,7 @@ export default function EditProductPage() {
         setStock((p.stock ?? 0).toString());
         setCategoryId(p.categoryId || '');
         setActive(p.isPublished);
+        setExistingImages(p.images || []);
       } catch {
         setError('No se pudo cargar el producto');
       } finally {
@@ -44,6 +62,23 @@ export default function EditProductPage() {
     };
     load();
   }, [id, router]);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setNewImages(prev => [...prev, ...files]);
+    const previews = files.map(file => URL.createObjectURL(file));
+    setNewImagePreviews(prev => [...prev, ...previews]);
+  };
+
+  const handleRemoveExistingImage = (index: number) => {
+    setExistingImages(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleRemoveNewImage = (index: number) => {
+    setNewImages(prev => prev.filter((_, i) => i !== index));
+    setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,8 +91,12 @@ export default function EditProductPage() {
         priceUsdCents: Math.round(parseFloat(priceUsd) * 100),
         stock: parseInt(stock),
         categoryId: categoryId || undefined,
-        isPublished: active
+        isPublished: active,
+        images: existingImages
       });
+      if (newImages.length > 0) {
+        await productsApi.uploadImages(id, newImages);
+      }
       router.push('/dashboard/products');
     } catch {
       setError('No se pudo actualizar el producto');
@@ -88,6 +127,88 @@ export default function EditProductPage() {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="card-elevated rounded-[24px] border border-zinc-800 bg-zinc-900/60 p-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Imágenes del Producto</label>
+            <div
+              onClick={() => document.getElementById('image-upload')?.click()}
+              className="relative aspect-square w-32 rounded-2xl border-2 border-dashed border-zinc-800 bg-zinc-950 flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-[var(--accent)] transition-all"
+            >
+              {existingImages[0] || newImagePreviews[0] ? (
+                <Image
+                  src={resolveImageUrl(newImagePreviews[0] || existingImages[0])}
+                  fill
+                  className="object-cover"
+                  alt="Imagen principal del producto"
+                  unoptimized
+                />
+              ) : (
+                <>
+                  <span className="text-2xl opacity-30 group-hover:scale-110 transition-transform">📸</span>
+                  <span className="mt-1 text-[10px] text-zinc-500 group-hover:text-zinc-300 transition-colors">
+                    Subir imágenes
+                  </span>
+                </>
+              )}
+            </div>
+            <input
+              id="image-upload"
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleImageChange}
+            />
+            {(existingImages.length > 0 || newImagePreviews.length > 0) && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {existingImages.map((src, idx) => (
+                  <div
+                    key={`existing-${idx}`}
+                    className="relative h-10 w-10 overflow-hidden rounded-lg border border-zinc-800 bg-zinc-900"
+                  >
+                    <Image
+                      src={resolveImageUrl(src)}
+                      fill
+                      className="object-cover"
+                      alt={`Imagen existente ${idx + 1}`}
+                      unoptimized
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExistingImage(idx)}
+                      className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[10px] text-white"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {newImagePreviews.map((src, idx) => (
+                  <div
+                    key={`new-${idx}`}
+                    className="relative h-10 w-10 overflow-hidden rounded-lg border border-[var(--accent)]/60 bg-zinc-900"
+                  >
+                    <Image
+                      src={resolveImageUrl(src)}
+                      fill
+                      className="object-cover"
+                      alt={`Nueva imagen ${idx + 1}`}
+                      unoptimized
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveNewImage(idx)}
+                      className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/70 text-[10px] text-white"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-[10px] text-zinc-500">
+              Formatos: JPG, PNG, WEBP. Máx. 5MB.
+            </p>
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Nombre</label>
             <input
@@ -130,14 +251,14 @@ export default function EditProductPage() {
           </div>
 
           <div className="flex items-center justify-between p-4 rounded-xl bg-zinc-950/40 border border-zinc-800">
-             <div className="text-xs font-bold text-zinc-100">Producto activo y visible</div>
-             <button
-                type="button"
-                onClick={() => setActive(!active)}
-                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${active ? 'bg-emerald-500' : 'bg-zinc-700'}`}
-              >
-                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${active ? 'translate-x-5' : 'translate-x-0'}`} />
-              </button>
+            <div className="text-xs font-bold text-zinc-100">Producto activo y visible</div>
+            <button
+              type="button"
+              onClick={() => setActive(!active)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${active ? 'bg-emerald-500' : 'bg-zinc-700'}`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${active ? 'translate-x-5' : 'translate-x-0'}`} />
+            </button>
           </div>
         </div>
 

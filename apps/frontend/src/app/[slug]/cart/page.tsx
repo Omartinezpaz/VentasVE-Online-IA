@@ -14,14 +14,6 @@ export default function CartPage({ params }: CartPageProps) {
   const { slug } = params;
   const { items, updateQuantity, removeItem, totalCents } = useCart(slug);
 
-  const handleQuantityChange = (productId: string, value: string) => {
-    const quantity = Number(value);
-    if (!Number.isFinite(quantity) || quantity <= 0) {
-      return;
-    }
-    updateQuantity(productId, quantity);
-  };
-
   if (items.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,_rgba(245,200,66,0.08),_transparent_55%),_radial-gradient(ellipse_at_bottom,_rgba(79,142,247,0.07),_transparent_55%),_#050712] text-zinc-50">

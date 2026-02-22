@@ -16,8 +16,13 @@ export type Customer = {
     orders: number;
   };
   orders?: Array<{
+    id?: string;
+    status?: string;
     createdAt: string;
     totalCents: number;
+    shippingZoneSlug?: string | null;
+    shippingCostCents?: number | null;
+    shippingMethodCode?: string | null;
     items?: Array<{
       quantity: number;
       product: {

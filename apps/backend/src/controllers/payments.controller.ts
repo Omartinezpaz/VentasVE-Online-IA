@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma, { PaymentMethod, PaymentStatus } from '@ventasve/database';
+import prisma, { PaymentMethod, PaymentStatus, Prisma } from '@ventasve/database';
 import { z } from 'zod';
 import { AuthRequest } from '../middleware/auth';
 import { emitToBusiness } from '../lib/websocket';
@@ -20,7 +20,14 @@ const verifyPaymentSchema = z.object({
 export const getPayments = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'PAYMENTS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const reqLog = (req as any).log;
 
     const page = Number((req.query.page as string) ?? '1');
@@ -61,6 +68,12 @@ export const getPayments = async (req: Request, res: Response, next: NextFunctio
   } catch (error) {
     const reqLog = (req as any).log;
     reqLog?.error({ error }, 'Error in getPayments');
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return res.status(500).json({
+        error: 'Database error',
+        code: `PAYMENTS_DB_${error.code}`
+      });
+    }
     next(error);
   }
 };
@@ -68,7 +81,14 @@ export const getPayments = async (req: Request, res: Response, next: NextFunctio
 export const createPayment = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'PAYMENTS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const data = createPaymentSchema.parse(req.body);
     const reqLog = (req as any).log;
     reqLog?.info({ orderId: data.orderId, method: data.method }, 'Creating payment');
@@ -107,6 +127,12 @@ export const createPayment = async (req: Request, res: Response, next: NextFunct
   } catch (error) {
     const reqLog = (req as any).log;
     reqLog?.error({ error }, 'Error in createPayment');
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return res.status(500).json({
+        error: 'Database error',
+        code: `PAYMENTS_DB_${error.code}`
+      });
+    }
     next(error);
   }
 };
@@ -114,7 +140,14 @@ export const createPayment = async (req: Request, res: Response, next: NextFunct
 export const verifyPayment = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'PAYMENTS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const { id } = req.params;
     const data = verifyPaymentSchema.parse(req.body);
     const reqLog = (req as any).log;
@@ -163,6 +196,12 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
   } catch (error) {
     const reqLog = (req as any).log;
     reqLog?.error({ error }, 'Error in verifyPayment');
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return res.status(500).json({
+        error: 'Database error',
+        code: `PAYMENTS_DB_${error.code}`
+      });
+    }
     next(error);
   }
 };
@@ -170,7 +209,14 @@ export const verifyPayment = async (req: Request, res: Response, next: NextFunct
 export const rejectPayment = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'PAYMENTS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const { id } = req.params;
     const reqLog = (req as any).log;
 
@@ -204,6 +250,12 @@ export const rejectPayment = async (req: Request, res: Response, next: NextFunct
   } catch (error) {
     const reqLog = (req as any).log;
     reqLog?.error({ error }, 'Error in rejectPayment');
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return res.status(500).json({
+        error: 'Database error',
+        code: `PAYMENTS_DB_${error.code}`
+      });
+    }
     next(error);
   }
 };

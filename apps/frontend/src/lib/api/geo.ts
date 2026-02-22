@@ -20,9 +20,28 @@ export type Parroquia = {
   codigo: string;
 };
 
+export type Country = {
+  id: string;
+  nombre: string;
+  iso3: string;
+  isoCode: string;
+  iso2: string | null;
+  phoneCode: string | null;
+};
+
+export type VeAreaCode = {
+  id: string;
+  codigo: string;
+  tipo: string;
+  operadora: string | null;
+  estado_principal: string | null;
+};
+
 export const geoApi = {
   getEstados: () => api.get<Estado[]>('/geo/estados'),
   getMunicipios: (estadoId: number) => api.get<Municipio[]>(`/geo/municipios/${estadoId}`),
-  getParroquias: (municipioId: number) => api.get<Parroquia[]>(`/geo/parroquias/${municipioId}`)
+  getParroquias: (municipioId: number) => api.get<Parroquia[]>(`/geo/parroquias/${municipioId}`),
+  getCountries: () => api.get<Country[]>('/geo/countries'),
+  getVeAreaCodes: () => api.get<VeAreaCode[]>('/geo/ve-area-codes'),
 };
 

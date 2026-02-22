@@ -3,10 +3,20 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/lib/hooks/useCart';
-import { catalogApi, PublicOrderPayload, DocumentType, PublicPaymentMethod, PublicPaymentConfig } from '@/lib/api/catalog';
+import {
+  catalogApi,
+  PublicOrderPayload,
+  DocumentType,
+  PublicPaymentMethod,
+  PublicPaymentConfig,
+  ShippingZone,
+  ShippingMethodOption,
+} from '@/lib/api/catalog';
 import Link from 'next/link';
 import { DualPrice } from '@/components/ui/DualPrice';
 import { maskEmail, maskPhone, maskId } from '@/lib/mask';
+import { composeIdentification, validateIdentification } from '@/lib/identification';
+import { geoApi, Estado, Municipio, Parroquia } from '@/lib/api/geo';
 
 type CheckoutPageProps = {
   params: {
@@ -40,7 +50,7 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   const [availablePaymentMethods, setAvailablePaymentMethods] = useState<PublicPaymentMethod[]>([]);
   const [paymentConfig, setPaymentConfig] = useState<PublicPaymentConfig | null>(null);
   const [paymentMethod, setPaymentMethod] = useState('ZELLE');
-  const [notes, setNotes] = useState('');
+  const [notes] = useState('');
   const [preferredPayment, setPreferredPayment] = useState('ZELLE');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [proofName, setProofName] = useState('');
@@ -52,6 +62,18 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
+  const [shippingZones, setShippingZones] = useState<ShippingZone[]>([]);
+  const [shippingLoading, setShippingLoading] = useState(false);
+  const [selectedZoneSlug, setSelectedZoneSlug] = useState<string | null>(null);
+  const [selectedMethodCode, setSelectedMethodCode] = useState<string | null>(null);
+  const [estados, setEstados] = useState<Estado[]>([]);
+  const [municipios, setMunicipios] = useState<Municipio[]>([]);
+  const [parroquias, setParroquias] = useState<Parroquia[]>([]);
+  const [estadoId, setEstadoId] = useState<number | ''>('');
+  const [municipioId, setMunicipioId] = useState<number | ''>('');
+  const [parroquiaId, setParroquiaId] = useState<number | ''>('');
+  const [zoneManuallySelected, setZoneManuallySelected] = useState(false);
+  const [autoSelectedZoneSlug, setAutoSelectedZoneSlug] = useState<string | null>(null);
 
   // Load document types, available payment methods and payment config once
   useEffect(() => {
@@ -79,6 +101,150 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
       });
     return () => { mounted = false; };
   }, [slug]);
+
+  useEffect(() => {
+    let active = true;
+    if (totalCents <= 0) {
+      setShippingZones([]);
+      return;
+    }
+    setShippingLoading(true);
+    catalogApi
+      .getShippingZones(slug, { amount: totalCents / 100 })
+      .then(res => {
+        if (!active) return;
+        setShippingZones(res.data.zones);
+      })
+      .catch(() => {
+        if (!active) return;
+        setShippingZones([]);
+      })
+      .finally(() => {
+        if (!active) return;
+        setShippingLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [slug, totalCents]);
+
+  useEffect(() => {
+    geoApi
+      .getEstados()
+      .then(res => {
+        setEstados(res.data);
+      })
+      .catch(() => {
+        setEstados([]);
+      });
+  }, []);
+
+  useEffect(() => {
+    if (!estadoId) {
+      setMunicipios([]);
+      setMunicipioId('');
+      setParroquias([]);
+      setParroquiaId('');
+      return;
+    }
+    geoApi
+      .getMunicipios(Number(estadoId))
+      .then(res => {
+        setMunicipios(res.data);
+        setMunicipioId('');
+        setParroquias([]);
+        setParroquiaId('');
+      })
+      .catch(() => {
+        setMunicipios([]);
+        setParroquias([]);
+      });
+  }, [estadoId]);
+
+  useEffect(() => {
+    if (!municipioId) {
+      setParroquias([]);
+      setParroquiaId('');
+      return;
+    }
+    geoApi
+      .getParroquias(Number(municipioId))
+      .then(res => {
+        setParroquias(res.data);
+        setParroquiaId('');
+      })
+      .catch(() => {
+        setParroquias([]);
+      });
+  }, [municipioId]);
+
+  useEffect(() => {
+    if (!shippingZones.length) {
+      return;
+    }
+    if (!estadoId && !municipioId && !parroquiaId) {
+      return;
+    }
+    if (zoneManuallySelected) {
+      return;
+    }
+
+    const selectedEstadoId = estadoId ? Number(estadoId) : null;
+    const selectedMunicipioId = municipioId ? Number(municipioId) : null;
+    const selectedParroquiaId = parroquiaId ? Number(parroquiaId) : null;
+
+    let best: ShippingZone | undefined;
+
+    if (selectedParroquiaId !== null) {
+      const candidates = shippingZones.filter(
+        zone => zone.parroquiaId != null && zone.parroquiaId === selectedParroquiaId
+      );
+      if (candidates.length > 0) {
+        best = candidates[0];
+      }
+    }
+
+    if (!best && selectedMunicipioId !== null) {
+      const candidates = shippingZones.filter(
+        zone =>
+          (zone.parroquiaId == null || zone.parroquiaId === undefined) &&
+          zone.municipioId != null &&
+          zone.municipioId === selectedMunicipioId
+      );
+      if (candidates.length > 0) {
+        best = candidates[0];
+      }
+    }
+
+    if (!best && selectedEstadoId !== null) {
+      const candidates = shippingZones.filter(
+        zone =>
+          (zone.parroquiaId == null || zone.parroquiaId === undefined) &&
+          (zone.municipioId == null || zone.municipioId === undefined) &&
+          zone.estadoId != null &&
+          zone.estadoId === selectedEstadoId
+      );
+      if (candidates.length > 0) {
+        best = candidates[0];
+      }
+    }
+
+    if (!best) {
+      const candidates = shippingZones.filter(
+        zone => zone.estadoId == null && zone.municipioId == null && zone.parroquiaId == null
+      );
+      if (candidates.length > 0) {
+        best = candidates[0];
+      }
+    }
+
+    if (best && best.slug !== selectedZoneSlug) {
+      setSelectedZoneSlug(best.slug);
+      setAutoSelectedZoneSlug(best.slug);
+      const defaultMethod = best.methods[0];
+      setSelectedMethodCode(defaultMethod ? defaultMethod.methodCode : null);
+    }
+  }, [shippingZones, estadoId, municipioId, parroquiaId, zoneManuallySelected, selectedZoneSlug]);
 
   if (items.length === 0 && !success) {
     return (
@@ -118,10 +284,27 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
       return;
     }
 
+    if (docNumber.trim()) {
+      const validation = validateIdentification(docType, docNumber);
+      if (!validation.valid) {
+        setError(validation.error || 'Documento inválido');
+        return;
+      }
+    }
+
     setSubmitting(true);
     setError(null);
 
-    const composedId = docType && docNumber ? `${docType}-${docNumber}` : undefined;
+    const composedId = composeIdentification(docType, docNumber);
+    const selectedZone = shippingZones.find(z => z.slug === selectedZoneSlug);
+    const selectedMethod: ShippingMethodOption | undefined =
+      selectedZone?.methods.find(m => m.methodCode === selectedMethodCode) ??
+      selectedZone?.methods[0];
+    const shippingZoneId = selectedZone?.id;
+    const shippingCostCents =
+      selectedMethod && typeof selectedMethod.cost === 'number'
+        ? Math.round(selectedMethod.cost * 100)
+        : undefined;
 
     const payload: PublicOrderPayload = {
       customer: {
@@ -133,7 +316,15 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         identification: composedId,
         preferences: {
           preferredPayment,
-          deliveryInstructions: addressNotes || undefined
+          deliveryInstructions: addressNotes || undefined,
+          shippingZoneSlug: selectedZone?.slug,
+          shippingMethodCode: selectedMethod?.methodCode,
+          shippingCost: selectedMethod?.cost,
+          shippingZoneId,
+          shippingCostCents,
+          locationEstadoId: estadoId ? Number(estadoId) : undefined,
+          locationMunicipioId: municipioId ? Number(municipioId) : undefined,
+          locationParroquiaId: parroquiaId ? Number(parroquiaId) : undefined
         }
       },
       items: items.map(item => ({
@@ -141,7 +332,9 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         quantity: item.quantity
       })),
       paymentMethod,
-      notes: notes || undefined
+      notes: notes || undefined,
+      shippingZoneId,
+      shippingCostCents
     };
 
     try {
@@ -205,7 +398,15 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                 <p className="text-white/60 text-sm mb-6 leading-relaxed">Envía el capture de tu pago al WhatsApp del negocio para agilizar la entrega.</p>
 
                 <div className="flex flex-col gap-3">
-                    <button className="w-full bg-[#25D366] hover:bg-[#20ba5a] py-4 rounded-2xl font-heading font-bold flex items-center justify-center gap-3 shadow-lg shadow-[#25D366]/20 transition-all active:scale-95">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const message = `Hola, acabo de hacer un pedido${orderId ? ` (#${orderId.slice(-6).toUpperCase()})` : ''} desde el catálogo y quiero enviar el comprobante de pago.`;
+                        const encoded = encodeURIComponent(message);
+                        window.open(`https://wa.me/?text=${encoded}`, '_blank');
+                      }}
+                      className="w-full bg-[#25D366] hover:bg-[#20ba5a] py-4 rounded-2xl font-heading font-bold flex items-center justify-center gap-3 shadow-lg shadow-[#25D366]/20 transition-all active:scale-95"
+                    >
                         <span className="text-xl">💬</span>
                         Enviar comprobante
                     </button>
@@ -344,6 +545,13 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   };
 
   const currentPaymentDetails = getPaymentDetails(paymentMethod);
+  const selectedZone = shippingZones.find(z => z.slug === selectedZoneSlug);
+  const selectedShippingMethod: ShippingMethodOption | undefined =
+    selectedZone?.methods.find(m => m.methodCode === selectedMethodCode) ??
+    selectedZone?.methods[0];
+  const shippingCostAmount = selectedShippingMethod?.cost ?? 0;
+  const totalWithShipping =
+    totalCents / 100 + (shippingCostAmount && shippingCostAmount > 0 ? shippingCostAmount : 0);
 
   const handleCopy = (id: string, value: string) => {
     if (!value) return;
@@ -357,6 +565,21 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   };
 
   const handleNext = () => {
+    if (step === 2) {
+      if (!phone.trim()) {
+        setError('El teléfono es obligatorio');
+        return;
+      }
+      if (!address.trim()) {
+        setError('La dirección de entrega es obligatoria');
+        return;
+      }
+      if (shippingZones.length > 0 && !selectedZoneSlug) {
+        setError('Selecciona una zona de envío');
+        return;
+      }
+    }
+
     if (step < 5) {
       setError(null);
       setStep(step + 1);
@@ -528,6 +751,70 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                       <p className="text-[10px] text-zinc-400">Ejemplo: V-12.345.678</p>
                     </div>
                   </div>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                        Estado
+                      </label>
+                      <select
+                        value={estadoId}
+                        onChange={event => {
+                          const value = event.target.value;
+                          setEstadoId(value ? Number(value) : '');
+                        }}
+                        className="w-full rounded-xl border-2 border-black/5 bg-[var(--bg-light)] px-3 py-3 text-sm font-medium outline-none transition-all focus:border-[var(--accent)]"
+                      >
+                        <option value="">Selecciona estado...</option>
+                        {estados.map(estado => (
+                          <option key={estado.id} value={estado.id}>
+                            {estado.nombre_estado}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                        Municipio
+                      </label>
+                      <select
+                        value={municipioId}
+                        onChange={event => {
+                          const value = event.target.value;
+                          setMunicipioId(value ? Number(value) : '');
+                        }}
+                        disabled={!estadoId}
+                        className="w-full rounded-xl border-2 border-black/5 bg-[var(--bg-light)] px-3 py-3 text-sm font-medium outline-none transition-all focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="">Selecciona municipio...</option>
+                        {municipios.map(municipio => (
+                          <option key={municipio.id} value={municipio.id}>
+                            {municipio.nombre_municipio}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                        Parroquia
+                      </label>
+                      <select
+                        value={parroquiaId}
+                        onChange={event => {
+                          const value = event.target.value;
+                          setParroquiaId(value ? Number(value) : '');
+                        }}
+                        disabled={!municipioId}
+                        className="w-full rounded-xl border-2 border-black/5 bg-[var(--bg-light)] px-3 py-3 text-sm font-medium outline-none transition-all focus:border-[var(--accent)] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        <option value="">Selecciona parroquia...</option>
+                        {parroquias.map(parroquia => (
+                          <option key={parroquia.id} value={parroquia.id}>
+                            {parroquia.nombre_parroquia}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
                       Dirección de entrega
@@ -549,6 +836,130 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                       className="min-h-[60px] w-full resize-none rounded-xl border-2 border-black/5 bg-[var(--bg-light)] px-4 py-3 text-sm font-medium outline-none transition-all focus:border-[var(--accent)]"
                       placeholder="Ej: Tocar timbre 3B, dejar en recepción..."
                     />
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
+                        Zona de envío
+                      </label>
+                      {shippingLoading && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">
+                          Calculando envío...
+                        </span>
+                      )}
+                    </div>
+                    {shippingZones.length === 0 ? (
+                      <p className="text-[11px] text-zinc-500">
+                        Los costos de envío se coordinarán por WhatsApp según tu dirección.
+                      </p>
+                    ) : (
+                      <>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        {shippingZones.map(zone => {
+                          const isSelected = selectedZoneSlug === zone.slug;
+                          const zoneSelectedMethod =
+                            (isSelected &&
+                              selectedMethodCode &&
+                              zone.methods.find(m => m.methodCode === selectedMethodCode)) ||
+                            zone.methods[0];
+                          const labelCost = zoneSelectedMethod?.formattedCost ?? 'Por coordinar';
+                          return (
+                            <div
+                              key={zone.id}
+                              className={`flex flex-col rounded-2xl border-2 p-3 text-left text-xs font-semibold transition-all ${
+                                isSelected
+                                  ? 'border-[var(--accent)] bg-[var(--accent)]/5 text-[var(--dark)]'
+                                  : 'border-black/5 bg-white text-zinc-500 hover:border-zinc-300'
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedZoneSlug(zone.slug);
+                                  setZoneManuallySelected(true);
+                                  setAutoSelectedZoneSlug(null);
+                                  const firstMethod = zone.methods[0];
+                                  setSelectedMethodCode(firstMethod ? firstMethod.methodCode : null);
+                                }}
+                                className="flex w-full items-center justify-between gap-2"
+                              >
+                                <span className="text-[11px] font-bold text-[var(--dark)]">{zone.name}</span>
+                                <span
+                                  className={`rounded-full px-2 py-1 text-[10px] font-bold ${
+                                    zoneSelectedMethod?.isFree
+                                      ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                                      : 'bg-zinc-900 text-white'
+                                  }`}
+                                >
+                                  {labelCost}
+                                </span>
+                              </button>
+                              {autoSelectedZoneSlug === zone.slug && !zoneManuallySelected && (
+                                <div className="mt-1 inline-flex items-center rounded-full bg-[var(--accent)]/10 px-2 py-0.5 text-[9px] font-semibold text-[var(--accent)]">
+                                  Sugerida según tu ubicación
+                                </div>
+                              )}
+                              {zone.deliveryTime && (
+                                <div className="mt-1 text-[10px] font-medium text-zinc-400">
+                                  {zone.deliveryTime}
+                                </div>
+                              )}
+                              {zoneSelectedMethod && (
+                                <div className="mt-1 text-[10px] text-zinc-500">
+                                  {zoneSelectedMethod.methodName}
+                                </div>
+                              )}
+                              {zoneSelectedMethod?.isFree &&
+                                typeof zoneSelectedMethod.minOrderAmount === 'number' &&
+                                zoneSelectedMethod.minOrderAmount > 0 && (
+                                  <div className="mt-1 text-[10px] font-semibold text-emerald-500">
+                                    {totalCents / 100 >= zoneSelectedMethod.minOrderAmount
+                                      ? `Envío gratis aplicado en ${zone.name}`
+                                      : `Envío gratis >$${zoneSelectedMethod.minOrderAmount.toFixed(0)} en ${zone.name}`}
+                                  </div>
+                                )}
+                              {isSelected && zone.methods.length > 1 && (
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  {zone.methods.map(method => {
+                                    const isMethodSelected =
+                                      (selectedMethodCode && method.methodCode === selectedMethodCode) ||
+                                      (!selectedMethodCode && method === zone.methods[0]);
+                                    return (
+                                      <button
+                                        key={method.methodCode}
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedZoneSlug(zone.slug);
+                                          setSelectedMethodCode(method.methodCode);
+                                          setZoneManuallySelected(true);
+                                          setAutoSelectedZoneSlug(null);
+                                        }}
+                                        className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-semibold ${
+                                          isMethodSelected
+                                            ? 'border-[var(--accent)] bg-[var(--accent)]/10 text-[var(--accent)]'
+                                            : 'border-black/10 bg-white text-zinc-500 hover:border-zinc-300'
+                                        }`}
+                                      >
+                                        <span>{method.methodName}</span>
+                                        <span className="text-[9px] text-zinc-500">
+                                          {method.formattedCost}
+                                        </span>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {!selectedZoneSlug && (
+                        <p className="mt-1 text-[10px] text-zinc-500">
+                          Selecciona una zona para ver los costos de envío aplicables a tu dirección.
+                        </p>
+                      )}
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -615,8 +1026,8 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                           >
                             {copiedField === row.id ? '✓ Copiado' : 'Copiar'}
                           </button>
-                        </div>
-                      ))}
+                                </div>
+                              ))}
                     </div>
                     <p className="px-4 pb-4 text-[11px] text-zinc-500">
                       Después de pagar, podrás subir el comprobante y el negocio lo verificará antes de preparar tu
@@ -750,7 +1161,31 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
                       <span>Quiero recibir la confirmación y el seguimiento de mi pedido por WhatsApp.</span>
                     </button>
                   </div>
-                  <div className="space-y-2 text-[11px] text-zinc-500">
+                  <div className="space-y-3 text-[11px] text-zinc-500">
+                    {selectedZone && (
+                      <div className="rounded-xl border border-black/5 bg-[var(--bg-light)] px-4 py-3 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-zinc-500">Envío</span>
+                          <span className="font-semibold text-[var(--dark)]">
+                            {selectedShippingMethod?.formattedCost ?? 'Por coordinar'}
+                          </span>
+                        </div>
+                        <div className="mt-1 text-[11px] text-zinc-500">
+                          {selectedZone.name}
+                          {selectedShippingMethod && ` · ${selectedShippingMethod.methodName}`}
+                        </div>
+                        {shippingCostAmount > 0 && (
+                          <div className="mt-2 flex items-center justify-between text-[11px]">
+                            <span className="font-semibold text-zinc-500">
+                              Total productos + envío
+                            </span>
+                            <span className="font-semibold text-[var(--dark)]">
+                              ${totalWithShipping.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     <p>
                       Al confirmar, se enviará tu pedido al comercio. Luego te escribirán por WhatsApp para coordinar el
                       pago y el envío.

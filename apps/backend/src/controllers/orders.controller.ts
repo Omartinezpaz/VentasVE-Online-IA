@@ -32,7 +32,14 @@ const statusSchema = z.object({
 export const getOrders = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'ORDERS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const query = listQuerySchema.parse(req.query);
     const result = await ordersService.list(businessId, query);
     res.json(result);
@@ -44,7 +51,14 @@ export const getOrders = async (req: Request, res: Response, next: NextFunction)
 export const createOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'ORDERS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const data = createOrderSchema.parse(req.body);
     const result = await ordersService.create({ ...data, businessId });
     await catalogService.invalidateByBusinessId(businessId);
@@ -57,7 +71,14 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 export const getOrderById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'ORDERS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const orderId = req.params.id;
     const result = await ordersService.getById(businessId, orderId);
     res.json(result);
@@ -69,7 +90,14 @@ export const getOrderById = async (req: Request, res: Response, next: NextFuncti
 export const updateOrderStatus = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'ORDERS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const orderId = req.params.id;
     const { status } = statusSchema.parse(req.body);
     const result = await ordersService.updateStatus(businessId, orderId, status);
@@ -82,7 +110,14 @@ export const updateOrderStatus = async (req: Request, res: Response, next: NextF
 export const deleteOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'ORDERS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
     const orderId = req.params.id;
     await ordersService.delete(businessId, orderId);
     res.status(204).send();

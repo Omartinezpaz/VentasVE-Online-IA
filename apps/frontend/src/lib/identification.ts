@@ -30,3 +30,26 @@ export const composeIdentification = (type: string, number: string) => {
   return `${cleanType}-${cleanNumber}`;
 };
 
+export const validateIdentification = (type: string, number: string): { valid: boolean; error?: string } => {
+  const cleanNumber = (number || '').replace(/\D/g, '');
+
+  if (!cleanNumber) {
+    return { valid: false, error: 'El número de documento es requerido' };
+  }
+
+  if (type === 'V' || type === 'E') {
+    if (cleanNumber.length < 7 || cleanNumber.length > 9) {
+      return { valid: false, error: 'Cédula inválida (7-9 dígitos)' };
+    }
+  }
+
+  if (type === 'J') {
+    if (cleanNumber.length < 8 || cleanNumber.length > 10) {
+      return { valid: false, error: 'RIF jurídico inválido (8-10 dígitos)' };
+    }
+  }
+
+  return { valid: true };
+};
+
+

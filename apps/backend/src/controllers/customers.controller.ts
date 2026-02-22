@@ -70,10 +70,22 @@ export const getCustomerById = async (req: Request, res: Response, next: NextFun
       include: {
         orders: {
           orderBy: { createdAt: 'desc' },
-          include: {
+          select: {
+            id: true,
+            status: true,
+            createdAt: true,
+            totalCents: true,
+            shipping_zone_slug: true,
+            shipping_cost_cents: true,
+            shipping_method_code: true,
             items: {
-              include: {
-                product: true
+              select: {
+                quantity: true,
+                product: {
+                  select: {
+                    name: true
+                  }
+                }
               }
             }
           }

@@ -10,6 +10,17 @@ import { ordersApi } from '@/lib/api/orders';
 import { getAccessToken, setAccessToken } from '@/lib/auth/storage';
 import { paymentsApi } from '@/lib/api/payments';
 import { disconnectSocket } from '@/lib/socket/client';
+import { settingsApi } from '@/lib/api/settings';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const apiBaseUrl = new URL(API_BASE);
+const IMAGE_BASE_ORIGIN = `${apiBaseUrl.protocol}//${apiBaseUrl.host}`;
+
+const resolveLogoUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${IMAGE_BASE_ORIGIN}${url}`;
+};
 
 type DashboardLayoutProps = {
   children: ReactNode;
@@ -21,6 +32,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pendingPaymentsCount, setPendingPaymentsCount] = useState(0);
   const pathname = usePathname();
+  const [businessName, setBusinessName] = useState<string>('Gestión comercial');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [headerImage] = useState<string>('/imagen de fondo para.png');
 
   const isActive = (href: string, exact = false) => {
     if (exact) return pathname === href;
@@ -28,7 +42,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   };
 
   const baseLink =
-    'flex items-center rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors';
+    'flex items-center rounded-md px-3.5 py-2.5 text-base font-medium transition-colors';
   const activeLink = 'bg-[var(--surface2)] text-[var(--foreground)]';
   const inactiveLink = 'text-[var(--muted)] hover:bg-[var(--background)]/60';
 
@@ -44,6 +58,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
       router.replace('/auth/login');
       return;
     }
+    settingsApi
+      .get()
+      .then(res => {
+        const data = res.data;
+        if (data.name) {
+          setBusinessName(data.name);
+        }
+        if (data.logoUrl) {
+          setLogoUrl(data.logoUrl);
+        }
+      })
+      .catch(() => {});
   }, [router]);
 
   useEffect(() => {
@@ -86,18 +112,18 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors">
       <div className="flex">
-        <aside className="hidden w-56 border-r border-[var(--border)] bg-[var(--bg-sidebar)] px-4 py-4 md:block">
+        <aside className="hidden w-72 border-r border-[var(--border)] bg-[var(--bg-sidebar)] px-6 py-6 md:block">
           <div className="mb-6">
-            <div className="text-sm font-semibold tracking-tight text-[var(--foreground)]">
+            <div className="text-2xl font-semibold tracking-tight text-[var(--foreground)]">
               Ventas<span className="text-amber-400">VE</span>
             </div>
-            <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
+            <div className="mt-1 text-sm uppercase tracking-[0.16em] text-[var(--muted)]">
               Panel del negocio
             </div>
           </div>
-          <nav className="space-y-4 text-sm">
+          <nav className="space-y-4 text-base">
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              <div className="mb-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Principal
               </div>
               <Link
@@ -108,7 +134,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             </div>
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              <div className="mb-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Ventas
               </div>
               <Link
@@ -130,7 +156,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             </div>
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              <div className="mb-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Clientes
               </div>
               <Link
@@ -141,7 +167,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             </div>
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              <div className="mb-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Mensajes
               </div>
               <Link
@@ -157,7 +183,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             </div>
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              <div className="mb-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Pagos
               </div>
               <Link
@@ -173,7 +199,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             </div>
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              <div className="mb-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Negocio
               </div>
               <Link
@@ -196,7 +222,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </Link>
             </div>
             <div>
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              <div className="mb-1 text-[12px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                 Cuenta
               </div>
               <button
@@ -210,15 +236,42 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </nav>
         </aside>
         <main className="flex-1">
-          <header className="border-b border-[var(--border)] bg-[var(--background)]/80 backdrop-blur-md px-4 py-3 sticky top-0 z-30">
-            <div className="mx-auto flex max-w-6xl items-center justify-between">
-              <div>
-                <h1 className="text-sm font-bold tracking-tight text-[var(--foreground)]">
-                  VentasVE
-                </h1>
-                <p className="text-[10px] text-[var(--muted)] font-medium uppercase tracking-widest">
-                  Gestión Comercial
-                </p>
+          <header
+            className="sticky top-0 z-30 border-b border-[var(--border)] bg-black bg-cover bg-center px-4 pt-4 pb-6 md:pt-6 md:pb-8 relative overflow-hidden group flex items-end"
+            style={{
+              backgroundImage: `url('${headerImage}')`,
+              backgroundRepeat: 'no-repeat',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              minHeight: '280px'
+            }}
+          >
+            <div
+              className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 dark:opacity-100 bg-[linear-gradient(to_bottom,rgba(0,0,0,0.85),rgba(0,0,0,0.35),rgba(0,0,0,0.9))]"
+            />
+            <div className="relative flex w-full items-end justify-between gap-3 md:gap-6">
+              <div className="flex flex-col items-start gap-2 md:gap-3">
+                <div className="relative h-32 w-32 md:h-40 md:w-40 overflow-hidden rounded-full border-2 border-white bg-black flex items-center justify-center">
+                  {logoUrl ? (
+                    <img
+                      src={resolveLogoUrl(logoUrl)}
+                      alt={businessName || 'Logo del negocio'}
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <span className="text-sm font-semibold text-white">
+                      VE
+                    </span>
+                  )}
+                </div>
+                <div className="mt-1 leading-tight rounded-xl bg-black/70 px-3 py-2 shadow-md">
+                  <h1 className="text-lg md:text-2xl font-bold tracking-tight text-white">
+                    {businessName}
+                  </h1>
+                  <p className="text-xs md:text-sm text-zinc-300 font-medium uppercase tracking-widest">
+                    Gestión comercial
+                  </p>
+                </div>
               </div>
               <div className="flex items-center gap-3">
                 <ThemeToggle />
@@ -233,7 +286,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </div>
             </div>
           </header>
-          <div className="mx-auto max-w-6xl px-4 py-4">
+          <div className="px-8 py-6 text-[15px]">
             {children}
           </div>
         </main>

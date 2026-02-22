@@ -173,7 +173,8 @@ export default function CustomersPage() {
           <div className="text-3xl mb-3">🔍</div>
           <p className="text-sm font-semibold text-[var(--foreground)]">Sin resultados</p>
           <p className="text-xs text-[var(--muted)] mt-1">
-            No encontramos clientes para <span className="text-[var(--foreground)]">"{debouncedSearch}"</span>
+            No encontramos clientes para{' '}
+            <span className="text-[var(--foreground)]">{debouncedSearch}</span>
           </p>
           <button
             type="button"

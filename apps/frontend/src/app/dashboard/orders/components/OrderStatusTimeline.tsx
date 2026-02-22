@@ -6,14 +6,12 @@ interface OrderStatusTimelineProps {
   currentStatus: string;
   statusOptions: readonly string[];
   statusLabel: Record<string, string>;
-  statusColor: Record<string, string>;
 }
 
 const OrderStatusTimeline: React.FC<OrderStatusTimelineProps> = ({
   currentStatus,
   statusOptions,
   statusLabel,
-  statusColor,
 }) => {
   const currentIndex = statusOptions.indexOf(currentStatus);
 

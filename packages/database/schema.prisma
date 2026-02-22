@@ -1,13 +1,465 @@
-// ── GENERADOR Y DATASOURCE ──────────────────────────
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
   provider = "postgresql"
 }
 
-// ── ENUMS ────────────────────────────────────────────
+model Business {
+  id              String          @id @default(uuid())
+  slug            String          @unique
+  name            String
+  type            BusinessType
+  plan            Plan            @default(FREE)
+  whatsapp        String
+  city            String?
+  settings        Json            @default("{}")
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  catalogOptions  Json?
+  description     String?
+  instagram       String?
+  paymentMethods  Json?
+  schedule        String?
+  store_latitude  Float?
+  store_longitude Float?
+  store_address   String?         @db.VarChar(200)
+  categories      Category[]
+  conversations   Conversation[]
+  customers       Customer[]
+  exchangeRates   ExchangeRate[]
+  orders          Order[]
+  payments        Payment[]
+  paymentConfig   PaymentConfig[]
+  products        Product[]
+  users           User[]
+  shippingZones   ShippingZone[]
+}
+
+model Estado {
+  id           Int         @id @default(autoincrement())
+  codigo       String      @unique @db.VarChar(2)
+  nombreEstado String      @map("nombre_estado") @db.VarChar(100)
+  createdAt    DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  municipios   Municipio[]
+  shippingZoneCoverages ShippingZoneCoverage[]
+
+  @@index([codigo], map: "idx_estados_codigo")
+  @@index([nombreEstado], map: "idx_estados_nombre")
+  @@map("estados")
+}
+
+model Municipio {
+  id              Int         @id @default(autoincrement())
+  estadoId        Int         @map("estado_id")
+  nombreMunicipio String      @map("nombre_municipio") @db.VarChar(100)
+  codigo          String      @unique @db.VarChar(4)
+  createdAt       DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+  estado          Estado      @relation(fields: [estadoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  parroquias      Parroquia[]
+  shippingZoneCoverages ShippingZoneCoverage[]
+
+  @@index([codigo], map: "idx_municipios_codigo")
+  @@index([estadoId], map: "idx_municipios_estado_id")
+  @@map("municipios")
+}
+
+model Parroquia {
+  id              Int       @id @default(autoincrement())
+  municipioId     Int       @map("municipio_id")
+  nombreParroquia String    @map("nombre_parroquia") @db.VarChar(100)
+  codigo          String    @unique @db.VarChar(6)
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  municipio       Municipio @relation(fields: [municipioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  shippingZoneCoverages ShippingZoneCoverage[]
+
+  @@index([codigo], map: "idx_parroquias_codigo")
+  @@index([municipioId], map: "idx_parroquias_municipio_id")
+  @@map("parroquias")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  businessId   String
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         Role      @default(AGENT)
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  business     Business  @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+}
+
+model Session {
+  id        String    @id @default(uuid())
+  userId    String
+  token     String    @unique
+  userAgent String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  businessId  String
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  business    Business  @relation(fields: [businessId], references: [id])
+  products    Product[]
+
+  @@index([businessId])
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  businessId    String
+  categoryId    String?
+  name          String
+  description   String?
+  priceUsdCents Int
+  stock         Int         @default(0)
+  images        String[]
+  variants      Json        @default("[]")
+  attributes    Json        @default("{}")
+  isPublished   Boolean     @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orderItems    OrderItem[]
+  business      Business    @relation(fields: [businessId], references: [id])
+  category      Category?   @relation(fields: [categoryId], references: [id])
+
+  @@index([businessId])
+  @@index([businessId, isPublished])
+}
+
+model Customer {
+  id             String         @id @default(uuid())
+  businessId     String
+  phone          String?
+  name           String?
+  address        String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  addressNotes   String?
+  email          String?
+  identification String?
+  preferences    Json?
+  conversations  Conversation[]
+  business       Business       @relation(fields: [businessId], references: [id])
+  orders         Order[]
+
+  @@index([businessId])
+}
+
+model Order {
+  id                   String        @id @default(uuid())
+  orderNumber          Int           @default(autoincrement())
+  businessId           String
+  customerId           String
+  status               OrderStatus   @default(PENDING)
+  source               OrderSource   @default(WEB)
+  totalCents           Int
+  exchangeRate         Decimal?
+  paymentMethod        PaymentMethod
+  deliveryAddress      String?
+  notes                String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  shipping_zone_slug   String?       @db.VarChar(50)
+  shipping_cost_cents  Int?
+  shipping_method_code String?       @db.VarChar(20)
+  delivery_lat         Float?
+  delivery_lng         Float?
+  business             Business      @relation(fields: [businessId], references: [id])
+  customer             Customer      @relation(fields: [customerId], references: [id])
+  items                OrderItem[]
+  payments             Payment[]
+
+  @@index([businessId, status])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id              String  @id @default(uuid())
+  orderId         String
+  productId       String
+  quantity        Int
+  unitPriceCents  Int
+  variantSelected Json?
+  order           Order   @relation(fields: [orderId], references: [id])
+  product         Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String
+  businessId    String
+  method        PaymentMethod
+  amountCents   Int
+  currency      String
+  reference     String?
+  proofImageUrl String?
+  status        PaymentStatus @default(PENDING)
+  verifiedAt    DateTime?
+  verifiedBy    String?
+  createdAt     DateTime      @default(now())
+  notes         String?
+  business      Business      @relation(fields: [businessId], references: [id])
+  order         Order         @relation(fields: [orderId], references: [id])
+
+  @@index([businessId, status])
+}
+
+model PaymentConfig {
+  id         String        @id @default(uuid())
+  businessId String
+  method     PaymentMethod
+  details    Json          @default("{}")
+  isActive   Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  business   Business      @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+}
+
+model Conversation {
+  id         String     @id @default(uuid())
+  businessId String
+  customerId String
+  channel    Channel
+  status     ConvStatus @default(BOT)
+  botActive  Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  business   Business   @relation(fields: [businessId], references: [id])
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  messages   Message[]
+
+  @@index([businessId, status])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           MsgRole
+  content        String
+  mediaUrl       String?
+  waId           String?      @unique
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
+}
+
+model ExchangeRate {
+  id         String    @id @default(uuid())
+  businessId String?
+  usdToVes   Decimal
+  source     String
+  date       DateTime  @default(now())
+  business   Business? @relation(fields: [businessId], references: [id])
+
+  @@index([date])
+}
+
+model bancos {
+  id           Int       @id @default(autoincrement())
+  codigo_ibp   String    @unique @db.VarChar(4)
+  nombre       String    @db.VarChar(100)
+  nombre_corto String?   @db.VarChar(50)
+  activo       Boolean?  @default(true)
+  orden        Int?      @default(0)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_bancos_activo", where: raw("(activo = true)"))
+}
+
+model metodos_pago {
+  id                   Int       @id @default(autoincrement())
+  codigo               String    @unique @db.VarChar(20)
+  nombre               String    @db.VarChar(50)
+  icono                String?   @db.VarChar(10)
+  descripcion          String?
+  requiere_cuenta      Boolean?  @default(true)
+  requiere_comprobante Boolean?  @default(true)
+  orden                Int?      @default(0)
+  activo               Boolean?  @default(true)
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+  updated_at           DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_metodos_pago_activo", where: raw("(activo = true)"))
+}
+
+model regimenes_islr {
+  id                   Int       @id @default(autoincrement())
+  codigo               String    @unique @db.VarChar(20)
+  nombre               String    @db.VarChar(50)
+  descripcion          String?
+  porcentaje_base      Decimal?  @db.Decimal(5, 2)
+  requiere_declaracion Boolean?  @default(true)
+  activo               Boolean?  @default(true)
+  orden                Int?      @default(0)
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_regimenes_islr_activo", where: raw("(activo = true)"))
+}
+
+model tipos_documento {
+  id                          Int       @id @default(autoincrement())
+  codigo                      String    @unique @db.VarChar(4)
+  nombre                      String    @db.VarChar(50)
+  mascara                     String?   @db.VarChar(20)
+  longitud_min                Int?      @default(7)
+  longitud_max                Int?      @default(12)
+  requiere_digito_verificador Boolean?  @default(false)
+  activo                      Boolean?  @default(true)
+  orden                       Int?      @default(0)
+  created_at                  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_tipos_documento_activo", where: raw("(activo = true)"))
+}
+
+model tipos_negocio {
+  id                Int       @id @default(autoincrement())
+  codigo            String    @unique @db.VarChar(20)
+  nombre            String    @db.VarChar(50)
+  icono             String?   @db.VarChar(10)
+  descripcion       String?
+  campos_especiales Json?
+  activo            Boolean?  @default(true)
+  orden             Int?      @default(0)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  updated_at        DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_tipos_negocio_activo", where: raw("(activo = true)"))
+}
+
+model tipos_persona {
+  id                       Int       @id @default(autoincrement())
+  codigo                   String    @unique @db.VarChar(10)
+  nombre                   String    @db.VarChar(50)
+  descripcion              String?
+  requiere_razon_social    Boolean?  @default(false)
+  requiere_nombre_completo Boolean?  @default(true)
+  campos_adicionales       Json?
+  activo                   Boolean?  @default(true)
+  orden                    Int?      @default(0)
+  created_at               DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_tipos_persona_activo", where: raw("(activo = true)"))
+}
+
+model ShippingMethod {
+  id          Int            @id @default(autoincrement())
+  code        String         @unique @db.VarChar(20)
+  name        String         @db.VarChar(50)
+  icon        String?        @db.VarChar(10)
+  description String?
+  isActive    Boolean        @default(true) @map("isActive")
+  createdAt   DateTime       @default(now()) @map("createdAt") @db.Timestamp(3)
+  rates       ShippingRate[]
+
+  @@map("shipping_methods")
+}
+
+model ShippingZone {
+  id           String                @id
+  businessId   String                @map("businessId")
+  name         String                @db.VarChar(100)
+  price        Decimal               @db.Decimal(10, 2)
+  free         Boolean               @default(false)
+  freeOver     Decimal?              @map("freeOver") @db.Decimal(10, 2)
+  radius       Int?
+  deliveryTime String?               @map("deliveryTime") @db.VarChar(50)
+  isActive     Boolean               @default(true) @map("isActive")
+  createdAt    DateTime              @default(now()) @map("createdAt") @db.Timestamp(3)
+  business     Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  rates        ShippingRate[]
+  coverages    ShippingZoneCoverage[]
+
+  @@index([businessId])
+  @@index([businessId, isActive])
+  @@map("shipping_zones")
+}
+
+model ShippingRate {
+  id             String         @id
+  zoneId         String         @map("zoneId")
+  methodId       Int            @map("methodId")
+  costType       String         @default("fixed") @map("costType") @db.VarChar(10)
+  costValue      Decimal        @map("costValue") @db.Decimal(10, 2)
+  minOrderAmount Decimal        @default(0) @map("minOrderAmount") @db.Decimal(10, 2)
+  isFree         Boolean        @default(false) @map("isFree")
+  isActive       Boolean        @default(true) @map("isActive")
+  createdAt      DateTime       @default(now()) @map("createdAt") @db.Timestamp(3)
+  zone           ShippingZone   @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  method         ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade)
+
+  @@unique([zoneId, methodId, costType, costValue])
+  @@index([zoneId, isActive])
+  @@index([methodId])
+  @@map("shipping_rates")
+}
+
+model ShippingZoneCoverage {
+  id          String       @id
+  zoneId      String       @map("zoneId")
+  estadoId    Int          @map("estadoId")
+  municipioId Int?         @map("municipioId")
+  parroquiaId Int?         @map("parroquiaId")
+  createdAt   DateTime     @default(now()) @map("createdAt") @db.Timestamp(3)
+  zone        ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  estado      Estado       @relation(fields: [estadoId], references: [id], onDelete: Cascade)
+  municipio   Municipio?   @relation(fields: [municipioId], references: [id], onDelete: Cascade)
+  parroquia   Parroquia?   @relation(fields: [parroquiaId], references: [id], onDelete: Cascade)
+
+  @@unique([zoneId, estadoId, municipioId, parroquiaId])
+  @@index([zoneId])
+  @@index([estadoId])
+  @@index([municipioId])
+  @@index([parroquiaId])
+  @@map("shipping_zone_coverage")
+}
+
+/// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
+// model geo_internacional {
+// }
+
+/// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+// model paises {
+// }
+
+/// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
+// model shipping_methods {
+// }
+
+/// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
+// model shipping_rates {
+// }
+
+/// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
+// model shipping_zones {
+// }
+
+/// We could not retrieve columns for the underlying table. Either it has none or you are missing rights to see them. Please check your privileges.
+// model zonas_entrega {
+// }
+
 enum BusinessType {
   FASHION
   FOOD
@@ -83,312 +535,4 @@ enum MsgRole {
   CUSTOMER
   BOT
   AGENT
-}
-
-enum PersonaType {
-  NATURAL
-  JURIDICA
-}
-
-enum ISLRRegimen {
-  ORDINARIO
-  ESPECIAL
-  EXENTO
-}
-
-// ── MODELS ───────────────────────────────────────────
-model Business {
-  id             String       @id @default(uuid())
-  slug           String       @unique
-  name           String
-  type           BusinessType
-  plan           Plan         @default(FREE)
-  whatsapp       String
-  city           String?
-  description    String?
-  instagram      String?
-  schedule       String?
-
-  ownerName           String?      @map("owner_name")
-  ownerPhone          String?      @map("owner_phone")
-  ownerEmail          String?      @map("owner_email")
-  businessAddress     String?      @map("business_address")
-  personaType         PersonaType? @map("persona_type")
-  rif                 String?      @map("rif")
-  razonSocial         String?      @map("razon_social")
-  fiscalAddress       String?      @map("fiscal_address")
-
-  // Campos geográficos normalizados
-  estadoId        Int?       @map("estado_id")
-  municipioId     Int?       @map("municipio_id")
-  parroquiaId     Int?       @map("parroquia_id")
-
-  // Campos legacy en texto (mantener por compatibilidad)
-  state           String?
-  municipio       String?
-  parroquia       String?
-
-  postalCode          String?      @map("postal_code")
-  electronicInvoicing Boolean?     @map("electronic_invoicing") @default(false)
-  islrRegimen         ISLRRegimen? @map("islr_regimen")
-
-  settings            Json         @default("{}")  // colores, módulos, campos del ramo
-  paymentMethods      Json?
-  catalogOptions      Json?
-  notificationSettings Json?
-  isActive            Boolean      @default(true)
-  createdAt           DateTime     @default(now())
-
-  // Relaciones
-  users         User[]
-  products      Product[]
-  categories    Category[]
-  orders        Order[]
-  customers     Customer[]
-  payments      Payment[]
-  conversations Conversation[]
-  paymentConfig PaymentConfig[]
-  exchangeRates ExchangeRate[]
-
-  estadoRel     Estado?    @relation("BusinessEstado", fields: [estadoId], references: [id])
-  municipioRel  Municipio? @relation("BusinessMunicipio", fields: [municipioId], references: [id])
-  parroquiaRel  Parroquia? @relation("BusinessParroquia", fields: [parroquiaId], references: [id])
-}
-
-model Estado {
-  id            Int        @id @default(autoincrement())
-  codigo        String     @unique @db.VarChar(2)
-  nombreEstado  String     @map("nombre_estado") @db.VarChar(100)
-  createdAt     DateTime?  @map("created_at") @default(now())
-
-  municipios Municipio[]
-  businesses Business[] @relation("BusinessEstado")
-
-  @@map("estados")
-}
-
-model Municipio {
-  id             Int        @id @default(autoincrement())
-  estadoId       Int        @map("estado_id")
-  nombreMunicipio String    @map("nombre_municipio") @db.VarChar(100)
-  codigo         String     @unique @db.VarChar(4)
-  createdAt      DateTime?  @map("created_at") @default(now())
-
-  estado      Estado      @relation(fields: [estadoId], references: [id])
-  parroquias  Parroquia[]
-  businesses  Business[]  @relation("BusinessMunicipio")
-
-  @@map("municipios")
-}
-
-model Parroquia {
-  id               Int        @id @default(autoincrement())
-  municipioId      Int        @map("municipio_id")
-  nombreParroquia  String     @map("nombre_parroquia") @db.VarChar(100)
-  codigo           String     @unique @db.VarChar(6)
-  createdAt        DateTime?  @map("created_at") @default(now())
-
-  municipio   Municipio  @relation(fields: [municipioId], references: [id])
-  businesses  Business[] @relation("BusinessParroquia")
-
-  @@map("parroquias")
-}
-
-model User {
-  id           String    @id @default(uuid())
-  businessId   String
-  email        String    @unique
-  passwordHash String
-  name         String
-  role         Role      @default(AGENT)
-  isVerified   Boolean   @default(false)
-  createdAt    DateTime  @default(now())
-
-  business  Business  @relation(fields: [businessId], references: [id])
-  sessions  Session[]
-
-  @@index([businessId])
-}
-
-model Session {
-  id          String    @id @default(uuid())
-  userId      String
-  token       String    @unique  // hashed refresh token
-  userAgent   String?
-  expiresAt   DateTime
-  revokedAt   DateTime?
-  createdAt   DateTime  @default(now())
-
-  user  User  @relation(fields: [userId], references: [id])
-  @@index([userId])
-}
-
-model Category {
-  id          String   @id @default(uuid())
-  businessId  String
-  name        String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  business Business  @relation(fields: [businessId], references: [id])
-  products Product[]
-
-  @@index([businessId])
-}
-
-model Product {
-  id              String    @id @default(uuid())
-  businessId      String
-  categoryId      String?
-  name            String
-  description     String?
-  priceUsdCents   Int       // 1200 = $12.00
-  stock           Int       @default(0)
-  images          String[]
-  variants        Json      @default("[]")
-  attributes      Json      @default("{}")   // campos del ramo
-  isPublished     Boolean   @default(true)
-  deletedAt       DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  business    Business    @relation(fields: [businessId], references: [id])
-  category    Category?   @relation(fields: [categoryId], references: [id])
-  orderItems  OrderItem[]
-
-  @@index([businessId])
-  @@index([businessId, isPublished])
-}
-
-model Customer {
-  id             String   @id @default(uuid())
-  businessId     String
-  phone          String?
-  name           String?
-  email          String?
-  address        String?
-  addressNotes   String?
-  identification String?
-  preferences    Json?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  business      Business       @relation(fields: [businessId], references: [id])
-  orders        Order[]
-  conversations Conversation[]
-
-  @@index([businessId])
-}
-
-model Order {
-  id              String        @id @default(uuid())
-  orderNumber     Int           @default(autoincrement())
-  businessId      String
-  customerId      String
-  status          OrderStatus   @default(PENDING)
-  source          OrderSource   @default(WEB)
-  totalCents      Int
-  exchangeRate    Decimal?      // snapshot tasa del momento
-  paymentMethod   PaymentMethod
-  deliveryAddress String?
-  notes           String?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  business  Business    @relation(fields: [businessId], references: [id])
-  customer  Customer    @relation(fields: [customerId], references: [id])
-  items     OrderItem[]
-  payments  Payment[]
-
-  @@index([businessId, status])
-  @@index([customerId])
-}
-
-model OrderItem {
-  id              String   @id @default(uuid())
-  orderId         String
-  productId       String
-  quantity        Int
-  unitPriceCents  Int      // snapshot precio al momento del pedido
-  variantSelected Json?    // { talla: "M", color: "Azul" }
-
-  order    Order    @relation(fields: [orderId], references: [id])
-  product  Product  @relation(fields: [productId], references: [id])
-}
-
-model Payment {
-  id             String         @id @default(uuid())
-  orderId        String
-  businessId     String
-  method         PaymentMethod
-  amountCents    Int
-  currency       String
-  reference      String?       // n° transacción Zelle, teléfono PM, hash…
-  proofImageUrl  String?
-  status         PaymentStatus @default(PENDING)
-  notes          String?
-  verifiedAt     DateTime?
-  verifiedBy     String?      // userId o null (bot)
-  createdAt      DateTime     @default(now())
-
-  order     Order     @relation(fields: [orderId], references: [id])
-  business  Business  @relation(fields: [businessId], references: [id])
-
-  @@index([businessId, status])
-}
-
-model PaymentConfig {
-  id          String        @id @default(uuid())
-  businessId  String
-  method      PaymentMethod
-  details     Json          @default("{}")
-  isActive    Boolean       @default(true)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  business Business @relation(fields: [businessId], references: [id])
-
-  @@index([businessId])
-}
-
-model Conversation {
-  id          String      @id @default(uuid())
-  businessId  String
-  customerId  String
-  channel     Channel
-  status      ConvStatus  @default(BOT)
-  botActive   Boolean     @default(true)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-
-  business  Business  @relation(fields: [businessId], references: [id])
-  customer  Customer  @relation(fields: [customerId], references: [id])
-  messages  Message[]
-
-  @@index([businessId, status])
-}
-
-model Message {
-  id               String    @id @default(uuid())
-  conversationId   String
-  role             MsgRole
-  content          String
-  mediaUrl         String?
-  waId             String?   @unique  // evitar duplicados de webhook
-  createdAt        DateTime  @default(now())
-
-  conversation  Conversation  @relation(fields: [conversationId], references: [id])
-  @@index([conversationId])
-}
-
-model ExchangeRate {
-  id          String    @id @default(uuid())
-  businessId  String?   // null = tasa global del sistema
-  usdToVes    Decimal   // 36500.00
-  source      String    // "BCV" | "PARALELO" | "MANUAL"
-  date        DateTime  @default(now())
-
-  business    Business? @relation(fields: [businessId], references: [id])
-  @@index([date])
 }

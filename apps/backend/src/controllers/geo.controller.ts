@@ -58,3 +58,47 @@ export const getParroquias = async (req: Request, res: Response, next: NextFunct
   }
 };
 
+export const getCountries = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT id, nombre, iso3, iso_code, iso2, phone_code
+      FROM public.paises
+      ORDER BY nombre ASC
+    `;
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        nombre: r.nombre,
+        iso3: r.iso3,
+        isoCode: r.iso_code,
+        iso2: r.iso2,
+        phoneCode: r.phone_code
+      }))
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getVeAreaCodes = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const rows = await prisma.$queryRaw<any[]>`
+      SELECT id, codigo, tipo, operadora, estado_principal
+      FROM public.codigos_area_venezuela
+      WHERE activo = true
+      ORDER BY codigo ASC
+    `;
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        codigo: r.codigo,
+        tipo: r.tipo,
+        operadora: r.operadora,
+        estado_principal: r.estado_principal
+      }))
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+

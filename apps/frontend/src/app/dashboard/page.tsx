@@ -8,7 +8,6 @@ import { getAccessToken } from '@/lib/auth/storage';
 type TimeRange = 'hoy' | 'semana' | 'mes';
 type OrderStatus = 'NUEVO' | 'CONFIRMADO' | 'PREPARANDO' | 'EN_CAMINO' | 'ENTREGADO' | 'CANCELADO';
 type PaymentMethod = 'Zelle' | 'Pago Móvil' | 'Binance' | 'Efectivo' | 'Transferencia';
-type ViewMode = 'table' | 'kanban';
 
 interface Order {
   id: string;
@@ -141,8 +140,7 @@ function KpiCard({ label, value, subtext, delta, deltaUp, icon, color }: {
 export default function DashboardPage() {
   const router = useRouter();
   const [timeRange, setTimeRange] = useState<TimeRange>('hoy');
-  const [viewMode, setViewMode] = useState<ViewMode>('table');
-  const [orders, setOrders] = useState<Order[]>(ORDERS);
+  const [orders] = useState<Order[]>(ORDERS);
   const [payments, setPayments] = useState<Payment[]>(PAYMENTS);
   const [activeChat, setActiveChat] = useState<string>('c1');
   const [loading, setLoading] = useState(true);
@@ -165,16 +163,6 @@ export default function DashboardPage() {
   }, []);
 
   // Actualizar estado de pedido
-  const updateOrderStatus = useCallback((id: string, newStatus: OrderStatus) => {
-    setOrders(prev => prev.map(o => o.id === id ? { ...o, status: newStatus } : o));
-  }, []);
-
-  // Verificar pago
-  const verifyPayment = useCallback((id: string) => {
-    setPayments(prev => prev.map(p => p.id === id ? { ...p, status: 'CONFIRMED' } : p));
-  }, []);
-
-  // Confirmar todos los pagos
   const confirmAllPayments = useCallback(() => {
     setPayments(prev => prev.map(p => ({ ...p, status: 'CONFIRMED' })));
   }, []);

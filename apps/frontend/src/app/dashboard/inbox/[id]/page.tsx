@@ -1,12 +1,14 @@
 // apps/frontend/src/app/dashboard/inbox/[id]/page.tsx
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { ChatSidebar } from '@/components/chatbot/ChatSidebar';
 import { ChatMessage } from '@/components/chatbot/ChatMessage';
 import { BotStatusBadge } from '@/components/chatbot/BotStatusBadge';
-import { Button } from '@/components/ui/Button';
+import { chatApi, Conversation, Message as ApiMessage } from '@/lib/api/chat';
+import { getAccessToken } from '@/lib/auth/storage';
+import { useWebSocket } from '@/lib/hooks/useWebSocket';
 
 interface Chat {
   id: string;
@@ -24,40 +26,49 @@ interface Message {
   sender: 'client' | 'bot' | 'human';
   text: string;
   time: string;
+  status?: 'sent' | 'delivered';
   attachments?: Array<{ type: 'image' | 'file'; name: string; size: string }>;
   orderPreview?: { items: Array<{ name: string; qty: number; price: number }>; total: number };
   paymentPreview?: { method: string; ref: string; amount: string };
 }
 
-// Datos de ejemplo
-const CHATS: Chat[] = [
-  { id: 'c1', name: 'María Alejandra', avatar: '👩', lastMessage: '¿Tienen el polo en azul talla M?', time: '10:42', unread: 2, source: 'wa', botStatus: 'auto' },
-  { id: 'c2', name: 'Carlos Instagram', avatar: '👨', lastMessage: 'Quiero hacer un pedido grande', time: '10:28', unread: 1, source: 'ig', botStatus: 'human' },
-  { id: 'c3', name: 'Luisa Fernández', avatar: '👩‍💼', lastMessage: 'Ya hice el pago móvil 🙏', time: '10:18', unread: 4, source: 'wa', botStatus: 'auto' },
-];
+type NewMessageEvent = {
+  conversation: {
+    id: string;
+    channel: string;
+    status: string;
+    botActive?: boolean;
+    updatedAt: string;
+  };
+  customer?: {
+    id: string;
+    name: string | null;
+    phone: string | null;
+  };
+  message: ApiMessage;
+};
 
-const MESSAGES: Message[] = [
-  { id: 'm1', sender: 'client', text: 'Hola buenas! Quería preguntar si tienen el polo classic en azul talla M disponible?', time: '10:38' },
-  { id: 'm2', sender: 'bot', text: '¡Hola María! Soy Valeria de Mis Modas 2025 👋\n\n¡Claro que sí! Tenemos el Polo Classic Premium disponible en azul talla M. Precio: $12.00 (Bs. 438,000)\n\n¿Cuántas unidades te interesan?', time: '10:38' },
-  { id: 'm3', sender: 'client', text: 'Me interesan 2 unidades y también vi un bolso rosa en el catálogo', time: '10:40' },
-  { id: 'm4', sender: 'bot', text: '¡Perfecto! Déjame confirmarte:\n\n✅ 2x Polo Classic Premium Azul M = $24.00\n✅ 1x Bolso Elegante Rosa disponible = $22.00\n\n🛒 Total: $46.00 (Bs. 1,679,000)', time: '10:40', orderPreview: { items: [{ name: 'Polo Classic x2', qty: 2, price: 24 }, { name: 'Bolso Elegante x1', qty: 1, price: 22 }], total: 46 } },
-  { id: 'm5', sender: 'bot', text: '¿Confirmas este pedido? ¿Cómo prefieres pagar? 💳', time: '10:40', quickReplies: ['💸 Zelle', '📱 Pago Móvil', '⚡ Binance', '💵 Efectivo'] },
-  { id: 'm6', sender: 'client', text: 'Voy a pagar por Zelle 💸', time: '10:41' },
-  { id: 'm7', sender: 'bot', text: '¡Excelente! Estos son los datos para el pago:', time: '10:41', paymentPreview: { method: 'Zelle', ref: 'juan@gmail.com', amount: '$46.00 USD' } },
-  { id: 'm8', sender: 'bot', text: 'Una vez que hagas el pago, envíame la captura del comprobante 📸 y confirmo tu pedido en segundos ⚡', time: '10:41' },
-  { id: 'm9', sender: 'client', text: 'Listo! Ya hice el pago, te mando la foto', time: '10:42' },
-  { id: 'm10', sender: 'client', text: '', time: '10:42', attachments: [{ type: 'image', name: 'comprobante_zelle.jpg', size: '248 KB' }] },
-  { id: 'm11', sender: 'bot', text: '', time: '10:42', isTyping: true },
-];
+type ConversationUpdatedEvent = {
+  id: string;
+  status: string;
+  botActive?: boolean;
+  updatedAt: string;
+};
+
+type MessageDeliveredEvent = {
+  messageId: string;
+};
 
 export default function ChatInboxPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const chatId = params.id;
-  
-  const [chats, setChats] = useState<Chat[]>(CHATS);
-  const [messages, setMessages] = useState<Message[]>(MESSAGES);
-  const [activeChat, setActiveChat] = useState(chatId || CHATS[0].id);
-  const [botActive, setBotActive] = useState(true);
+
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [activeChat, setActiveChat] = useState<string | null>(null);
+  const [botActive, setBotActive] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -65,55 +76,236 @@ export default function ChatInboxPage({ params }: { params: { id: string } }) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
 
+  const mapApiMessageToLocal = useCallback((msg: ApiMessage): Message => {
+    const sender: Message['sender'] =
+      msg.role === 'CUSTOMER' ? 'client' : msg.role === 'BOT' ? 'bot' : 'human';
+
+    return {
+      id: msg.id,
+      sender,
+      text: msg.content,
+      time: new Date(msg.createdAt).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      status: 'sent'
+    };
+  }, []);
+
+  const loadMessages = useCallback(
+    async (conversationId: string, baseConversations?: Conversation[]) => {
+      try {
+        const response = await chatApi.getMessages(conversationId, { page: 1, limit: 200 });
+        const apiMessages = response.data.data;
+        setMessages(apiMessages.map(mapApiMessageToLocal));
+
+        const list = baseConversations ?? conversations;
+        const conv = list.find(c => c.id === conversationId);
+        if (conv) {
+          setBotActive(conv.botActive ?? conv.status === 'BOT');
+        }
+      } catch {
+        setError('No se pudieron cargar los mensajes');
+      }
+    },
+    [conversations, mapApiMessageToLocal]
+  );
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) {
+      router.replace('/auth/login');
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const response = await chatApi.list({ page: 1, limit: 50 });
+        const data = response.data.data;
+        setConversations(data);
+
+        const initialId = chatId || data[0]?.id || null;
+        if (initialId) {
+          setActiveChat(initialId);
+          await loadMessages(initialId, data);
+        }
+      } catch {
+        setError('No se pudieron cargar las conversaciones');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
+  }, [router, chatId, loadMessages]);
+
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  const handleSendMessage = useCallback(() => {
-    if (!inputValue.trim()) return;
-    
-    const newMessage: Message = {
-      id: `m${Date.now()}`,
-      sender: 'human',
-      text: inputValue,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    };
-    
-    setMessages(prev => [...prev, newMessage]);
+  const handleSendMessage = useCallback(async () => {
+    if (!inputValue.trim() || !activeChat) return;
+
+    const content = inputValue;
     setInputValue('');
-    
-    // Simular respuesta del bot si está activo
-    if (botActive) {
-      setTimeout(() => {
-        setMessages(prev => [...prev, {
-          id: `m${Date.now() + 1}`,
-          sender: 'bot',
-          text: `✅ "${inputValue}" registrado y confirmado. Tu pedido ha sido actualizado. 📱`,
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }]);
-      }, 1200);
+
+    try {
+      await chatApi.sendMessage(activeChat, content);
+    } catch {
+      setError('No se pudo enviar el mensaje');
     }
-  }, [inputValue, botActive]);
+  }, [activeChat, inputValue]);
 
   const handleQuickReply = useCallback((text: string) => {
     setInputValue(text);
   }, []);
 
-  const toggleBot = useCallback(() => {
-    setBotActive(prev => !prev);
-  }, []);
+  const toggleBot = useCallback(async () => {
+    if (!activeChat) return;
+    try {
+      const response = await chatApi.toggleBot(activeChat);
+      const updated = response.data;
+      setBotActive(updated.botActive ?? updated.status === 'BOT');
+      setConversations(prev =>
+        prev.map(conversation =>
+          conversation.id === updated.id ? { ...conversation, ...updated } : conversation
+        )
+      );
+    } catch {
+      setError('No se pudo actualizar el modo del bot');
+    }
+  }, [activeChat]);
 
-  const handleChatSelect = useCallback((chatId: string) => {
-    setActiveChat(chatId);
-    router.push(`/dashboard/inbox/${chatId}`);
-  }, [router]);
+  const handleChatSelect = useCallback(
+    (nextId: string) => {
+      setActiveChat(nextId);
+      router.push(`/dashboard/inbox/${nextId}`);
+      loadMessages(nextId);
+    },
+    [router, loadMessages]
+  );
 
-  const currentChat = chats.find(c => c.id === activeChat);
+  const chats: Chat[] = useMemo(
+    () =>
+      conversations.map(conversation => {
+        const customerName =
+          conversation.customer?.name ||
+          conversation.customer?.phone ||
+          'Cliente WhatsApp';
+        const lastMessage = conversation.messages?.[0];
+        const totalMessages = conversation._count?.messages ?? 0;
+        const previewCount = conversation.messages?.length ?? 0;
+        const unread = Math.max(totalMessages - previewCount, 0);
+        const source: Chat['source'] =
+          conversation.channel === 'INSTAGRAM'
+            ? 'ig'
+            : conversation.channel === 'WEB'
+              ? 'web'
+              : 'wa';
+        const botStatus: Chat['botStatus'] =
+          conversation.status === 'BOT'
+            ? 'auto'
+            : conversation.status === 'HUMAN'
+              ? 'human'
+              : 'done';
+
+        return {
+          id: conversation.id,
+          name: customerName,
+          avatar: customerName.charAt(0),
+          lastMessage: lastMessage?.content ?? '',
+          time: new Date(conversation.updatedAt).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          unread,
+          source,
+          botStatus
+        };
+      }),
+    [conversations]
+  );
+
+  const currentChat = chats.find(c => c.id === activeChat) || chats[0];
+
+  useWebSocket<NewMessageEvent>('new_message', payload => {
+    setConversations(prev => {
+      const existingIndex = prev.findIndex(
+        conversation => conversation.id === payload.conversation.id
+      );
+
+      const updatedConversation: Conversation = {
+        id: payload.conversation.id,
+        channel: payload.conversation.channel,
+        status: payload.conversation.status,
+        botActive: payload.conversation.botActive,
+        updatedAt: payload.message.createdAt,
+        customer: payload.customer
+          ? {
+              id: payload.customer.id,
+              name: payload.customer.name,
+              phone: payload.customer.phone
+            }
+          : undefined,
+        messages: [
+          {
+            id: payload.message.id,
+            role: payload.message.role,
+            content: payload.message.content,
+            createdAt: payload.message.createdAt
+          }
+        ],
+        _count: {
+          messages:
+            (existingIndex >= 0 ? prev[existingIndex]._count?.messages ?? 0 : 0) + 1
+        }
+      };
+
+      if (existingIndex >= 0) {
+        const next = [...prev];
+        next.splice(existingIndex, 1);
+        return [updatedConversation, ...next];
+      }
+
+      return [updatedConversation, ...prev];
+    });
+
+    if (payload.conversation.id === activeChat) {
+      setMessages(prev => [...prev, mapApiMessageToLocal(payload.message)]);
+    }
+  });
+
+  useWebSocket<ConversationUpdatedEvent>('conversation_updated', payload => {
+    setConversations(prev =>
+      prev.map(conversation =>
+        conversation.id === payload.id
+          ? {
+              ...conversation,
+              status: payload.status,
+              botActive: payload.botActive ?? conversation.botActive,
+              updatedAt: payload.updatedAt
+            }
+          : conversation
+      )
+    );
+
+    if (payload.id === activeChat) {
+      setBotActive(payload.botActive ?? payload.status === 'BOT');
+    }
+  });
+
+  useWebSocket<MessageDeliveredEvent>('message_delivered', payload => {
+    setMessages(prev =>
+      prev.map(message =>
+        message.id === payload.messageId ? { ...message, status: 'delivered' } : message
+      )
+    );
+  });
 
   return (
     <div className="h-screen flex bg-[var(--bg)] text-[var(--text)] font-body">
       {/* Sidebar */}
-      <ChatSidebar 
+      <ChatSidebar
         chats={chats}
         activeChat={activeChat}
         onSelect={handleChatSelect}
@@ -130,7 +322,11 @@ export default function ChatInboxPage({ params }: { params: { id: string } }) {
             <div className="font-bold text-sm">{currentChat?.name}</div>
             <div className="text-xs text-[var(--green)] flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[var(--green)] animate-blink" />
-              En línea · WhatsApp
+              {currentChat?.source === 'ig'
+                ? 'En línea · Instagram'
+                : currentChat?.source === 'web'
+                  ? 'En línea · Web'
+                  : 'En línea · WhatsApp'}
             </div>
           </div>
           <div className="ml-auto flex gap-2">
@@ -149,14 +345,30 @@ export default function ChatInboxPage({ params }: { params: { id: string } }) {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-5 space-y-1">
-          {messages.map((msg, i) => (
-            <ChatMessage 
-              key={msg.id} 
-              message={msg}
-              isBot={msg.sender === 'bot'}
-              isHuman={msg.sender === 'human'}
-              onQuickReply={handleQuickReply}
-            />
+          {loading && (
+            <div className="py-4 text-xs text-[var(--muted)]">
+              Cargando conversación...
+            </div>
+          )}
+          {error && (
+            <div className="mb-3 rounded-lg border border-red-500/30 bg-red-950/40 px-4 py-2 text-xs text-red-200">
+              {error}
+            </div>
+          )}
+          {messages.map(msg => (
+            <div key={msg.id}>
+              <ChatMessage
+                message={msg}
+                isBot={msg.sender === 'bot'}
+                isHuman={msg.sender === 'human'}
+                onQuickReply={handleQuickReply}
+              />
+              {msg.sender !== 'client' && (
+                <div className="mt-0.5 pr-2 text-right text-[10px] text-[var(--muted)]">
+                  {msg.status === 'delivered' ? '✓✓ Entregado' : '✓ Enviado'}
+                </div>
+              )}
+            </div>
           ))}
           <div ref={messagesEndRef} />
         </div>

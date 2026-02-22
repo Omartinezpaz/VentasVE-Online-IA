@@ -19,6 +19,23 @@ export const whatsappApi = {
     return api.get<WhatsappStatus>('/whatsapp/status', {
       headers: authHeaders()
     });
+  },
+  connect() {
+    return api.post(
+      '/whatsapp/connect',
+      {},
+      {
+        headers: authHeaders()
+      }
+    );
+  },
+  disconnect() {
+    return api.post(
+      '/whatsapp/disconnect',
+      {},
+      {
+        headers: authHeaders()
+      }
+    );
   }
 };
-

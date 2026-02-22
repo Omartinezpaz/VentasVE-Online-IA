@@ -24,6 +24,8 @@ export type PublicOrderPayload = {
   items: PublicOrderItem[];
   paymentMethod: string;
   notes?: string;
+  shippingZoneId?: number;
+  shippingCostCents?: number;
 };
 
 export type DocumentType = {
@@ -44,6 +46,31 @@ export type PublicPaymentMethod = {
 };
 
 export type PublicPaymentConfig = PaymentMethods;
+
+export type ShippingMethodOption = {
+  methodId: number;
+  methodCode: string;
+  methodName: string;
+  icon?: string | null;
+  cost: number;
+  isFree: boolean;
+  costType: string;
+  costValue: number;
+  minOrderAmount: number;
+  formattedCost: string;
+};
+
+export type ShippingZone = {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  deliveryTime?: string | null;
+   estadoId?: number | null;
+   municipioId?: number | null;
+   parroquiaId?: number | null;
+  methods: ShippingMethodOption[];
+};
 
 export const catalogApi = {
   getBusiness(slug: string) {
@@ -66,5 +93,10 @@ export const catalogApi = {
   },
   getPaymentConfig(slug: string) {
     return api.get<PublicPaymentConfig>(`/catalog/${slug}/payment-config`);
+  },
+  getShippingZones(slug: string, params: { amount: number }) {
+    return api.get<{ zones: ShippingZone[]; currency: string; cartAmount: number }>(`/catalog/${slug}/shipping-zones`, {
+      params
+    });
   }
 };

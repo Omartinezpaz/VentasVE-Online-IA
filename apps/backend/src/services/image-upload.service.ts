@@ -3,10 +3,23 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 
-// Configuración de almacenamiento local
-const storage = multer.diskStorage({
+const productStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = 'uploads/products';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${uuidv4()}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
+const logoStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads/logos';
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -32,9 +45,17 @@ const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCa
 };
 
 export const upload = multer({
-  storage,
+  storage: productStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB límite
+  },
+  fileFilter
+});
+
+export const logoUpload = multer({
+  storage: logoStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024
   },
   fileFilter
 });
@@ -42,6 +63,10 @@ export const upload = multer({
 export class ImageUploadService {
   async uploadProductImages(files: Express.Multer.File[]): Promise<string[]> {
     return files.map(file => `/uploads/products/${file.filename}`);
+  }
+
+  async uploadBusinessLogo(file: Express.Multer.File): Promise<string> {
+    return `/uploads/logos/${file.filename}`;
   }
 
   async deleteImage(imagePath: string): Promise<void> {

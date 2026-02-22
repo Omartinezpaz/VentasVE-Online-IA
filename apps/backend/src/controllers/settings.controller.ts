@@ -1,8 +1,48 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma, { BusinessType, PersonaType, ISLRRegimen } from '@ventasve/database';
+import prisma, { BusinessType, Prisma } from '@ventasve/database';
 import { AppError } from '../lib/errors';
 import { z } from 'zod';
 import { AuthRequest } from '../middleware/auth';
+import { logoUpload, imageUploadService } from '../services/image-upload.service';
+
+type BusinessShippingZone = {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  free: boolean;
+  distanceKm?: number;
+  deliveryTime?: string;
+};
+
+type BusinessShippingOptions = {
+  freeShippingEnabled?: boolean;
+  freeShippingMin?: number;
+  pickupEnabled?: boolean;
+};
+
+type BusinessSettings = {
+  ownerName?: string;
+  ownerPhone?: string;
+  ownerEmail?: string;
+  businessAddress?: string;
+  personaType?: 'NATURAL' | 'JURIDICA';
+  rif?: string;
+  razonSocial?: string;
+  fiscalAddress?: string;
+  estadoId?: number;
+  municipioId?: number;
+  parroquiaId?: number;
+  postalCode?: string;
+  electronicInvoicing?: boolean;
+  islrRegimen?: string;
+  businessProfile?: 'TIENDA_FISICA' | 'TIENDA_ONLINE' | 'EMPRENDEDOR' | 'PROFESIONAL';
+  cashUsdExchangeRate?: number;
+  notificationSettings?: Record<string, Record<string, boolean>>;
+  logoUrl?: string;
+  shippingZones?: BusinessShippingZone[];
+  shippingOptions?: BusinessShippingOptions;
+};
 
 const BusinessFiscalSchema = z.object({
   rif: z
@@ -26,13 +66,15 @@ const BusinessFiscalSchema = z.object({
     .optional(),
   ownerPhone: z
     .string()
-    .regex(/^\+58 \d{3}-\d{7}$/, 'Formato: +58 XXX-XXXXXXX')
+    .regex(/^\+\d{1,3}(?:[ -]?\d){6,14}$/, 'Incluye código de país, ej: +58 412-1234567')
     .optional(),
   ownerEmail: z
     .string()
     .email('Email inválido')
     .optional(),
-  personaType: z.nativeEnum(PersonaType).optional(),
+  personaType: z
+    .enum(['NATURAL', 'JURIDICA'])
+    .optional(),
   estadoId: z.number().int().positive().optional(),
   municipioId: z.number().int().positive().optional(),
   parroquiaId: z.number().int().positive().optional(),
@@ -44,7 +86,9 @@ const BusinessFiscalSchema = z.object({
     .boolean()
     .default(false)
     .optional(),
-  islrRegimen: z.nativeEnum(ISLRRegimen).optional(),
+  islrRegimen: z
+    .string()
+    .optional(),
   razonSocial: z.string().optional()
 });
 
@@ -62,31 +106,77 @@ const businessSettingsSchema = z
     businessProfile: z
       .enum(['TIENDA_FISICA', 'TIENDA_ONLINE', 'EMPRENDEDOR', 'PROFESIONAL'])
       .optional(),
-    paymentMethods: z.record(z.any()).optional(),
-    catalogOptions: z.record(z.boolean()).optional(),
-    notificationSettings: z.record(z.record(z.boolean())).optional()
+    paymentMethods: z.object({
+      zelle: z.object({
+        email: z.string().email('Correo de Zelle inválido. Ejemplo: usuario@correo.com').optional(),
+        name: z.string().optional()
+      }).optional(),
+      pagoMovil: z.object({
+        phone: z.string().optional(),
+        bank: z.string().optional(),
+        id: z.string().optional()
+      }).optional(),
+      binance: z.object({
+        id: z.string().optional()
+      }).optional(),
+      transfer: z.object({
+        account: z.string().optional(),
+        name: z.string().optional()
+      }).optional()
+    }).optional(),
+    catalogOptions: z.object({
+      showBs: z.boolean().optional(),
+      showStock: z.boolean().optional(),
+      showChatButton: z.boolean().optional(),
+      allowOrdersWithoutStock: z.boolean().optional(),
+      showSearch: z.boolean().optional(),
+      showStrikePrice: z.boolean().optional(),
+      minOrderAmount: z.number().optional(),
+      maxOrderAmount: z.number().optional(),
+    }).optional(),
+    notificationSettings: z.record(z.record(z.boolean())).optional(),
+    shippingZones: z.array(z.object({
+      id: z.string(),
+      slug: z.string().max(50),
+      name: z.string().min(1),
+      price: z.number().nonnegative(),
+      free: z.boolean(),
+      distanceKm: z.number().positive().optional(),
+      deliveryTime: z.string().max(50).optional()
+    })).optional(),
+    shippingOptions: z.object({
+      freeShippingEnabled: z.boolean().optional(),
+      freeShippingMin: z.number().optional(),
+      pickupEnabled: z.boolean().optional()
+    }).optional()
   })
   .merge(BusinessFiscalSchema);
 
 const validateBusinessFiscal = (data: any) => {
   if (data.personaType === 'JURIDICA') {
     if (!data.rif) {
-      throw new Error('RIF es obligatorio para persona jurídica');
+      throw new AppError('RIF es obligatorio para persona jurídica', 422, 'VALIDATION_ERROR', 'rif');
     }
     if (!data.razonSocial) {
-      throw new Error('Razón social es obligatoria para persona jurídica');
+      throw new AppError('Razón social es obligatoria para persona jurídica', 422, 'VALIDATION_ERROR', 'razonSocial');
     }
   }
   if (data.personaType === 'NATURAL') {
     if (data.rif && !data.rif.startsWith('V-')) {
-      throw new Error('Para persona natural, el RIF debe comenzar con V-');
+      throw new AppError('Para persona natural, el RIF debe comenzar con V-', 422, 'VALIDATION_ERROR', 'rif');
     }
   }
 };
 
 const normalizeWhatsapp = (value: string) => {
   const digits = value.replace(/\D/g, '');
-  if (!digits) return value.trim();
+  const trimmed = value.trim();
+  if (!digits) return trimmed;
+  // Si ya viene con código internacional explícito, respetarlo
+  if (trimmed.startsWith('+')) {
+    return `+${digits}`;
+  }
+  // Inferir +58 solo si parece un número local venezolano
   if (digits.startsWith('58')) {
     return `+${digits}`;
   }
@@ -96,21 +186,23 @@ const normalizeWhatsapp = (value: string) => {
   if (digits.length === 10) {
     return `+58${digits}`;
   }
-  return value.trim();
+  return `+${digits}`;
 };
 
 export const getSettings = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'SETTINGS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
 
     const business = await prisma.business.findUnique({
       where: { id: businessId },
-      include: {
-        estadoRel: true,
-        municipioRel: true,
-        parroquiaRel: true,
-      },
     });
 
     if (!business) {
@@ -126,50 +218,36 @@ export const getSettings = async (req: Request, res: Response, next: NextFunctio
       instagram: business.instagram,
       schedule: business.schedule,
       description: business.description,
-      ownerName: business.ownerName ?? (business.settings as any)?.ownerName,
-      ownerPhone: business.ownerPhone ?? (business.settings as any)?.ownerPhone,
-      ownerEmail: business.ownerEmail ?? (business.settings as any)?.ownerEmail,
-      businessAddress: business.businessAddress ?? (business.settings as any)?.businessAddress,
-      personaType: business.personaType ?? (business.settings as any)?.personaType,
-      rif: business.rif ?? (business.settings as any)?.rif,
-      razonSocial: business.razonSocial ?? (business.settings as any)?.razonSocial,
-      fiscalAddress: business.fiscalAddress ?? (business.settings as any)?.fiscalAddress,
-      estadoId: business.estadoId ?? (business.settings as any)?.estadoId,
-      municipioId: business.municipioId ?? (business.settings as any)?.municipioId,
-      parroquiaId: business.parroquiaId ?? (business.settings as any)?.parroquiaId,
-      estado: (business as any).estadoRel
-        ? {
-            id: (business as any).estadoRel.id,
-            codigo: (business as any).estadoRel.codigo,
-            nombre_estado: (business as any).estadoRel.nombreEstado,
-          }
-        : null,
-      municipio: (business as any).municipioRel
-        ? {
-            id: (business as any).municipioRel.id,
-            estado_id: (business as any).municipioRel.estadoId,
-            nombre_municipio: (business as any).municipioRel.nombreMunicipio,
-            codigo: (business as any).municipioRel.codigo,
-          }
-        : null,
-      parroquia: (business as any).parroquiaRel
-        ? {
-            id: (business as any).parroquiaRel.id,
-            municipio_id: (business as any).parroquiaRel.municipioId,
-            nombre_parroquia: (business as any).parroquiaRel.nombreParroquia,
-            codigo: (business as any).parroquiaRel.codigo,
-          }
-        : null,
-      postalCode: business.postalCode ?? (business.settings as any)?.postalCode,
-      electronicInvoicing: business.electronicInvoicing ?? (business.settings as any)?.electronicInvoicing,
-      islrRegimen: business.islrRegimen ?? (business.settings as any)?.islrRegimen,
-      businessProfile: (business.settings as any)?.businessProfile,
-      cashUsdExchangeRate: (business.settings as any)?.cashUsdExchangeRate,
+      logoUrl: (business.settings as BusinessSettings | null)?.logoUrl,
+      ownerName: (business.settings as BusinessSettings | null)?.ownerName,
+      ownerPhone: (business.settings as BusinessSettings | null)?.ownerPhone,
+      ownerEmail: (business.settings as BusinessSettings | null)?.ownerEmail,
+      businessAddress: (business.settings as BusinessSettings | null)?.businessAddress,
+      personaType: (business.settings as BusinessSettings | null)?.personaType,
+      rif: (business.settings as BusinessSettings | null)?.rif,
+      razonSocial: (business.settings as BusinessSettings | null)?.razonSocial,
+      fiscalAddress: (business.settings as BusinessSettings | null)?.fiscalAddress,
+      estadoId: (business.settings as BusinessSettings | null)?.estadoId,
+      municipioId: (business.settings as BusinessSettings | null)?.municipioId,
+      parroquiaId: (business.settings as BusinessSettings | null)?.parroquiaId,
+      postalCode: (business.settings as BusinessSettings | null)?.postalCode,
+      electronicInvoicing: (business.settings as BusinessSettings | null)?.electronicInvoicing,
+      islrRegimen: (business.settings as BusinessSettings | null)?.islrRegimen,
+      businessProfile: (business.settings as BusinessSettings | null)?.businessProfile,
+      cashUsdExchangeRate: (business.settings as BusinessSettings | null)?.cashUsdExchangeRate,
       paymentMethods: business.paymentMethods ?? {},
       catalogOptions: business.catalogOptions ?? {},
-      notificationSettings: business.notificationSettings ?? {}
+      notificationSettings: (business.settings as BusinessSettings | null)?.notificationSettings ?? {},
+      shippingZones: (business.settings as BusinessSettings | null)?.shippingZones ?? [],
+      shippingOptions: (business.settings as BusinessSettings | null)?.shippingOptions ?? {}
     });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return res.status(500).json({
+        error: 'Database error',
+        code: `SETTINGS_DB_${error.code}`
+      });
+    }
     next(error);
   }
 };
@@ -177,25 +255,53 @@ export const getSettings = async (req: Request, res: Response, next: NextFunctio
 export const updateSettings = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
+    const user = authReq.user;
+    if (!user || !user.businessId) {
+      return res.status(401).json({
+        error: 'Not authenticated',
+        code: 'SETTINGS_NOT_AUTHENTICATED'
+      });
+    }
+    const businessId = user.businessId;
+    const requestId = (req as any).requestId;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[updateSettings][INPUT]', requestId, JSON.stringify(req.body));
+    }
     const data = businessSettingsSchema.parse(req.body);
 
     validateBusinessFiscal(data);
 
     const updateData: any = {};
 
-    const existingGeo = await prisma.business.findUnique({
+    // Obtener settings actuales para fusionar y para validar geo con valores existentes
+    const existing = await prisma.business.findUnique({
       where: { id: businessId },
-      select: {
-        estadoId: true,
-        municipioId: true,
-        parroquiaId: true
-      }
+      select: { settings: true }
     });
+    const currentSettings = (existing?.settings as BusinessSettings | null) || {};
 
-    const targetEstadoId = data.estadoId ?? existingGeo?.estadoId ?? null;
-    const targetMunicipioId = data.municipioId ?? existingGeo?.municipioId ?? null;
-    const targetParroquiaId = data.parroquiaId ?? existingGeo?.parroquiaId ?? null;
+    // Validar unicidad de slug si viene en el payload
+    if (data.slug) {
+      const slugTaken = await prisma.business.findFirst({
+        where: {
+          slug: data.slug,
+          NOT: { id: businessId }
+        },
+        select: { id: true }
+      });
+      if (slugTaken) {
+        throw new AppError('Este slug ya está en uso', 400, 'SLUG_TAKEN', 'slug');
+      }
+    }
+
+    const currentEstadoId = currentSettings?.estadoId ?? null;
+    const currentMunicipioId = currentSettings?.municipioId ?? null;
+    const currentParroquiaId = currentSettings?.parroquiaId ?? null;
+
+    const targetEstadoId = data.estadoId ?? currentEstadoId ?? null;
+    const targetMunicipioId = data.municipioId ?? currentMunicipioId ?? null;
+    const targetParroquiaId = data.parroquiaId ?? currentParroquiaId ?? null;
 
     if (targetEstadoId !== null) {
       const estado = await prisma.estado.findUnique({ where: { id: targetEstadoId } });
@@ -233,40 +339,30 @@ export const updateSettings = async (req: Request, res: Response, next: NextFunc
     if (data.description !== undefined) updateData.description = data.description;
     if (data.paymentMethods !== undefined) updateData.paymentMethods = data.paymentMethods;
     if (data.catalogOptions !== undefined) updateData.catalogOptions = data.catalogOptions;
-    if (data.notificationSettings !== undefined) updateData.notificationSettings = data.notificationSettings;
     if (data.businessType !== undefined) updateData.type = data.businessType;
-    if (data.ownerName !== undefined) updateData.ownerName = data.ownerName;
-    if (data.ownerPhone !== undefined) updateData.ownerPhone = data.ownerPhone;
-    if (data.ownerEmail !== undefined) updateData.ownerEmail = data.ownerEmail;
-    if (data.businessAddress !== undefined) updateData.businessAddress = data.businessAddress;
-    if (data.personaType !== undefined) updateData.personaType = data.personaType;
-    if (data.rif !== undefined) updateData.rif = data.rif;
-    if (data.razonSocial !== undefined) updateData.razonSocial = data.razonSocial;
-    if (data.fiscalAddress !== undefined) updateData.fiscalAddress = data.fiscalAddress;
-    if (data.estadoId !== undefined) updateData.estadoId = data.estadoId;
-    if (data.municipioId !== undefined) updateData.municipioId = data.municipioId;
-    if (data.parroquiaId !== undefined) updateData.parroquiaId = data.parroquiaId;
-    if (data.postalCode !== undefined) updateData.postalCode = data.postalCode;
-    if (data.electronicInvoicing !== undefined) updateData.electronicInvoicing = data.electronicInvoicing;
-    if (data.islrRegimen !== undefined) updateData.islrRegimen = data.islrRegimen;
 
-    if (data.cashUsdExchangeRate !== undefined || data.businessProfile !== undefined) {
-      const existing = await prisma.business.findUnique({
-        where: { id: businessId },
-        select: { settings: true }
-      });
-
-      const currentSettings = (existing?.settings as any) || {};
-      const newSettings: any = { ...currentSettings };
-
-      if (data.cashUsdExchangeRate !== undefined) {
-        newSettings.cashUsdExchangeRate = data.cashUsdExchangeRate;
-      }
-      if (data.businessProfile !== undefined) {
-        newSettings.businessProfile = data.businessProfile;
-      }
-      updateData.settings = newSettings;
-    }
+    // Valores que guardamos en JSON settings
+    const newSettings: any = { ...currentSettings };
+    if (data.ownerName !== undefined) newSettings.ownerName = data.ownerName;
+    if (data.ownerPhone !== undefined) newSettings.ownerPhone = data.ownerPhone;
+    if (data.ownerEmail !== undefined) newSettings.ownerEmail = data.ownerEmail;
+    if (data.businessAddress !== undefined) newSettings.businessAddress = data.businessAddress;
+    if (data.personaType !== undefined) newSettings.personaType = data.personaType;
+    if (data.rif !== undefined) newSettings.rif = data.rif;
+    if (data.razonSocial !== undefined) newSettings.razonSocial = data.razonSocial;
+    if (data.fiscalAddress !== undefined) newSettings.fiscalAddress = data.fiscalAddress;
+    if (data.estadoId !== undefined) newSettings.estadoId = data.estadoId;
+    if (data.municipioId !== undefined) newSettings.municipioId = data.municipioId;
+    if (data.parroquiaId !== undefined) newSettings.parroquiaId = data.parroquiaId;
+    if (data.postalCode !== undefined) newSettings.postalCode = data.postalCode;
+    if (data.electronicInvoicing !== undefined) newSettings.electronicInvoicing = data.electronicInvoicing;
+    if (data.islrRegimen !== undefined) newSettings.islrRegimen = data.islrRegimen;
+    if (data.cashUsdExchangeRate !== undefined) newSettings.cashUsdExchangeRate = data.cashUsdExchangeRate;
+    if (data.businessProfile !== undefined) newSettings.businessProfile = data.businessProfile;
+    if (data.notificationSettings !== undefined) newSettings.notificationSettings = data.notificationSettings;
+    if (data.shippingZones !== undefined) newSettings.shippingZones = data.shippingZones as BusinessShippingZone[];
+    if (data.shippingOptions !== undefined) newSettings.shippingOptions = data.shippingOptions as BusinessShippingOptions;
+    updateData.settings = newSettings;
 
     const updated = await prisma.business.update({
       where: { id: businessId },
@@ -280,28 +376,13 @@ export const updateSettings = async (req: Request, res: Response, next: NextFunc
         instagram: true,
         schedule: true,
         description: true,
-        ownerName: true,
-        ownerPhone: true,
-        ownerEmail: true,
-        businessAddress: true,
-        personaType: true,
-        rif: true,
-        razonSocial: true,
-        fiscalAddress: true,
-        state: true,
-        municipio: true,
-        parroquia: true,
-        postalCode: true,
-        electronicInvoicing: true,
-        islrRegimen: true,
         settings: true,
         paymentMethods: true,
-        catalogOptions: true,
-        notificationSettings: true
+        catalogOptions: true
       }
     });
 
-    res.json({
+    const responsePayload = {
       name: updated.name,
       slug: updated.slug,
       businessType: updated.type,
@@ -310,27 +391,90 @@ export const updateSettings = async (req: Request, res: Response, next: NextFunc
       instagram: updated.instagram,
       schedule: updated.schedule,
       description: updated.description,
-      ownerName: updated.ownerName ?? (updated.settings as any)?.ownerName,
-      ownerPhone: updated.ownerPhone ?? (updated.settings as any)?.ownerPhone,
-      ownerEmail: updated.ownerEmail ?? (updated.settings as any)?.ownerEmail,
-      businessAddress: updated.businessAddress ?? (updated.settings as any)?.businessAddress,
-      personaType: updated.personaType ?? (updated.settings as any)?.personaType,
-      rif: updated.rif ?? (updated.settings as any)?.rif,
-      razonSocial: updated.razonSocial ?? (updated.settings as any)?.razonSocial,
-      fiscalAddress: updated.fiscalAddress ?? (updated.settings as any)?.fiscalAddress,
-      state: updated.state ?? (updated.settings as any)?.state,
-      municipio: updated.municipio ?? (updated.settings as any)?.municipio,
-      parroquia: updated.parroquia ?? (updated.settings as any)?.parroquia,
-      postalCode: updated.postalCode ?? (updated.settings as any)?.postalCode,
-      electronicInvoicing: updated.electronicInvoicing ?? (updated.settings as any)?.electronicInvoicing,
-      islrRegimen: updated.islrRegimen ?? (updated.settings as any)?.islrRegimen,
+      logoUrl: (updated.settings as any)?.logoUrl,
+      ownerName: (updated.settings as any)?.ownerName,
+      ownerPhone: (updated.settings as any)?.ownerPhone,
+      ownerEmail: (updated.settings as any)?.ownerEmail,
+      businessAddress: (updated.settings as any)?.businessAddress,
+      personaType: (updated.settings as any)?.personaType,
+      rif: (updated.settings as any)?.rif,
+      razonSocial: (updated.settings as any)?.razonSocial,
+      fiscalAddress: (updated.settings as any)?.fiscalAddress,
+      estadoId: (updated.settings as any)?.estadoId,
+      municipioId: (updated.settings as any)?.municipioId,
+      parroquiaId: (updated.settings as any)?.parroquiaId,
+      postalCode: (updated.settings as any)?.postalCode,
+      electronicInvoicing: (updated.settings as any)?.electronicInvoicing,
+      islrRegimen: (updated.settings as any)?.islrRegimen,
       businessProfile: (updated.settings as any)?.businessProfile,
       cashUsdExchangeRate: (updated.settings as any)?.cashUsdExchangeRate,
       paymentMethods: updated.paymentMethods ?? {},
       catalogOptions: updated.catalogOptions ?? {},
-      notificationSettings: updated.notificationSettings ?? {}
-    });
+      notificationSettings: (updated.settings as any)?.notificationSettings ?? {},
+      shippingZones: (updated.settings as any)?.shippingZones ?? [],
+      shippingOptions: (updated.settings as any)?.shippingOptions ?? {}
+    };
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[updateSettings][OUTPUT]', requestId, JSON.stringify(responsePayload));
+    }
+
+    return res.json(responsePayload);
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        code: 'VALIDATION_FAILED',
+        details: error.errors
+      });
+    }
+    const requestId = (req as any).requestId;
+    console.error('[updateSettings][ERROR]', requestId, error);
     next(error);
   }
 };
+
+export const uploadLogo = [
+  logoUpload.single('logo'),
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const authReq = req as AuthRequest;
+      const user = authReq.user;
+      if (!user || !user.businessId) {
+        return res.status(401).json({
+          error: 'Not authenticated',
+          code: 'SETTINGS_NOT_AUTHENTICATED'
+        });
+      }
+      if (!req.file) {
+        return res.status(400).json({
+          error: 'No se proporcionó el archivo de logo',
+          code: 'LOGO_FILE_REQUIRED'
+        });
+      }
+
+      const logoUrl = await imageUploadService.uploadBusinessLogo(req.file);
+
+      const existing = await prisma.business.findUnique({
+        where: { id: user.businessId },
+        select: { settings: true }
+      });
+      const currentSettings = (existing?.settings as BusinessSettings | null) || {};
+      const newSettings = {
+        ...currentSettings,
+        logoUrl
+      };
+
+      await prisma.business.update({
+        where: { id: user.businessId },
+        data: {
+          settings: newSettings
+        }
+      });
+
+      return res.json({ logoUrl });
+    } catch (error) {
+      next(error);
+    }
+  }
+];

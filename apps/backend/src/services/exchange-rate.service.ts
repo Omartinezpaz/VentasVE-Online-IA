@@ -14,10 +14,19 @@ export class ExchangeRateService {
       return JSON.parse(cached);
     }
 
-    const rate = await prisma.exchangeRate.findFirst({
-      where: businessId ? { businessId } : { businessId: null },
+    const where = businessId ? { businessId } : { businessId: null };
+
+    let rate = await prisma.exchangeRate.findFirst({
+      where,
       orderBy: { date: 'desc' }
     });
+
+    if (!rate && businessId) {
+      rate = await prisma.exchangeRate.findFirst({
+        where: { businessId: null },
+        orderBy: { date: 'desc' }
+      });
+    }
 
     if (!rate) {
       throw Errors.NotFound('Tasa de cambio');
@@ -26,7 +35,22 @@ export class ExchangeRateService {
     await redis.set(key, JSON.stringify(rate), 'EX', 3600);
     return rate;
   }
+
+  async setCurrent(businessId: string | undefined, usdToVes: number, source: string) {
+    const redis = getRedis();
+    const key = businessId ? `exchange:${businessId}` : GLOBAL_KEY;
+
+    const data = {
+      businessId: businessId ?? null,
+      usdToVes,
+      source,
+      date: new Date()
+    };
+
+    const rate = await prisma.exchangeRate.create({ data });
+    await redis.del(key);
+    return rate;
+  }
 }
 
 export const exchangeRateService = new ExchangeRateService();
-

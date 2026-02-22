@@ -1,8 +1,22 @@
 import { catalogApi } from '@/lib/api/catalog';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { CartLink } from './CartLink';
 import { DualPrice } from '@/components/ui/DualPrice';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const apiBaseUrl = new URL(API_BASE);
+const IMAGE_BASE_ORIGIN = `${apiBaseUrl.protocol}//${apiBaseUrl.host}`;
+
+const resolveImageUrl = (src: string) => {
+  if (!src) return src;
+  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:') || src.startsWith('data:')) {
+    return src;
+  }
+  if (!src.startsWith('/')) return src;
+  return `${IMAGE_BASE_ORIGIN}${src}`;
+};
 
 type CatalogPageProps = {
   params: Promise<{
@@ -30,6 +44,7 @@ type CatalogProduct = {
   description?: string | null;
   priceUsdCents: number;
   stock?: number | null;
+  images?: string[] | null;
 };
 
 export default async function CatalogPage({ params }: CatalogPageProps) {
@@ -51,7 +66,6 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
   }
 
   const showBs = business.catalogOptions?.showBs ?? true;
-  const showStock = business.catalogOptions?.showStock ?? false;
    const showChatButton = business.catalogOptions?.showChatButton ?? true;
   const cleanedWhatsapp = business.whatsapp?.replace(/\D/g, '') ?? '';
 
@@ -211,7 +225,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                {products.map(product => (
+                {products.map((product, idx) => (
                   <article
                     key={product.id}
                     className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition-all duration-200 active:scale-95"
@@ -224,8 +238,46 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                             ÚLTIMOS {product.stock}
                         </div>
                     )}
-                    <div className="aspect-[4/5] flex items-center justify-center bg-[#f7f7f7] text-6xl group-hover:scale-105 transition-transform duration-500">
-                      {product.name.charAt(0)}
+                    <div className="aspect-[4/5] bg-[#f7f7f7] group-hover:scale-105 transition-transform duration-500 overflow-hidden">
+                      {product.images && product.images.length > 0 ? (
+                        <div className="relative h-full w-full">
+                          <Image
+                            src={resolveImageUrl(product.images[0])}
+                            alt={product.name}
+                            fill
+                            className="object-cover"
+                            unoptimized
+                            loading={idx === 0 ? 'eager' : 'lazy'}
+                          />
+                          {product.images.length > 1 && (
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 rounded-full bg-white/80 px-1.5 py-1 shadow-sm">
+                              {product.images.slice(0, 3).map((src, idx) => (
+                                <div
+                                  key={idx}
+                                  className="relative h-6 w-6 overflow-hidden rounded-md border border-black/10 bg-white"
+                                >
+                                  <Image
+                                    src={resolveImageUrl(src)}
+                                    alt={`${product.name} ${idx + 1}`}
+                                    fill
+                                    className="object-cover"
+                                    unoptimized
+                                  />
+                                </div>
+                              ))}
+                              {product.images.length > 3 && (
+                                <div className="flex h-6 items-center px-1 text-[9px] font-bold text-zinc-600">
+                                  +{product.images.length - 3}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-6xl">
+                          {product.name.charAt(0)}
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-1 flex-col p-3">
                       <h3 className="line-clamp-1 font-heading text-[14px] font-bold text-[var(--dark)]">

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { productsApi } from '@/lib/api/products';
 import Link from 'next/link';
 
@@ -12,17 +13,17 @@ export default function NewProductPage() {
   const [priceUsd, setPriceUsd] = useState('');
   const [stock, setStock] = useState('0');
   const [isPublished, setIsPublished] = useState(true);
-  const [image, setImage] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImage(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setImages(prev => [...prev, ...files]);
+    const previews = files.map(file => URL.createObjectURL(file));
+    setImagePreviews(prev => [...prev, ...previews]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,8 +43,8 @@ export default function NewProductPage() {
         isPublished
       });
 
-      if (image && res.data.id) {
-        await productsApi.uploadImages(res.data.id, [image]);
+      if (images.length > 0 && res.data.id) {
+        await productsApi.uploadImages(res.data.id, images);
       }
       router.push('/dashboard/products');
     } catch (err) {
@@ -74,8 +75,8 @@ export default function NewProductPage() {
               onClick={() => document.getElementById('image-upload')?.click()}
               className="relative aspect-square w-32 rounded-2xl border-2 border-dashed border-[var(--border)] bg-[var(--background)] flex flex-col items-center justify-center cursor-pointer overflow-hidden group hover:border-[var(--accent)] transition-all"
             >
-              {imagePreview ? (
-                <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
+              {imagePreviews.length > 0 ? (
+                <Image src={imagePreviews[0]} fill className="object-cover" alt="Preview" />
               ) : (
                 <>
                   <span className="text-2xl opacity-30 group-hover:scale-110 transition-transform">📸</span>
@@ -86,10 +87,20 @@ export default function NewProductPage() {
                 id="image-upload"
                 type="file"
                 accept="image/*"
+                multiple
                 onChange={handleImageChange}
                 className="hidden"
               />
             </div>
+            {imagePreviews.length > 1 && (
+              <div className="mt-2 flex gap-2">
+                {imagePreviews.slice(0, 4).map((src, idx) => (
+                  <div key={idx} className="relative h-10 w-10 overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--background)]">
+                    <Image src={src} fill className="object-cover" alt={`Preview ${idx + 1}`} />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">

@@ -14,6 +14,9 @@ export type Order = {
   createdAt: string;
   customer?: OrderCustomer | null;
   paymentMethod?: string | null;
+  shippingZoneSlug?: string | null;
+  shippingCostCents?: number | null;
+  shippingMethodCode?: string | null;
 };
 
 export type OrderItem = {
@@ -30,6 +33,9 @@ export type OrderDetail = Order & {
   exchangeRate?: number | null;
   deliveryAddress?: string | null;
   notes?: string | null;
+  shippingZoneSlug?: string | null;
+  shippingCostCents?: number | null;
+  shippingMethodCode?: string | null;
   items?: OrderItem[];
   payments?: Array<{
     id: string;

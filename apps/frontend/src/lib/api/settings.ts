@@ -37,6 +37,22 @@ export type CatalogOptions = {
   showChatButton?: boolean;
 };
 
+export type ShippingZoneConfig = {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  free: boolean;
+  distanceKm?: number;
+  deliveryTime?: string;
+};
+
+export type ShippingOptionsConfig = {
+  freeShippingEnabled?: boolean;
+  freeShippingMin?: number;
+  pickupEnabled?: boolean;
+};
+
 // ─── NOTIFICATION SETTINGS ───────────────────────────────────────────────────
 export type NotificationChannel = {
   newOrder?: boolean;
@@ -92,6 +108,8 @@ export type BusinessSettings = {
 
   // Notificaciones
   notificationSettings?: NotificationSettings;
+  shippingZones?: ShippingZoneConfig[];
+  shippingOptions?: ShippingOptionsConfig;
 };
 
 // ─── UPDATE PAYLOAD ───────────────────────────────────────────────────────────

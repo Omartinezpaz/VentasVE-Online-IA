@@ -308,6 +308,25 @@ export default function OrderDetailPage() {
                   📍 {order.deliveryAddress}
                 </div>
               )}
+              {(order.shippingZoneSlug || order.shippingMethodCode) && (
+                <div className="mt-2 rounded-lg bg-[var(--background)]/40 px-3 py-2 text-[11px] text-[var(--muted)] space-y-0.5">
+                  <div className="font-semibold text-[var(--foreground)]">
+                    Envío{order.shippingZoneSlug ? ` · ${order.shippingZoneSlug}` : ''}
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>
+                      {order.shippingMethodCode || 'Método no especificado'}
+                    </span>
+                    {typeof order.shippingCostCents === 'number' && (
+                      <span className="inline-flex items-center rounded-full bg-[var(--surface2)] px-2 py-0.5 text-[10px] font-bold">
+                        {order.shippingCostCents === 0
+                          ? 'Gratis'
+                          : `$${formatCurrency(order.shippingCostCents)}`}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </SectionCard>
 
@@ -322,6 +341,18 @@ export default function OrderDetailPage() {
               <InfoRow label="Método" value={order.paymentMethod} />
               {order.exchangeRate && (
                 <InfoRow label="Tasa BCV" value={`${order.exchangeRate} Bs./USD`} />
+              )}
+              {(order.shippingZoneSlug || order.shippingCostCents != null) && (
+                <InfoRow
+                  label="Envío"
+                  value={
+                    order.shippingCostCents != null
+                      ? order.shippingCostCents === 0
+                        ? 'Gratis'
+                        : `$${formatCurrency(order.shippingCostCents)}`
+                      : undefined
+                  }
+                />
               )}
             </div>
           </SectionCard>

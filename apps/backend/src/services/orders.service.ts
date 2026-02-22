@@ -19,6 +19,9 @@ type CreateOrderInput = {
   deliveryAddress?: string;
   notes?: string;
   exchangeRate?: number;
+  shippingZoneSlug?: string;
+  shippingCostCents?: number;
+  shippingMethodCode?: string;
 };
 
 type OrderListQuery = {
@@ -87,7 +90,10 @@ export class OrdersService {
           exchangeRate: input.exchangeRate ?? null,
           paymentMethod: input.paymentMethod,
           deliveryAddress: input.deliveryAddress,
-          notes: input.notes
+          notes: input.notes,
+          shipping_zone_slug: input.shippingZoneSlug,
+          shipping_cost_cents: input.shippingCostCents,
+          shipping_method_code: input.shippingMethodCode
         }
       });
 
@@ -160,6 +166,22 @@ export class OrdersService {
     const rate = await exchangeRateService.getCurrent(business.id);
     const exchangeRate = Number(rate.usdToVes);
 
+    const preferences = (input.customer.preferences || {}) as any;
+    const shippingZoneSlug =
+      typeof preferences.shippingZoneSlug === 'string' && preferences.shippingZoneSlug.trim()
+        ? preferences.shippingZoneSlug.trim()
+        : undefined;
+    const shippingMethodCode =
+      typeof preferences.shippingMethodCode === 'string' && preferences.shippingMethodCode.trim()
+        ? preferences.shippingMethodCode.trim()
+        : undefined;
+    const shippingCostUsd =
+      typeof preferences.shippingCost === 'number' && Number.isFinite(preferences.shippingCost)
+        ? preferences.shippingCost
+        : undefined;
+    const shippingCostCents =
+      shippingCostUsd !== undefined ? Math.round(shippingCostUsd * 100) : undefined;
+
     return this.create({
       businessId: business.id,
       customerId: customer.id,
@@ -168,7 +190,10 @@ export class OrdersService {
       source: OrderSource.WEB,
       deliveryAddress: input.customer.address,
       notes: input.notes,
-      exchangeRate
+      exchangeRate,
+      shippingZoneSlug,
+      shippingCostCents,
+      shippingMethodCode
     });
   }
 

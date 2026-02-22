@@ -20,6 +20,15 @@ const formatCurrency = (cents: number) => {
   return (cents / 100).toFixed(2);
 };
 
+const orderStatusLabel: Record<string, string> = {
+  PENDING:   'Pendiente',
+  CONFIRMED: 'Confirmada',
+  PREPARING: 'Preparando',
+  SHIPPED:   'Enviada',
+  DELIVERED: 'Entregada',
+  CANCELLED: 'Cancelada',
+};
+
 export default function CustomerDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -43,6 +52,7 @@ export default function CustomerDetailPage() {
   const [replyContent, setReplyContent] = useState('');
   const [replySending, setReplySending] = useState(false);
   const [replyMessage, setReplyMessage] = useState<string | null>(null);
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'ALL' | string>('ALL');
 
   useEffect(() => {
     const token = getAccessToken();
@@ -130,6 +140,12 @@ export default function CustomerDetailPage() {
 
   const lastConversations = customer.conversations ?? [];
   const primaryConversation = lastConversations[0];
+
+  const customerOrders = customer.orders ?? [];
+  const filteredOrders =
+    orderStatusFilter === 'ALL'
+      ? customerOrders
+      : customerOrders.filter(order => order.status === orderStatusFilter);
 
   const handleReply = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -368,51 +384,111 @@ export default function CustomerDetailPage() {
           <h2 className="text-sm font-semibold text-[var(--foreground)]">
             Órdenes
           </h2>
-          <div className="mt-3 overflow-hidden rounded border border-[var(--border)]">
-            {!customer.orders?.length && (
+          <div className="mt-3 flex flex-wrap items-end gap-3 text-[11px] text-[var(--muted)]">
+            <div className="flex flex-col gap-1">
+              <label className="text-[10px] uppercase tracking-wide">
+                Estado
+              </label>
+              <select
+                value={orderStatusFilter}
+                onChange={event => setOrderStatusFilter(event.target.value)}
+                className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--foreground)]"
+              >
+                <option value="ALL">Todos</option>
+                {Object.keys(orderStatusLabel).map(key => (
+                  <option key={key} value={key}>
+                    {orderStatusLabel[key]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="mt-2 overflow-hidden rounded border border-[var(--border)]">
+            {!customerOrders.length && (
               <div className="px-3 py-2 text-xs text-[var(--muted)]">
                 Este cliente aún no tiene órdenes.
               </div>
             )}
-            {customer.orders && customer.orders.length > 0 && (
-              <table className="min-w-full divide-y divide-[var(--border)] text-xs">
-                <thead className="bg-[var(--background)]">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
-                      Fecha
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
-                      Monto
-                    </th>
-                    <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
-                      Productos
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[var(--border)]">
-                  {customer.orders.map(order => {
-                    const products = order.items;
-                    return (
-                      <tr key={order.createdAt}>
-                        <td className="px-3 py-2 text-[var(--foreground)]">
-                          {formatDateTime(order.createdAt)}
-                        </td>
-                        <td className="px-3 py-2 text-[var(--foreground)]">
-                          ${formatCurrency(order.totalCents)}
-                        </td>
-                        <td className="px-3 py-2 text-[var(--foreground)]">
-                          {products && products.length > 0
-                            ? products
-                                .map(item => `${item.quantity} x ${item.product.name}`)
-                                .join(', ')
-                            : 'Sin detalle'}
-                        </td>
+            {customerOrders.length > 0 && (
+                  <table className="min-w-full divide-y divide-[var(--border)] text-xs">
+                    <thead className="bg-[var(--background)]">
+                      <tr>
+                        <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
+                          Fecha
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
+                          Monto
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
+                          Envío
+                        </th>
+                        <th className="px-3 py-2 text-left font-medium text-[var(--muted)]">
+                          Productos
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
+                    </thead>
+                    <tbody className="divide-y divide-[var(--border)]">
+                      {!filteredOrders.length && (
+                        <tr>
+                          <td
+                            className="px-3 py-2 text-[var(--muted)] text-center"
+                            colSpan={4}
+                          >
+                            No hay órdenes con ese estado.
+                          </td>
+                        </tr>
+                      )}
+                      {filteredOrders.map(order => {
+                        const products = order.items;
+                        const shippingCostLabel =
+                          order.shippingCostCents == null
+                            ? '—'
+                            : order.shippingCostCents === 0
+                              ? 'Gratis'
+                              : `$${formatCurrency(order.shippingCostCents)}`;
+                        const hasId = !!order.id;
+                        return (
+                          <tr
+                            key={order.id ?? order.createdAt}
+                            className={hasId ? 'cursor-pointer hover:bg-[var(--surface2)]' : ''}
+                            onClick={
+                              hasId
+                                ? () => router.push(`/dashboard/orders/${order.id}`)
+                                : undefined
+                            }
+                          >
+                            <td className="px-3 py-2 text-[var(--foreground)] whitespace-nowrap">
+                              {formatDateTime(order.createdAt)}
+                            </td>
+                            <td className="px-3 py-2 text-[var(--foreground)] whitespace-nowrap">
+                              ${formatCurrency(order.totalCents)}
+                            </td>
+                            <td className="px-3 py-2 text-[var(--foreground)]">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-[11px]">
+                                  {order.shippingMethodCode || 'Sin método'}
+                                </span>
+                                <span className="text-[10px] text-[var(--muted)]">
+                                  {order.shippingZoneSlug || 'Sin zona'}
+                                </span>
+                                <span className="inline-flex w-fit items-center rounded-full bg-[var(--surface2)] px-2 py-0.5 text-[10px] font-semibold">
+                                  {shippingCostLabel}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-3 py-2 text-[var(--foreground)]">
+                              {products && products.length > 0
+                                ? products
+                                    .map(item => `${item.quantity} x ${item.product.name}`)
+                                    .join(', ')
+                                : 'Sin detalle'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
           </div>
         </section>
       </div>

@@ -10,7 +10,12 @@ const productSchema = z.object({
   description: z.string().optional(),
   priceUsdCents: z.number().int().nonnegative('El precio debe ser un entero positivo (centavos)'),
   categoryId: z.string().uuid().optional(),
-  images: z.array(z.string().url()).optional(),
+  images: z.array(
+    z.string().refine(
+      (v) => /^https?:\/\//.test(v) || v.startsWith('/uploads/'),
+      'URL de imagen inválida'
+    )
+  ).optional(),
   stock: z.number().int().nonnegative().default(0),
   variants: z.any().optional(),
   attributes: z.any().optional(),

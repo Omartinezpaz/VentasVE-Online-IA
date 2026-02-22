@@ -2,8 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { productsApi, Product } from '@/lib/api/products';
 import { DualPrice } from '@/components/ui/DualPrice';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+const apiBaseUrl = new URL(API_BASE);
+const IMAGE_BASE_ORIGIN = `${apiBaseUrl.protocol}//${apiBaseUrl.host}`;
+
+const resolveImageUrl = (src: string) => {
+  if (!src) return src;
+  if (src.startsWith('http://') || src.startsWith('https://') || src.startsWith('blob:') || src.startsWith('data:')) {
+    return src;
+  }
+  if (!src.startsWith('/')) return src;
+  return `${IMAGE_BASE_ORIGIN}${src}`;
+};
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -15,7 +29,7 @@ export default function ProductsPage() {
       try {
         const response = await productsApi.list();
         setProducts(response.data.data);
-      } catch (err) {
+      } catch {
         setError('No se pudieron cargar los productos');
       } finally {
         setLoading(false);
@@ -55,9 +69,15 @@ export default function ProductsPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {products.map(product => (
           <div key={product.id} className="card-elevated overflow-hidden rounded-[24px] border border-[var(--border)] bg-[var(--surface)] shadow-xl flex flex-col">
-            <div className="aspect-video bg-[var(--background)] flex items-center justify-center text-4xl text-[var(--muted)]">
+            <div className="relative aspect-video bg-[var(--background)] flex items-center justify-center text-4xl text-[var(--muted)] overflow-hidden">
               {product.images?.[0] ? (
-                <img src={product.images[0]} alt={product.name} className="h-full w-full object-cover" />
+                <Image
+                  src={resolveImageUrl(product.images[0])}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
               ) : (
                 product.name.charAt(0)
               )}
@@ -85,7 +105,7 @@ export default function ProductsPage() {
 
                 <div className="pt-3 border-t border-[var(--border)] flex gap-2">
                   <Link
-                    href={`/dashboard/products/${product.id}/edit`}
+                    href={`/dashboard/products/${product.id}`}
                     className="flex-1 py-2 rounded-lg bg-[var(--surface2)] text-center text-xs font-bold text-[var(--foreground)] hover:bg-[var(--background)]/60 transition-colors"
                   >
                     Editar

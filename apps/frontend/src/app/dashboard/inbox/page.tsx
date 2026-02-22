@@ -47,6 +47,7 @@ export default function InboxPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'all' | 'unread' | 'bot' | 'human'>('all');
 
   useEffect(() => {
     const token = getAccessToken();
@@ -58,7 +59,7 @@ export default function InboxPage() {
     const load = async () => {
       try {
         const response = await chatApi.list({ page: 1, limit: 50 });
-        const data = response.data.data.filter(conversation => conversation.channel === 'WHATSAPP');
+        const data = response.data.data;
         setConversations(data);
       } catch {
         setError('No se pudieron cargar las conversaciones');
@@ -71,10 +72,6 @@ export default function InboxPage() {
   }, [router]);
 
   useWebSocket<NewMessageEvent>('new_message', payload => {
-    if (payload.conversation.channel !== 'WHATSAPP') {
-      return;
-    }
-
     setConversations(prev => {
       const existingIndex = prev.findIndex(conversation => conversation.id === payload.conversation.id);
 
@@ -145,16 +142,6 @@ export default function InboxPage() {
     );
   }
 
-  if (!conversations.length) {
-    return (
-      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-4 text-sm text-[var(--muted)]">
-        Aún no tienes conversaciones de WhatsApp. Cuando tus clientes te escriban, aparecerán aquí.
-      </div>
-    );
-  }
-
-  const [filter, setFilter] = useState<'all' | 'unread' | 'bot' | 'human'>('all');
-
   const filteredConversations = conversations.filter(c => {
     if (filter === 'unread') return (c._count?.messages ?? 0) > (c.messages?.length ?? 0);
     if (filter === 'bot') return c.status === 'BOT';
@@ -187,8 +174,23 @@ export default function InboxPage() {
             {filteredConversations.map(conversation => {
               const lastMessage = conversation.messages?.[0];
               const hasUnread = (conversation._count?.messages ?? 0) > (conversation.messages?.length ?? 0);
-              const customerName = conversation.customer?.name || 'Cliente WhatsApp';
-              const customerPhone = conversation.customer?.phone || 'Sin teléfono';
+              const customerName =
+                conversation.customer?.name ||
+                conversation.customer?.phone ||
+                'Cliente';
+              const channel = conversation.channel;
+              const channelBg =
+                channel === 'INSTAGRAM'
+                  ? 'bg-gradient-to-br from-purple-600 via-red-500 to-orange-400'
+                  : channel === 'WEB'
+                    ? 'bg-[var(--blue)]'
+                    : 'bg-[#25d366]';
+              const channelLabel =
+                channel === 'INSTAGRAM'
+                  ? '📸 IG'
+                  : channel === 'WEB'
+                    ? '🌐 Web'
+                    : '💬 WA';
 
               return (
                 <div
@@ -201,8 +203,8 @@ export default function InboxPage() {
                         <div className="h-12 w-12 rounded-2xl bg-[var(--surface2)] flex items-center justify-center font-heading text-lg font-bold text-[var(--muted)] group-hover:bg-[var(--background)] transition-colors">
                             {customerName.charAt(0)}
                         </div>
-                        <div className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-[var(--surface)] flex items-center justify-center text-[10px]">
-                            💬
+                        <div className={`absolute -bottom-1 -right-1 flex items-center justify-center rounded-full border-2 border-[var(--surface)] px-1.5 py-0.5 text-[9px] font-bold text-white ${channelBg}`}>
+                          {channelLabel}
                         </div>
                     </div>
 

@@ -171,3 +171,88 @@ export const getPaymentConfig = async (req: Request, res: Response, next: NextFu
     next(error);
   }
 };
+
+export const getShippingZones = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { slug } = req.params;
+    const amountParam = (req.query.amount as string) ?? '0';
+    const cartAmount = Number.parseFloat(amountParam) || 0;
+
+    const business = await prisma.business.findUnique({
+      where: { slug },
+      select: {
+        id: true,
+        settings: true
+      }
+    });
+
+    if (!business) {
+      return res.status(404).json({ error: 'Catálogo no encontrado', code: 'CATALOG_NOT_FOUND' });
+    }
+
+    const settings = (business.settings as any) || {};
+    const shippingZones = Array.isArray(settings.shippingZones) ? settings.shippingZones : [];
+    const shippingOptions = settings.shippingOptions || {};
+
+    const zones = shippingZones.map((zone: any, index: number) => {
+      const basePrice = typeof zone.price === 'number' && Number.isFinite(zone.price) ? zone.price : 0;
+      const zoneFree = Boolean(zone.free);
+      const freeOverEnabled =
+        typeof shippingOptions.freeShippingEnabled === 'boolean' &&
+        shippingOptions.freeShippingEnabled === true &&
+        typeof shippingOptions.freeShippingMin === 'number' &&
+        Number.isFinite(shippingOptions.freeShippingMin) &&
+        cartAmount >= shippingOptions.freeShippingMin;
+
+      const isFree = zoneFree || freeOverEnabled;
+      const cost = isFree ? 0 : basePrice;
+      const formattedCost = isFree ? 'Gratis' : `$${cost.toFixed(2)}`;
+
+      return {
+        id: index + 1,
+        name: zone.name as string,
+        slug: zone.slug as string,
+        estadoId:
+          typeof zone.estadoId === 'number' && Number.isFinite(zone.estadoId) ? (zone.estadoId as number) : null,
+        municipioId:
+          typeof zone.municipioId === 'number' && Number.isFinite(zone.municipioId)
+            ? (zone.municipioId as number)
+            : null,
+        parroquiaId:
+          typeof zone.parroquiaId === 'number' && Number.isFinite(zone.parroquiaId)
+            ? (zone.parroquiaId as number)
+            : null,
+        description:
+          typeof zone.distanceKm === 'number' && Number.isFinite(zone.distanceKm)
+            ? `Hasta ${zone.distanceKm} km desde la tienda`
+            : (zone.description as string | null) ?? null,
+        deliveryTime: (zone.deliveryTime as string | null) ?? null,
+        methods: [
+          {
+            methodId: 1,
+            methodCode: 'DELIVERY',
+            methodName: 'Entrega a domicilio',
+            icon: null,
+            cost,
+            isFree,
+            costType: 'fixed',
+            costValue: basePrice,
+            minOrderAmount:
+              typeof shippingOptions.freeShippingMin === 'number' && Number.isFinite(shippingOptions.freeShippingMin)
+                ? shippingOptions.freeShippingMin
+                : 0,
+            formattedCost
+          }
+        ]
+      };
+    });
+
+    return res.json({
+      zones,
+      currency: 'USD',
+      cartAmount
+    });
+  } catch (error) {
+    next(error);
+  }
+};
