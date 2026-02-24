@@ -1,149 +1,122 @@
-import { Request, Response, NextFunction } from 'express';
-import prisma from '@ventasve/database';
-import { AuthRequest } from '../middleware/auth';
+import prisma, { Prisma } from '@ventasve/database';
+import { Errors } from '../lib/errors';
+import { authed } from '../lib/handler';
 
-export const getCustomers = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
-    const page = Number(req.query.page ?? 1);
-    const limit = Number(req.query.limit ?? 20);
-    const search = req.query.search as string | undefined;
+export const getCustomers = authed(async ({ businessId, query }) => {
+  const page = Number(query.page ?? 1);
+  const limit = Number(query.limit ?? 20);
+  const search = query.search as string | undefined;
 
-    const where: any = { businessId };
+  const where: Record<string, unknown> = { businessId };
 
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search } },
-        { email: { contains: search, mode: 'insensitive' } }
-      ];
-    }
-
-    const [customers, total] = await Promise.all([
-      prisma.customer.findMany({
-        where,
-        include: {
-          _count: {
-            select: { orders: true }
-          },
-          orders: {
-            take: 1,
-            orderBy: { createdAt: 'desc' },
-            select: {
-              createdAt: true,
-              totalCents: true
-            }
-          }
-        },
-        orderBy: { updatedAt: 'desc' },
-        skip: (page - 1) * limit,
-        take: limit
-      }),
-      prisma.customer.count({ where })
-    ]);
-
-    res.json({
-      data: customers,
-      meta: {
-        page,
-        limit,
-        total
-      }
-    });
-  } catch (error) {
-    next(error);
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: 'insensitive' } },
+      { phone: { contains: search } },
+      { email: { contains: search, mode: 'insensitive' } }
+    ];
   }
-};
 
-export const getCustomerById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
-    const { id } = req.params;
-
-    const customer = await prisma.customer.findFirst({
-      where: {
-        id,
-        businessId
-      },
+  const [customers, total] = await Promise.all([
+    prisma.customer.findMany({
+      where,
       include: {
+        _count: {
+          select: { orders: true }
+        },
         orders: {
+          take: 1,
           orderBy: { createdAt: 'desc' },
           select: {
-            id: true,
-            status: true,
             createdAt: true,
-            totalCents: true,
-            shipping_zone_slug: true,
-            shipping_cost_cents: true,
-            shipping_method_code: true,
-            items: {
-              select: {
-                quantity: true,
-                product: {
-                  select: {
-                    name: true
-                  }
+            totalCents: true
+          }
+        }
+      },
+      orderBy: { updatedAt: 'desc' },
+      skip: (page - 1) * limit,
+      take: limit
+    }),
+    prisma.customer.count({ where })
+  ]);
+
+  return {
+    data: customers,
+    meta: { page, limit, total }
+  };
+});
+
+export const getCustomerById = authed(async ({ businessId, params }) => {
+  const customer = await prisma.customer.findFirst({
+    where: {
+      id: params.id,
+      businessId
+    },
+    include: {
+      orders: {
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          status: true,
+          createdAt: true,
+          totalCents: true,
+          shipping_zone_slug: true,
+          shipping_cost_cents: true,
+          shipping_method_code: true,
+          items: {
+            select: {
+              quantity: true,
+              product: {
+                select: {
+                  name: true
                 }
               }
             }
           }
-        },
-        conversations: {
-          orderBy: { updatedAt: 'desc' },
-          include: {
-            messages: {
-              take: 1,
-              orderBy: { createdAt: 'desc' }
-            }
+        }
+      },
+      conversations: {
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          messages: {
+            take: 1,
+            orderBy: { createdAt: 'desc' }
           }
         }
       }
-    });
-
-    if (!customer) {
-      return res.status(404).json({ error: 'Cliente no encontrado' });
     }
+  });
 
-    res.json(customer);
-  } catch (error) {
-    next(error);
+  if (!customer) {
+    throw Errors.NotFound('Cliente');
   }
-};
 
-export const updateCustomer = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
-    const { id } = req.params;
+  return customer;
+});
 
-    const customer = await prisma.customer.findFirst({
-      where: {
-        id,
-        businessId
-      }
-    });
-
-    if (!customer) {
-      return res.status(404).json({ error: 'Cliente no encontrado' });
+export const updateCustomer = authed(async ({ businessId, params, body }) => {
+  const customer = await prisma.customer.findFirst({
+    where: {
+      id: params.id,
+      businessId
     }
+  });
 
-    const updated = await prisma.customer.update({
-      where: { id },
-      data: {
-        name: req.body.name ?? customer.name,
-        email: req.body.email ?? customer.email,
-        phone: req.body.phone ?? customer.phone,
-        address: req.body.address ?? customer.address,
-        addressNotes: req.body.addressNotes ?? customer.addressNotes,
-        identification: req.body.identification ?? customer.identification,
-        preferences: req.body.preferences ?? customer.preferences
-      }
-    });
-
-    res.json(updated);
-  } catch (error) {
-    next(error);
+  if (!customer) {
+    throw Errors.NotFound('Cliente');
   }
-};
+
+  const data = body as Record<string, unknown>;
+  return prisma.customer.update({
+    where: { id: params.id },
+    data: {
+      name: (data.name as string) ?? customer.name,
+      email: (data.email as string) ?? customer.email,
+      phone: (data.phone as string) ?? customer.phone,
+      address: (data.address as string) ?? customer.address,
+      addressNotes: (data.addressNotes as string) ?? customer.addressNotes,
+      identification: (data.identification as string) ?? customer.identification,
+      preferences: (data.preferences ?? customer.preferences ?? Prisma.JsonNull) as Prisma.InputJsonValue
+    }
+  });
+});

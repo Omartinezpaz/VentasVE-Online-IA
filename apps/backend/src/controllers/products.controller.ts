@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth';
 import { productsService } from '../services/products.service';
 import { imageUploadService, upload } from '../services/image-upload.service';
 import { catalogService } from '../services/catalog.service';
+import { authed, authedWithStatus } from '../lib/handler';
 
 const productSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
@@ -30,121 +31,72 @@ const querySchema = z.object({
   isPublished: z.enum(['true', 'false']).transform(val => val === 'true').optional(),
 });
 
-export const getProducts = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    // Assume protected route
-    const businessId = authReq.user!.businessId;
-    const query = querySchema.parse(req.query);
-    const result = await productsService.findAll(businessId, query);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-};
+const stockSchema = z.object({ stock: z.number().int().nonnegative() });
 
-export const createProduct = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
-    const data = productSchema.parse(req.body);
-    const result = await productsService.create({ ...data, businessId });
-    await catalogService.invalidateByBusinessId(businessId);
-    res.status(201).json(result);
-  } catch (error) {
-    next(error);
-  }
-};
+export const getProducts = authed(async ({ businessId, query }) => {
+  const parsed = querySchema.parse(query);
+  return productsService.findAll(businessId, parsed);
+});
 
-export const getProductById = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
-    const productId = req.params.id;
-    const result = await productsService.findOne(businessId, productId);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-};
+export const createProduct = authedWithStatus(201, async ({ businessId, body }) => {
+  const data = productSchema.parse(body);
+  const result = await productsService.create({ ...data, businessId });
+  await catalogService.invalidateByBusinessId(businessId);
+  return result;
+});
 
-export const updateProduct = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
-    const productId = req.params.id;
-    const data = productSchema.partial().parse(req.body);
-    const result = await productsService.update(businessId, productId, data);
-    await catalogService.invalidateByBusinessId(businessId);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-};
+export const getProductById = authed(async ({ businessId, params }) => {
+  return productsService.findOne(businessId, params.id);
+});
 
-export const replaceProduct = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
-    const productId = req.params.id;
-    const data = productSchema.parse(req.body);
-    const result = await productsService.update(businessId, productId, data);
-    await catalogService.invalidateByBusinessId(businessId);
-    res.json(result);
-  } catch (error) {
-    next(error);
-  }
-};
+export const updateProduct = authed(async ({ businessId, params, body }) => {
+  const data = productSchema.partial().parse(body);
+  const result = await productsService.update(businessId, params.id, data);
+  await catalogService.invalidateByBusinessId(businessId);
+  return result;
+});
 
-export const deleteProduct = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const businessId = authReq.user!.businessId;
-    const productId = req.params.id;
-    await productsService.delete(businessId, productId);
-    await catalogService.invalidateByBusinessId(businessId);
-    res.status(204).send();
-  } catch (error) {
-    next(error);
-  }
-};
+export const replaceProduct = authed(async ({ businessId, params, body }) => {
+  const data = productSchema.parse(body);
+  const result = await productsService.update(businessId, params.id, data);
+  await catalogService.invalidateByBusinessId(businessId);
+  return result;
+});
 
-export const updateStock = async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const authReq = req as AuthRequest;
-        const businessId = authReq.user!.businessId;
-        const productId = req.params.id;
-        const schema = z.object({ stock: z.number().int().nonnegative() });
-        const { stock } = schema.parse(req.body);
-        const result = await productsService.update(businessId, productId, { stock });
-        await catalogService.invalidateByBusinessId(businessId);
-        res.json(result);
-    } catch (error) {
-        next(error);
-    }
-}
+export const deleteProduct = authed(async ({ businessId, params }) => {
+  await productsService.delete(businessId, params.id);
+  await catalogService.invalidateByBusinessId(businessId);
+  return null;
+});
 
+export const updateStock = authed(async ({ businessId, params, body }) => {
+  const { stock } = stockSchema.parse(body);
+  const result = await productsService.update(businessId, params.id, { stock });
+  await catalogService.invalidateByBusinessId(businessId);
+  return result;
+});
+
+// uploadImages keeps raw req/res because of multer middleware
 export const uploadImages = [
-  upload.array('images', 5), // Máximo 5 imágenes
+  upload.array('images', 5),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authReq = req as AuthRequest;
       const businessId = authReq.user!.businessId;
       const productId = req.params.id;
-      
+
       if (!req.files || !Array.isArray(req.files)) {
         return res.status(400).json({ error: 'No se proporcionaron imágenes' });
       }
 
       const files = req.files as Express.Multer.File[];
       const imageUrls = await imageUploadService.uploadProductImages(files);
-      
-      // Obtener producto actual para combinar imágenes
+
       const currentProduct = await productsService.findOne(businessId, productId);
       const updatedImages = [...(currentProduct.images || []), ...imageUrls];
       const result = await productsService.update(businessId, productId, { images: updatedImages });
       await catalogService.invalidateByBusinessId(businessId);
-      
+
       res.json({
         message: 'Imágenes subidas exitosamente',
         images: imageUrls,
