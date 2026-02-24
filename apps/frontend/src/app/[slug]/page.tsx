@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { CartLink } from './CartLink';
 import { DualPrice } from '@/components/ui/DualPrice';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 const apiBaseUrl = new URL(API_BASE);
@@ -75,7 +76,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
         <div className="mx-auto min-h-screen max-w-md bg-[var(--bg-light)] shadow-2xl overflow-x-hidden relative">
 
           {/* HEADER OSCURO */}
-          <header className="relative overflow-hidden bg-[var(--dark)] text-white px-5 pt-6 pb-0">
+          <header className="relative overflow-hidden bg-[#1a1e2e] text-white px-5 pt-6 pb-0">
              {/* Decoración de fondo */}
             <div className="absolute -top-16 -right-16 w-48 h-48 bg-[radial-gradient(circle,rgba(245,200,66,0.3),transparent_70%)] pointer-events-none" />
             <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-[radial-gradient(circle,rgba(232,54,14,0.25),transparent_70%)] pointer-events-none" />
@@ -87,9 +88,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <CartLink slug={slug} />
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 backdrop-blur-md text-lg cursor-pointer">
-                    <span>⋯</span>
-                  </div>
+                  <ThemeToggle />
                 </div>
               </div>
 
@@ -101,7 +100,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                   <h1 className="font-heading text-2xl font-bold leading-none tracking-tight truncate">
                     {business.name}
                   </h1>
-                  <p className="text-[13px] text-white/50 mt-0.5 font-medium">@{slug}</p>
+                  <p className="text-[13px] text-white/70 mt-0.5 font-medium">@{slug}</p>
                   <div className="mt-2 flex gap-1.5">
                     <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/90">
                       ✓ Verificado
@@ -120,7 +119,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                 <div className="font-heading text-lg font-bold leading-none">
                   {products.length}
                 </div>
-                <div className="mt-1 text-[9px] font-bold text-white/40 uppercase tracking-widest">
+                <div className="mt-1 text-[9px] font-bold text-white/60 uppercase tracking-widest">
                   Productos
                 </div>
               </div>
@@ -128,7 +127,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                 <div className="font-heading text-lg font-bold leading-none">
                   4.9★
                 </div>
-                <div className="mt-1 text-[9px] font-bold text-white/40 uppercase tracking-widest">
+                <div className="mt-1 text-[9px] font-bold text-white/60 uppercase tracking-widest">
                   Valoración
                 </div>
               </div>
@@ -136,7 +135,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                 <div className="font-heading text-lg font-bold leading-none">
                   1.2K
                 </div>
-                <div className="mt-1 text-[9px] font-bold text-white/40 uppercase tracking-widest">
+                <div className="mt-1 text-[9px] font-bold text-white/60 uppercase tracking-widest">
                   Clientes
                 </div>
               </div>
@@ -146,14 +145,14 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
           <main className="pb-24">
             {/* SEARCH BAR */}
             <section className="px-4 pt-5 pb-2">
-              <div className="flex items-center gap-3 rounded-2xl border-2 border-black/5 bg-white px-4 py-3.5 shadow-sm focus-within:border-[var(--accent)] transition-colors group">
+              <div className="flex items-center gap-3 rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 shadow-sm focus-within:border-[var(--accent)] transition-colors group">
                 <span className="text-xl opacity-30 group-focus-within:opacity-100 transition-opacity">🔍</span>
                 <input
                   type="search"
                   placeholder="Buscar en el catálogo..."
-                  className="flex-1 border-none bg-transparent text-sm font-medium text-[var(--dark)] outline-none placeholder:text-zinc-400"
+                  className="flex-1 border-none bg-transparent text-sm font-medium text-[var(--dark)] outline-none placeholder:text-[var(--muted)]"
                 />
-                <span className="rounded-lg bg-zinc-100 px-2 py-1 text-lg leading-none cursor-pointer">
+                <span className="rounded-lg bg-[var(--surface2)] px-2 py-1 text-lg leading-none cursor-pointer">
                   🎛
                 </span>
               </div>
@@ -167,7 +166,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                   className={`whitespace-nowrap rounded-full border-2 px-4 py-1.5 text-xs font-bold transition-all ${
                     i === 0
                     ? 'bg-[var(--accent)] border-[var(--accent)] text-white shadow-lg shadow-orange-950/20'
-                    : 'bg-white border-black/5 text-zinc-500'
+                    : 'bg-[var(--surface)] border-[var(--border)] text-[var(--foreground2)]'
                   }`}
                 >
                   {cat}
@@ -177,7 +176,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
 
             {/* PROMO BANNER */}
             <section className="px-4 pt-3">
-              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[var(--dark)] to-[#2d1a00] p-5 text-white shadow-xl group cursor-pointer active:scale-[0.98] transition-transform">
+              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1a1e2e] to-[#2d1a00] p-5 text-white shadow-xl group cursor-pointer active:scale-[0.98] transition-transform">
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-5xl opacity-20 group-hover:scale-110 transition-transform">🎁</div>
                 <span className="inline-block rounded bg-[var(--accent)] px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest mb-2">
                   Oferta Especial
@@ -186,7 +185,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                   2x1 en toda la<br />
                   <span className="text-[var(--accent-secondary)]">ropa de temporada</span>
                 </h2>
-                <p className="mt-1 text-[11px] text-white/50 font-medium">
+                <p className="mt-1 text-[11px] text-white/60 font-medium">
                   Solo hasta el viernes · Corre 👟
                 </p>
               </div>
@@ -194,8 +193,8 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
 
             {/* PAY STRIP */}
             <section className="px-4 pt-4">
-              <div className="rounded-2xl border-2 border-black/5 bg-white p-4">
-                 <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-3">💳 Métodos de pago aceptados</div>
+              <div className="rounded-2xl border-2 border-[var(--border)] bg-[var(--surface)] p-4">
+                 <div className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-wider mb-3">💳 Métodos de pago aceptados</div>
                  <div className="flex flex-wrap gap-2">
                     <span className="inline-flex items-center gap-1.5 rounded-xl border border-purple-500/20 bg-purple-500/5 px-2.5 py-1.5 text-[10px] font-bold text-purple-600">
                         💸 Zelle
@@ -228,9 +227,9 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                 {products.map((product, idx) => (
                   <article
                     key={product.id}
-                    className="group relative flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/5 transition-all duration-200 active:scale-95"
+                    className="group relative flex flex-col overflow-hidden rounded-2xl bg-[var(--surface)] shadow-sm ring-1 ring-[var(--border)] transition-all duration-200 active:scale-95"
                   >
-                    <div className="absolute right-2.5 top-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-xs shadow-md backdrop-blur-sm cursor-pointer hover:bg-white transition-colors">
+                    <div className="absolute right-2.5 top-2.5 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[var(--surface)]/90 text-xs shadow-md backdrop-blur-sm cursor-pointer hover:bg-[var(--surface)] transition-colors">
                       🤍
                     </div>
                     {product.stock && product.stock < 10 && (
@@ -238,7 +237,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                             ÚLTIMOS {product.stock}
                         </div>
                     )}
-                    <div className="aspect-[4/5] bg-[#f7f7f7] group-hover:scale-105 transition-transform duration-500 overflow-hidden">
+                    <div className="aspect-[4/5] bg-[var(--surface2)] group-hover:scale-105 transition-transform duration-500 overflow-hidden">
                       {product.images && product.images.length > 0 ? (
                         <div className="relative h-full w-full">
                           <Image
@@ -250,11 +249,11 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                             loading={idx === 0 ? 'eager' : 'lazy'}
                           />
                           {product.images.length > 1 && (
-                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 rounded-full bg-white/80 px-1.5 py-1 shadow-sm">
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 rounded-full bg-[var(--surface)]/80 px-1.5 py-1 shadow-sm">
                               {product.images.slice(0, 3).map((src, idx) => (
                                 <div
                                   key={idx}
-                                  className="relative h-6 w-6 overflow-hidden rounded-md border border-black/10 bg-white"
+                                  className="relative h-6 w-6 overflow-hidden rounded-md border border-[var(--border)] bg-[var(--surface)]"
                                 >
                                   <Image
                                     src={resolveImageUrl(src)}
@@ -266,7 +265,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                                 </div>
                               ))}
                               {product.images.length > 3 && (
-                                <div className="flex h-6 items-center px-1 text-[9px] font-bold text-zinc-600">
+                                <div className="flex h-6 items-center px-1 text-[9px] font-bold text-[var(--foreground2)]">
                                   +{product.images.length - 3}
                                 </div>
                               )}
@@ -283,7 +282,7 @@ export default async function CatalogPage({ params }: CatalogPageProps) {
                       <h3 className="line-clamp-1 font-heading text-[14px] font-bold text-[var(--dark)]">
                         {product.name}
                       </h3>
-                      <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-zinc-400">
+                      <p className="mt-0.5 line-clamp-1 text-[11px] font-medium text-[var(--muted)]">
                         {product.description || 'Sin descripción'}
                       </p>
                       <div className="mt-auto pt-3 flex items-end justify-between gap-2">

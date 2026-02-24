@@ -13,7 +13,7 @@ export const CartLink = ({ slug }: CartLinkProps) => {
   return (
     <Link
       href={`/${slug}/cart`}
-      className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium text-zinc-700"
+      className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-medium text-[var(--foreground)]"
     >
       Carrito{totalItems > 0 ? ` (${totalItems})` : ''}
     </Link>

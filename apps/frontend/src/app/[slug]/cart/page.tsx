@@ -44,16 +44,16 @@ export default function CartPage({ params }: CartPageProps) {
 
   return (
     <div className="min-h-screen bg-[var(--bg-light)] text-[var(--dark)]">
-      <header className="border-b border-black/5 bg-white/80 backdrop-blur-md sticky top-0 z-50">
+      <header className="border-b border-[var(--border)] bg-[var(--surface)]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-4">
-          <Link href={`/${slug}`} className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 text-lg cursor-pointer">
+          <Link href={`/${slug}`} className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--surface2)] text-lg cursor-pointer">
             <span>‹</span>
           </Link>
           <div className="text-center">
             <h1 className="font-heading text-lg font-bold tracking-tight">
               🛒 Tu pedido
             </h1>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--muted)]">
               Paso 1 de 2
             </p>
           </div>
@@ -68,9 +68,9 @@ export default function CartPage({ params }: CartPageProps) {
               {items.map(item => (
                 <article
                   key={item.productId}
-                  className="flex items-center gap-4 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5"
+                  className="flex items-center gap-4 rounded-2xl bg-[var(--surface)] p-4 shadow-sm ring-1 ring-[var(--border)]"
                 >
-                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--bg-light)] text-2xl font-bold text-zinc-400">
+                  <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-xl bg-[var(--bg-light)] text-2xl font-bold text-[var(--muted)]">
                     {item.name.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -85,14 +85,14 @@ export default function CartPage({ params }: CartPageProps) {
                      <button
                         type="button"
                         onClick={() => removeItem(item.productId)}
-                        className="text-[18px] text-zinc-300 hover:text-red-500 transition-colors"
+                        className="text-[18px] text-[var(--muted)] hover:text-red-500 transition-colors"
                       >
                         ×
                       </button>
                     <div className="flex items-center gap-2 bg-[var(--bg-light)] rounded-lg p-1">
-                       <button onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))} className="w-6 h-6 flex items-center justify-center font-bold text-zinc-500 hover:text-[var(--dark)] transition-colors">−</button>
+                       <button onClick={() => updateQuantity(item.productId, Math.max(1, item.quantity - 1))} className="w-6 h-6 flex items-center justify-center font-bold text-[var(--foreground2)] hover:text-[var(--dark)] transition-colors">−</button>
                        <span className="font-heading font-bold text-sm min-w-[20px] text-center">{item.quantity}</span>
-                       <button onClick={() => updateQuantity(item.productId, item.quantity + 1)} className="w-6 h-6 flex items-center justify-center font-bold text-zinc-500 hover:text-[var(--dark)] transition-colors">+</button>
+                       <button onClick={() => updateQuantity(item.productId, item.quantity + 1)} className="w-6 h-6 flex items-center justify-center font-bold text-[var(--foreground2)] hover:text-[var(--dark)] transition-colors">+</button>
                     </div>
                   </div>
                 </article>
@@ -108,20 +108,20 @@ export default function CartPage({ params }: CartPageProps) {
           </section>
 
           <section className="space-y-4">
-             <div className="rounded-[24px] bg-white p-6 shadow-xl ring-1 ring-black/5">
+             <div className="rounded-[24px] bg-[var(--surface)] p-6 shadow-xl ring-1 ring-[var(--border)]">
                 <h2 className="font-heading text-lg font-bold mb-5">
                     Resumen de pago
                 </h2>
                 <div className="space-y-3">
-                    <div className="flex justify-between text-sm font-medium text-zinc-500">
+                    <div className="flex justify-between text-sm font-medium text-[var(--foreground2)]">
                         <span>Subtotal</span>
                         <DualPrice usdCents={totalCents} />
                     </div>
-                    <div className="flex justify-between text-sm font-medium text-zinc-500">
+                    <div className="flex justify-between text-sm font-medium text-[var(--foreground2)]">
                         <span>Envío Caracas</span>
                         <span className="text-emerald-600 font-bold">Gratis</span>
                     </div>
-                    <div className="pt-4 mt-2 border-t-2 border-dashed border-zinc-100 flex justify-between items-end">
+                    <div className="pt-4 mt-2 border-t-2 border-dashed border-[var(--border)] flex justify-between items-end">
                         <span className="font-heading text-lg font-bold">Total</span>
                         <div className="text-right">
                             <div className="font-heading text-2xl font-bold text-[var(--accent)]">
@@ -132,16 +132,16 @@ export default function CartPage({ params }: CartPageProps) {
                 </div>
 
                 <div className="mt-8 rounded-2xl bg-[var(--bg-light)] p-4">
-                    <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-tight mb-2">💳 ¿Cómo vas a pagar?</div>
+                    <div className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-tight mb-2">💳 ¿Cómo vas a pagar?</div>
                     <div className="flex flex-wrap gap-2">
                         <span className="px-3 py-1.5 rounded-lg border-2 border-[var(--accent)] bg-[var(--accent)]/5 text-[11px] font-bold text-[var(--accent)]">💸 Zelle</span>
-                        <span className="px-3 py-1.5 rounded-lg border-2 border-black/5 bg-white text-[11px] font-bold text-zinc-500">📱 Pago Móvil</span>
+                        <span className="px-3 py-1.5 rounded-lg border-2 border-[var(--border)] bg-[var(--surface)] text-[11px] font-bold text-[var(--foreground2)]">📱 Pago Móvil</span>
                     </div>
                 </div>
 
                 <Link
                 href={`/${slug}/checkout`}
-                className="mt-8 block w-full rounded-2xl bg-[var(--dark)] py-4 text-center font-heading text-base font-bold text-white shadow-xl shadow-zinc-950/20 active:scale-[0.98] transition-all"
+                className="mt-8 block w-full rounded-2xl bg-[#1a1e2e] py-4 text-center font-heading text-base font-bold text-white shadow-xl shadow-zinc-950/20 active:scale-[0.98] transition-all"
                 >
                 Confirmar datos →
                 </Link>

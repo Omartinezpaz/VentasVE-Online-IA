@@ -1,6 +1,16 @@
 import { api } from './client';
 import type { PaymentMethods } from './settings';
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
+
+/** Server-safe fetch for public catalog endpoints (no auth needed) */
+async function serverGet<T>(path: string): Promise<{ data: T }> {
+  const res = await fetch(`${API_BASE}${path}`, { next: { revalidate: 60 } });
+  if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
+  const data = await res.json();
+  return { data };
+}
+
 export type PublicOrderItem = {
   productId: string;
   quantity: number;
@@ -74,13 +84,13 @@ export type ShippingZone = {
 
 export const catalogApi = {
   getBusiness(slug: string) {
-    return api.get(`/catalog/${slug}`);
+    return serverGet(`/catalog/${slug}`);
   },
   getProducts(slug: string) {
-    return api.get(`/catalog/${slug}/products`);
+    return serverGet(`/catalog/${slug}/products`);
   },
   getProduct(slug: string, id: string) {
-    return api.get(`/catalog/${slug}/products/${id}`);
+    return serverGet(`/catalog/${slug}/products/${id}`);
   },
   createOrder(slug: string, data: PublicOrderPayload) {
     return api.post(`/catalog/${slug}/orders`, data);

@@ -4,18 +4,21 @@
   /* Tema Claro por Default */
   --accent: #f5c842;
   --accent-red: #e8360e;
+  --accent-secondary: #e8360e;
   --green: #22c55e;
   --blue: #3b82f6;
   --purple: #a855f7;
   --accent-blue: #007bff; /* New variable */
-  
+
   --background: #f4f6fb;
+  --bg-light: #f4f6fb;
   --bg-sidebar: #ffffff;
   --surface: #ffffff;
   --surface2: #f0f2f9;
   --border: rgba(0, 0, 0, 0.08);
   --border2: rgba(0, 0, 0, 0.14);
   --foreground: #1a1e2e;
+  --dark: #1a1e2e;
   --foreground2: #4a5070;
   --muted: #9098b5;
   --input-bg: #f4f6fb;
@@ -25,12 +28,14 @@
 
 [data-theme="dark"] {
   --background: #0b0e17;
+  --bg-light: #0b0e17;
   --bg-sidebar: #111520;
   --surface: #161b2c;
   --surface2: #1e2438;
   --border: rgba(255, 255, 255, 0.07);
   --border2: rgba(255, 255, 255, 0.12);
   --foreground: #e8eaf2;
+  --dark: #e8eaf2;
   --foreground2: #a0a8bf;
   --muted: #5a6282;
   --input-bg: #1a2035;
