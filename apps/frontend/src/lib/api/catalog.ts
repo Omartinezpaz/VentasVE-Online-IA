@@ -84,28 +84,28 @@ export type ShippingZone = {
 
 export const catalogApi = {
   getBusiness(slug: string) {
-    return serverGet(`/catalog/${slug}`);
+    return serverGet(`/catalog/${encodeURIComponent(slug)}`);
   },
   getProducts(slug: string) {
-    return serverGet(`/catalog/${slug}/products`);
+    return serverGet(`/catalog/${encodeURIComponent(slug)}/products`);
   },
   getProduct(slug: string, id: string) {
-    return serverGet(`/catalog/${slug}/products/${id}`);
+    return serverGet(`/catalog/${encodeURIComponent(slug)}/products/${encodeURIComponent(id)}`);
   },
   createOrder(slug: string, data: PublicOrderPayload) {
-    return api.post(`/catalog/${slug}/orders`, data);
+    return api.post(`/catalog/${encodeURIComponent(slug)}/orders`, data);
   },
   getDocumentTypes() {
     return api.get<DocumentType[]>('/catalog/document-types');
   },
   getPaymentMethods(slug: string) {
-    return api.get<PublicPaymentMethod[]>(`/catalog/${slug}/payment-methods`);
+    return api.get<PublicPaymentMethod[]>(`/catalog/${encodeURIComponent(slug)}/payment-methods`);
   },
   getPaymentConfig(slug: string) {
-    return api.get<PublicPaymentConfig>(`/catalog/${slug}/payment-config`);
+    return api.get<PublicPaymentConfig>(`/catalog/${encodeURIComponent(slug)}/payment-config`);
   },
   getShippingZones(slug: string, params: { amount: number }) {
-    return api.get<{ zones: ShippingZone[]; currency: string; cartAmount: number }>(`/catalog/${slug}/shipping-zones`, {
+    return api.get<{ zones: ShippingZone[]; currency: string; cartAmount: number }>(`/catalog/${encodeURIComponent(slug)}/shipping-zones`, {
       params
     });
   }
