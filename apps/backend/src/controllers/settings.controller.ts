@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma, { BusinessType, Prisma } from '@ventasve/database';
+import prisma, { BusinessType } from '@ventasve/database';
 import { AppError } from '../lib/errors';
 import { z } from 'zod';
 import { AuthRequest } from '../middleware/auth';
 import { logoUpload, imageUploadService } from '../services/image-upload.service';
+import { authed } from '../lib/handler';
 
 type BusinessShippingZone = {
   id: string;
@@ -152,7 +153,7 @@ const businessSettingsSchema = z
   })
   .merge(BusinessFiscalSchema);
 
-const validateBusinessFiscal = (data: any) => {
+const validateBusinessFiscal = (data: z.infer<typeof businessSettingsSchema>) => {
   if (data.personaType === 'JURIDICA') {
     if (!data.rif) {
       throw new AppError('RIF es obligatorio para persona jurídica', 422, 'VALIDATION_ERROR', 'rif');
@@ -172,11 +173,9 @@ const normalizeWhatsapp = (value: string) => {
   const digits = value.replace(/\D/g, '');
   const trimmed = value.trim();
   if (!digits) return trimmed;
-  // Si ya viene con código internacional explícito, respetarlo
   if (trimmed.startsWith('+')) {
     return `+${digits}`;
   }
-  // Inferir +58 solo si parece un número local venezolano
   if (digits.startsWith('58')) {
     return `+${digits}`;
   }
@@ -189,251 +188,193 @@ const normalizeWhatsapp = (value: string) => {
   return `+${digits}`;
 };
 
-export const getSettings = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const user = authReq.user;
-    if (!user || !user.businessId) {
-      return res.status(401).json({
-        error: 'Not authenticated',
-        code: 'SETTINGS_NOT_AUTHENTICATED'
-      });
-    }
-    const businessId = user.businessId;
+function formatBusinessResponse(business: {
+  name: string;
+  slug: string;
+  type: BusinessType;
+  whatsapp: string | null;
+  city: string | null;
+  instagram: string | null;
+  schedule: string | null;
+  description: string | null;
+  settings: unknown;
+  paymentMethods: unknown;
+  catalogOptions: unknown;
+}) {
+  const s = business.settings as BusinessSettings | null;
+  return {
+    name: business.name,
+    slug: business.slug,
+    businessType: business.type,
+    whatsappPhone: business.whatsapp,
+    city: business.city,
+    instagram: business.instagram,
+    schedule: business.schedule,
+    description: business.description,
+    logoUrl: s?.logoUrl,
+    ownerName: s?.ownerName,
+    ownerPhone: s?.ownerPhone,
+    ownerEmail: s?.ownerEmail,
+    businessAddress: s?.businessAddress,
+    personaType: s?.personaType,
+    rif: s?.rif,
+    razonSocial: s?.razonSocial,
+    fiscalAddress: s?.fiscalAddress,
+    estadoId: s?.estadoId,
+    municipioId: s?.municipioId,
+    parroquiaId: s?.parroquiaId,
+    postalCode: s?.postalCode,
+    electronicInvoicing: s?.electronicInvoicing,
+    islrRegimen: s?.islrRegimen,
+    businessProfile: s?.businessProfile,
+    cashUsdExchangeRate: s?.cashUsdExchangeRate,
+    paymentMethods: business.paymentMethods ?? {},
+    catalogOptions: business.catalogOptions ?? {},
+    notificationSettings: s?.notificationSettings ?? {},
+    shippingZones: s?.shippingZones ?? [],
+    shippingOptions: s?.shippingOptions ?? {}
+  };
+}
 
-    const business = await prisma.business.findUnique({
-      where: { id: businessId },
-    });
+export const getSettings = authed(async ({ businessId }) => {
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+  });
 
-    if (!business) {
-      return res.status(404).json({ error: 'Negocio no encontrado' });
-    }
-
-    res.json({
-      name: business.name,
-      slug: business.slug,
-      businessType: business.type,
-      whatsappPhone: business.whatsapp,
-      city: business.city,
-      instagram: business.instagram,
-      schedule: business.schedule,
-      description: business.description,
-      logoUrl: (business.settings as BusinessSettings | null)?.logoUrl,
-      ownerName: (business.settings as BusinessSettings | null)?.ownerName,
-      ownerPhone: (business.settings as BusinessSettings | null)?.ownerPhone,
-      ownerEmail: (business.settings as BusinessSettings | null)?.ownerEmail,
-      businessAddress: (business.settings as BusinessSettings | null)?.businessAddress,
-      personaType: (business.settings as BusinessSettings | null)?.personaType,
-      rif: (business.settings as BusinessSettings | null)?.rif,
-      razonSocial: (business.settings as BusinessSettings | null)?.razonSocial,
-      fiscalAddress: (business.settings as BusinessSettings | null)?.fiscalAddress,
-      estadoId: (business.settings as BusinessSettings | null)?.estadoId,
-      municipioId: (business.settings as BusinessSettings | null)?.municipioId,
-      parroquiaId: (business.settings as BusinessSettings | null)?.parroquiaId,
-      postalCode: (business.settings as BusinessSettings | null)?.postalCode,
-      electronicInvoicing: (business.settings as BusinessSettings | null)?.electronicInvoicing,
-      islrRegimen: (business.settings as BusinessSettings | null)?.islrRegimen,
-      businessProfile: (business.settings as BusinessSettings | null)?.businessProfile,
-      cashUsdExchangeRate: (business.settings as BusinessSettings | null)?.cashUsdExchangeRate,
-      paymentMethods: business.paymentMethods ?? {},
-      catalogOptions: business.catalogOptions ?? {},
-      notificationSettings: (business.settings as BusinessSettings | null)?.notificationSettings ?? {},
-      shippingZones: (business.settings as BusinessSettings | null)?.shippingZones ?? [],
-      shippingOptions: (business.settings as BusinessSettings | null)?.shippingOptions ?? {}
-    });
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      return res.status(500).json({
-        error: 'Database error',
-        code: `SETTINGS_DB_${error.code}`
-      });
-    }
-    next(error);
+  if (!business) {
+    throw new AppError('Negocio no encontrado', 404, 'NOT_FOUND');
   }
-};
 
-export const updateSettings = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const user = authReq.user;
-    if (!user || !user.businessId) {
-      return res.status(401).json({
-        error: 'Not authenticated',
-        code: 'SETTINGS_NOT_AUTHENTICATED'
-      });
-    }
-    const businessId = user.businessId;
-    const requestId = (req as any).requestId;
+  return formatBusinessResponse(business);
+});
 
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[updateSettings][INPUT]', requestId, JSON.stringify(req.body));
-    }
-    const data = businessSettingsSchema.parse(req.body);
+export const updateSettings = authed(async ({ businessId, body, req }) => {
+  const requestId = (req as unknown as Record<string, unknown>).requestId;
 
-    validateBusinessFiscal(data);
-
-    const updateData: any = {};
-
-    // Obtener settings actuales para fusionar y para validar geo con valores existentes
-    const existing = await prisma.business.findUnique({
-      where: { id: businessId },
-      select: { settings: true }
-    });
-    const currentSettings = (existing?.settings as BusinessSettings | null) || {};
-
-    // Validar unicidad de slug si viene en el payload
-    if (data.slug) {
-      const slugTaken = await prisma.business.findFirst({
-        where: {
-          slug: data.slug,
-          NOT: { id: businessId }
-        },
-        select: { id: true }
-      });
-      if (slugTaken) {
-        throw new AppError('Este slug ya está en uso', 400, 'SLUG_TAKEN', 'slug');
-      }
-    }
-
-    const currentEstadoId = currentSettings?.estadoId ?? null;
-    const currentMunicipioId = currentSettings?.municipioId ?? null;
-    const currentParroquiaId = currentSettings?.parroquiaId ?? null;
-
-    const targetEstadoId = data.estadoId ?? currentEstadoId ?? null;
-    const targetMunicipioId = data.municipioId ?? currentMunicipioId ?? null;
-    const targetParroquiaId = data.parroquiaId ?? currentParroquiaId ?? null;
-
-    if (targetEstadoId !== null) {
-      const estado = await prisma.estado.findUnique({ where: { id: targetEstadoId } });
-      if (!estado) {
-        throw new AppError('Estado inválido', 400, 'INVALID_ESTADO', 'estadoId');
-      }
-    }
-
-    if (targetMunicipioId !== null) {
-      const municipio = await prisma.municipio.findUnique({ where: { id: targetMunicipioId } });
-      if (!municipio) {
-        throw new AppError('Municipio inválido', 400, 'INVALID_MUNICIPIO', 'municipioId');
-      }
-      if (targetEstadoId !== null && municipio.estadoId !== targetEstadoId) {
-        throw new AppError('El municipio no pertenece al estado seleccionado', 400, 'MUNICIPIO_ESTADO_MISMATCH', 'municipioId');
-      }
-    }
-
-    if (targetParroquiaId !== null) {
-      const parroquia = await prisma.parroquia.findUnique({ where: { id: targetParroquiaId } });
-      if (!parroquia) {
-        throw new AppError('Parroquia inválida', 400, 'INVALID_PARROQUIA', 'parroquiaId');
-      }
-      if (targetMunicipioId !== null && parroquia.municipioId !== targetMunicipioId) {
-        throw new AppError('La parroquia no pertenece al municipio seleccionado', 400, 'PARROQUIA_MUNICIPIO_MISMATCH', 'parroquiaId');
-      }
-    }
-
-    if (data.name !== undefined) updateData.name = data.name;
-    if (data.slug !== undefined) updateData.slug = data.slug;
-    if (data.whatsappPhone !== undefined) updateData.whatsapp = normalizeWhatsapp(data.whatsappPhone);
-    if (data.city !== undefined) updateData.city = data.city;
-    if (data.instagram !== undefined) updateData.instagram = data.instagram;
-    if (data.schedule !== undefined) updateData.schedule = data.schedule;
-    if (data.description !== undefined) updateData.description = data.description;
-    if (data.paymentMethods !== undefined) updateData.paymentMethods = data.paymentMethods;
-    if (data.catalogOptions !== undefined) updateData.catalogOptions = data.catalogOptions;
-    if (data.businessType !== undefined) updateData.type = data.businessType;
-
-    // Valores que guardamos en JSON settings
-    const newSettings: any = { ...currentSettings };
-    if (data.ownerName !== undefined) newSettings.ownerName = data.ownerName;
-    if (data.ownerPhone !== undefined) newSettings.ownerPhone = data.ownerPhone;
-    if (data.ownerEmail !== undefined) newSettings.ownerEmail = data.ownerEmail;
-    if (data.businessAddress !== undefined) newSettings.businessAddress = data.businessAddress;
-    if (data.personaType !== undefined) newSettings.personaType = data.personaType;
-    if (data.rif !== undefined) newSettings.rif = data.rif;
-    if (data.razonSocial !== undefined) newSettings.razonSocial = data.razonSocial;
-    if (data.fiscalAddress !== undefined) newSettings.fiscalAddress = data.fiscalAddress;
-    if (data.estadoId !== undefined) newSettings.estadoId = data.estadoId;
-    if (data.municipioId !== undefined) newSettings.municipioId = data.municipioId;
-    if (data.parroquiaId !== undefined) newSettings.parroquiaId = data.parroquiaId;
-    if (data.postalCode !== undefined) newSettings.postalCode = data.postalCode;
-    if (data.electronicInvoicing !== undefined) newSettings.electronicInvoicing = data.electronicInvoicing;
-    if (data.islrRegimen !== undefined) newSettings.islrRegimen = data.islrRegimen;
-    if (data.cashUsdExchangeRate !== undefined) newSettings.cashUsdExchangeRate = data.cashUsdExchangeRate;
-    if (data.businessProfile !== undefined) newSettings.businessProfile = data.businessProfile;
-    if (data.notificationSettings !== undefined) newSettings.notificationSettings = data.notificationSettings;
-    if (data.shippingZones !== undefined) newSettings.shippingZones = data.shippingZones as BusinessShippingZone[];
-    if (data.shippingOptions !== undefined) newSettings.shippingOptions = data.shippingOptions as BusinessShippingOptions;
-    updateData.settings = newSettings;
-
-    const updated = await prisma.business.update({
-      where: { id: businessId },
-      data: updateData,
-      select: {
-        name: true,
-        slug: true,
-        type: true,
-        whatsapp: true,
-        city: true,
-        instagram: true,
-        schedule: true,
-        description: true,
-        settings: true,
-        paymentMethods: true,
-        catalogOptions: true
-      }
-    });
-
-    const responsePayload = {
-      name: updated.name,
-      slug: updated.slug,
-      businessType: updated.type,
-      whatsappPhone: updated.whatsapp,
-      city: updated.city,
-      instagram: updated.instagram,
-      schedule: updated.schedule,
-      description: updated.description,
-      logoUrl: (updated.settings as any)?.logoUrl,
-      ownerName: (updated.settings as any)?.ownerName,
-      ownerPhone: (updated.settings as any)?.ownerPhone,
-      ownerEmail: (updated.settings as any)?.ownerEmail,
-      businessAddress: (updated.settings as any)?.businessAddress,
-      personaType: (updated.settings as any)?.personaType,
-      rif: (updated.settings as any)?.rif,
-      razonSocial: (updated.settings as any)?.razonSocial,
-      fiscalAddress: (updated.settings as any)?.fiscalAddress,
-      estadoId: (updated.settings as any)?.estadoId,
-      municipioId: (updated.settings as any)?.municipioId,
-      parroquiaId: (updated.settings as any)?.parroquiaId,
-      postalCode: (updated.settings as any)?.postalCode,
-      electronicInvoicing: (updated.settings as any)?.electronicInvoicing,
-      islrRegimen: (updated.settings as any)?.islrRegimen,
-      businessProfile: (updated.settings as any)?.businessProfile,
-      cashUsdExchangeRate: (updated.settings as any)?.cashUsdExchangeRate,
-      paymentMethods: updated.paymentMethods ?? {},
-      catalogOptions: updated.catalogOptions ?? {},
-      notificationSettings: (updated.settings as any)?.notificationSettings ?? {},
-      shippingZones: (updated.settings as any)?.shippingZones ?? [],
-      shippingOptions: (updated.settings as any)?.shippingOptions ?? {}
-    };
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[updateSettings][OUTPUT]', requestId, JSON.stringify(responsePayload));
-    }
-
-    return res.json(responsePayload);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        error: 'Validation Error',
-        code: 'VALIDATION_FAILED',
-        details: error.errors
-      });
-    }
-    const requestId = (req as any).requestId;
-    console.error('[updateSettings][ERROR]', requestId, error);
-    next(error);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[updateSettings][INPUT]', requestId, JSON.stringify(body));
   }
-};
+  const data = businessSettingsSchema.parse(body);
 
+  validateBusinessFiscal(data);
+
+  const updateData: Record<string, unknown> = {};
+
+  const existing = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { settings: true }
+  });
+  const currentSettings = (existing?.settings as BusinessSettings | null) || {};
+
+  if (data.slug) {
+    const slugTaken = await prisma.business.findFirst({
+      where: {
+        slug: data.slug,
+        NOT: { id: businessId }
+      },
+      select: { id: true }
+    });
+    if (slugTaken) {
+      throw new AppError('Este slug ya está en uso', 400, 'SLUG_TAKEN', 'slug');
+    }
+  }
+
+  const currentEstadoId = currentSettings?.estadoId ?? null;
+  const currentMunicipioId = currentSettings?.municipioId ?? null;
+  const currentParroquiaId = currentSettings?.parroquiaId ?? null;
+
+  const targetEstadoId = data.estadoId ?? currentEstadoId ?? null;
+  const targetMunicipioId = data.municipioId ?? currentMunicipioId ?? null;
+  const targetParroquiaId = data.parroquiaId ?? currentParroquiaId ?? null;
+
+  if (targetEstadoId !== null) {
+    const estado = await prisma.estado.findUnique({ where: { id: targetEstadoId } });
+    if (!estado) {
+      throw new AppError('Estado inválido', 400, 'INVALID_ESTADO', 'estadoId');
+    }
+  }
+
+  if (targetMunicipioId !== null) {
+    const municipio = await prisma.municipio.findUnique({ where: { id: targetMunicipioId } });
+    if (!municipio) {
+      throw new AppError('Municipio inválido', 400, 'INVALID_MUNICIPIO', 'municipioId');
+    }
+    if (targetEstadoId !== null && municipio.estadoId !== targetEstadoId) {
+      throw new AppError('El municipio no pertenece al estado seleccionado', 400, 'MUNICIPIO_ESTADO_MISMATCH', 'municipioId');
+    }
+  }
+
+  if (targetParroquiaId !== null) {
+    const parroquia = await prisma.parroquia.findUnique({ where: { id: targetParroquiaId } });
+    if (!parroquia) {
+      throw new AppError('Parroquia inválida', 400, 'INVALID_PARROQUIA', 'parroquiaId');
+    }
+    if (targetMunicipioId !== null && parroquia.municipioId !== targetMunicipioId) {
+      throw new AppError('La parroquia no pertenece al municipio seleccionado', 400, 'PARROQUIA_MUNICIPIO_MISMATCH', 'parroquiaId');
+    }
+  }
+
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.slug !== undefined) updateData.slug = data.slug;
+  if (data.whatsappPhone !== undefined) updateData.whatsapp = normalizeWhatsapp(data.whatsappPhone);
+  if (data.city !== undefined) updateData.city = data.city;
+  if (data.instagram !== undefined) updateData.instagram = data.instagram;
+  if (data.schedule !== undefined) updateData.schedule = data.schedule;
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.paymentMethods !== undefined) updateData.paymentMethods = data.paymentMethods;
+  if (data.catalogOptions !== undefined) updateData.catalogOptions = data.catalogOptions;
+  if (data.businessType !== undefined) updateData.type = data.businessType;
+
+  const newSettings: Record<string, unknown> = { ...currentSettings };
+  if (data.ownerName !== undefined) newSettings.ownerName = data.ownerName;
+  if (data.ownerPhone !== undefined) newSettings.ownerPhone = data.ownerPhone;
+  if (data.ownerEmail !== undefined) newSettings.ownerEmail = data.ownerEmail;
+  if (data.businessAddress !== undefined) newSettings.businessAddress = data.businessAddress;
+  if (data.personaType !== undefined) newSettings.personaType = data.personaType;
+  if (data.rif !== undefined) newSettings.rif = data.rif;
+  if (data.razonSocial !== undefined) newSettings.razonSocial = data.razonSocial;
+  if (data.fiscalAddress !== undefined) newSettings.fiscalAddress = data.fiscalAddress;
+  if (data.estadoId !== undefined) newSettings.estadoId = data.estadoId;
+  if (data.municipioId !== undefined) newSettings.municipioId = data.municipioId;
+  if (data.parroquiaId !== undefined) newSettings.parroquiaId = data.parroquiaId;
+  if (data.postalCode !== undefined) newSettings.postalCode = data.postalCode;
+  if (data.electronicInvoicing !== undefined) newSettings.electronicInvoicing = data.electronicInvoicing;
+  if (data.islrRegimen !== undefined) newSettings.islrRegimen = data.islrRegimen;
+  if (data.cashUsdExchangeRate !== undefined) newSettings.cashUsdExchangeRate = data.cashUsdExchangeRate;
+  if (data.businessProfile !== undefined) newSettings.businessProfile = data.businessProfile;
+  if (data.notificationSettings !== undefined) newSettings.notificationSettings = data.notificationSettings;
+  if (data.shippingZones !== undefined) newSettings.shippingZones = data.shippingZones as BusinessShippingZone[];
+  if (data.shippingOptions !== undefined) newSettings.shippingOptions = data.shippingOptions as BusinessShippingOptions;
+  updateData.settings = newSettings;
+
+  const updated = await prisma.business.update({
+    where: { id: businessId },
+    data: updateData,
+    select: {
+      name: true,
+      slug: true,
+      type: true,
+      whatsapp: true,
+      city: true,
+      instagram: true,
+      schedule: true,
+      description: true,
+      settings: true,
+      paymentMethods: true,
+      catalogOptions: true
+    }
+  });
+
+  const responsePayload = formatBusinessResponse(updated);
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[updateSettings][OUTPUT]', requestId, JSON.stringify(responsePayload));
+  }
+
+  return responsePayload;
+});
+
+// uploadLogo keeps raw req/res because of multer middleware
 export const uploadLogo = [
   logoUpload.single('logo'),
   async (req: Request, res: Response, next: NextFunction) => {
