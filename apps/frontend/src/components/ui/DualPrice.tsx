@@ -28,7 +28,7 @@ export const DualPrice = ({
   return (
     <span className={className}>
       <span className="font-semibold">{formatUsd(usdCents)}</span>
-      <span className="ml-2 text-xs text-zinc-500">
+      <span className="ml-2 text-xs text-[var(--foreground2)]">
         ({formatBs(usdCents)})
       </span>
     </span>

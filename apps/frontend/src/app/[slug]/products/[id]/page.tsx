@@ -130,16 +130,16 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <p className="text-sm text-zinc-600">Cargando...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-light)]">
+        <p className="text-sm text-[var(--foreground2)]">Cargando...</p>
       </div>
     );
   }
 
   if (error && !product) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <div className="rounded-lg bg-white px-6 py-4 shadow">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-light)]">
+        <div className="rounded-lg bg-[var(--surface)] px-6 py-4 shadow">
           <p className="text-sm text-red-600">{error}</p>
         </div>
       </div>
@@ -152,16 +152,16 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
 
   if (success) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <div className="mx-4 max-w-md rounded-lg bg-white px-6 py-5 shadow">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg-light)]">
+        <div className="mx-4 max-w-md rounded-lg bg-[var(--surface)] px-6 py-5 shadow">
           <h1 className="text-lg font-semibold">Pedido recibido</h1>
-          <p className="mt-2 text-sm text-zinc-600">
+          <p className="mt-2 text-sm text-[var(--foreground2)]">
             Hemos registrado tu pedido. El negocio se pondrá en contacto contigo para confirmar el pago.
           </p>
           <button
             type="button"
             onClick={() => router.push(`/${slug}`)}
-            className="mt-4 w-full rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-50"
+            className="mt-4 w-full rounded bg-[#1a1e2e] px-3 py-2 text-sm font-medium text-white"
           >
             Volver al catálogo
           </button>
@@ -171,10 +171,10 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <header className="border-b bg-white px-4 py-3">
+    <div className="min-h-screen bg-[var(--bg-light)] text-[var(--dark)]">
+      <header className="border-b border-[var(--border)] bg-[var(--surface)] px-4 py-3">
         <div className="mx-auto flex max-w-3xl flex-col gap-1">
-          <span className="text-xs uppercase tracking-wide text-zinc-500">
+          <span className="text-xs uppercase tracking-wide text-[var(--foreground2)]">
             Pedido en
           </span>
           <h1 className="text-xl font-semibold">{business.name}</h1>
@@ -182,16 +182,16 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6">
         <div className="grid gap-6 md:grid-cols-[2fr,3fr]">
-          <section className="rounded-lg border bg-white p-4 shadow-sm">
+          <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
             <h2 className="text-lg font-medium">{product.name}</h2>
             {product.description && (
-              <p className="mt-1 text-sm text-zinc-600">{product.description}</p>
+              <p className="mt-1 text-sm text-[var(--foreground2)]">{product.description}</p>
             )}
             <p className="mt-3 text-base">
               <DualPrice usdCents={product.priceUsdCents} />
             </p>
             <div className="mt-4">
-              <label className="block text-sm font-medium text-zinc-700">
+              <label className="block text-sm font-medium text-[var(--foreground2)]">
                 Cantidad
               </label>
               <input
@@ -199,64 +199,64 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
                 min={1}
                 value={quantity}
                 onChange={event => setQuantity(Number(event.target.value))}
-                className="mt-1 w-24 rounded border px-2 py-1 text-sm"
+                className="mt-1 w-24 rounded border border-[var(--border)] bg-[var(--surface2)] px-2 py-1 text-sm text-[var(--foreground)]"
               />
             </div>
             <button
               type="button"
               onClick={handleAddToCart}
-              className="mt-4 w-full rounded border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800"
+              className="mt-4 w-full rounded border border-[var(--border)] bg-[var(--surface2)] px-3 py-2 text-sm font-medium text-[var(--foreground)]"
             >
               Añadir al carrito
             </button>
           </section>
-          <section className="rounded-lg border bg-white p-4 shadow-sm">
+          <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm">
             <h2 className="text-lg font-medium">Tus datos</h2>
             <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
               <div>
-                <label className="block text-sm font-medium text-zinc-700">
+                <label className="block text-sm font-medium text-[var(--foreground2)]">
                   Teléfono
                 </label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={event => setPhone(event.target.value)}
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface2)] px-3 py-2 text-sm text-[var(--foreground)]"
                   placeholder="Ej: 0414-0000000"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700">
+                <label className="block text-sm font-medium text-[var(--foreground2)]">
                   Nombre
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={event => setName(event.target.value)}
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface2)] px-3 py-2 text-sm text-[var(--foreground)]"
                   placeholder="Opcional"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700">
+                <label className="block text-sm font-medium text-[var(--foreground2)]">
                   Dirección
                 </label>
                 <textarea
                   value={address}
                   onChange={event => setAddress(event.target.value)}
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface2)] px-3 py-2 text-sm text-[var(--foreground)]"
                   rows={2}
                   placeholder="Opcional"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700">
+                <label className="block text-sm font-medium text-[var(--foreground2)]">
                   Método de pago
                 </label>
                 <select
                   value={paymentMethod}
                   onChange={event => setPaymentMethod(event.target.value)}
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface2)] px-3 py-2 text-sm text-[var(--foreground)]"
                 >
                   {(paymentMethods.length > 0
                     ? paymentMethods.map(method => ({ value: method.code, label: method.name }))
@@ -269,13 +269,13 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-zinc-700">
+                <label className="block text-sm font-medium text-[var(--foreground2)]">
                   Notas
                 </label>
                 <textarea
                   value={notes}
                   onChange={event => setNotes(event.target.value)}
-                  className="mt-1 w-full rounded border px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--surface2)] px-3 py-2 text-sm text-[var(--foreground)]"
                   rows={2}
                   placeholder="Opcional"
                 />
@@ -286,7 +286,7 @@ export default function ProductCheckoutPage({ params }: ProductPageProps) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="mt-2 w-full rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-zinc-50 disabled:opacity-70"
+                className="mt-2 w-full rounded bg-[#1a1e2e] px-3 py-2 text-sm font-medium text-white disabled:opacity-70"
               >
                 {submitting ? 'Enviando pedido...' : 'Confirmar pedido'}
               </button>
