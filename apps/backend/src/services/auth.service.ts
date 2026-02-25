@@ -84,7 +84,7 @@ export class AuthService {
 
   async register(data: RegisterInput) {
     // 1. Check if email already exists
-    const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+    const existingUser = await prisma.storeUser.findUnique({ where: { email: data.email } });
     if (existingUser) {
       throw Errors.Conflict('El correo electrónico ya está registrado');
     }
@@ -109,7 +109,7 @@ export class AuthService {
         },
       });
 
-      const user = await tx.user.create({
+      const user = await tx.storeUser.create({
         data: {
           email: data.email,
           passwordHash,
@@ -141,7 +141,7 @@ export class AuthService {
   }
 
   async login(data: LoginInput) {
-    const user = await prisma.user.findUnique({ where: { email: data.email } });
+    const user = await prisma.storeUser.findUnique({ where: { email: data.email } });
     if (!user) {
       throw Errors.Unauthorized(); // Generic message for security
     }
@@ -168,6 +168,56 @@ export class AuthService {
     };
   }
 
+  async loginDelivery(data: LoginInput) {
+    const deliveryPerson = await prisma.deliveryPerson.findUnique({ where: { email: data.email } });
+    if (!deliveryPerson) {
+      throw Errors.Unauthorized(); 
+    }
+
+    if (!deliveryPerson.passwordHash) {
+      throw Errors.Unauthorized('El usuario no tiene contraseña configurada. Contacte al administrador.');
+    }
+
+    const isValid = await bcrypt.compare(data.password, deliveryPerson.passwordHash);
+    if (!isValid) {
+      throw Errors.Unauthorized();
+    }
+
+    // Generate tokens specifically for delivery person
+    // Note: We might need to adjust token payload or role handling if delivery persons become a distinct user type in Auth system
+    // For now, we will use a custom payload structure or reuse existing if compatible
+    
+    // Since delivery persons are not StoreUser, we need a way to distinguish them in the token or create a session.
+    // However, the current session table is linked to StoreUser.
+    // Option 1: Add deliveryPersonId to Session table (schema change required)
+    // Option 2: Use a different token strategy or just JWT without session persistence for MVP
+    // Let's use JWT only for now as per "MVP" approach, or we can link session if we update schema.
+    
+    // Given the constraints and existing schema, let's just return a JWT with a specific role claim
+    // We can use a special role or flag in the token payload.
+    
+    const payload = {
+      userId: deliveryPerson.id,
+      email: deliveryPerson.email,
+      role: 'DELIVERY_PERSON', // Custom role
+      businessId: deliveryPerson.businessId,
+    };
+    
+    const accessToken = jwt.sign(payload, env.JWT_SECRET, { expiresIn: ACCESS_TOKEN_EXPIRES_IN });
+    // No refresh token/session for delivery app in this iteration unless schema is updated
+    
+    return {
+      user: {
+        id: deliveryPerson.id,
+        email: deliveryPerson.email,
+        name: deliveryPerson.name,
+        role: 'DELIVERY_PERSON',
+        businessId: deliveryPerson.businessId,
+      },
+      accessToken,
+    };
+  }
+
   async refreshToken(token: string) {
     const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
     const session = await prisma.session.findUnique({ where: { token: tokenHash } });
@@ -182,7 +232,7 @@ export class AuthService {
       throw Errors.Unauthorized();
     }
 
-    const user = await prisma.user.findUnique({ where: { id: session.userId } });
+    const user = await prisma.storeUser.findUnique({ where: { id: session.userId } });
     if (!user) throw Errors.Unauthorized();
 
     // Rotar el token: eliminar sesión anterior y crear una nueva

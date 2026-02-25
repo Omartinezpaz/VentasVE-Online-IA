@@ -1,6 +1,7 @@
 import prisma, { Channel, MsgRole, OrderStatus } from '@ventasve/database';
 import { whatsappService } from './whatsapp.service';
 import { emitToBusiness } from '../lib/websocket';
+import { env } from '../lib/env';
 
 const shouldNotifyStatus = (status: OrderStatus) => {
   return status === OrderStatus.CONFIRMED ||
@@ -10,19 +11,55 @@ const shouldNotifyStatus = (status: OrderStatus) => {
     status === OrderStatus.CANCELLED;
 };
 
-const buildOrderStatusMessage = (orderNumber: number | null, status: OrderStatus) => {
-  const code = orderNumber ?? null;
+const buildOrderStatusMessage = async (orderId: string, status: OrderStatus) => {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId }
+  });
+
+  const code = order?.orderNumber ?? null;
   const base = code ? `Tu orden #${code}` : 'Tu orden';
+
+  if (status === OrderStatus.SHIPPED) {
+    const deliveryOrder = await prisma.deliveryOrder.findFirst({
+      where: {
+        orderId: orderId,
+        businessId: order?.businessId
+      },
+      select: {
+        otpCode: true
+      }
+    });
+
+    if (deliveryOrder?.otpCode) {
+      return `${base} ha sido enviada 🚚.\nCódigo de entrega: ${deliveryOrder.otpCode}`;
+    }
+    return `${base} ha sido enviada 🚚`;
+  }
+
+  if (status === OrderStatus.DELIVERED) {
+    const deliveryOrder = await prisma.deliveryOrder.findFirst({
+      where: {
+        orderId: orderId,
+        businessId: order?.businessId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    const frontendUrl = env.FRONTEND_URL || 'http://localhost:3000';
+    const ratingLink = deliveryOrder ? `${frontendUrl}/rating/${deliveryOrder.id}` : null;
+    if (ratingLink) {
+      return `${base} fue entregada 📦.\n¿Nos cuentas cómo fue tu experiencia? Califícala aquí: ${ratingLink}`;
+    }
+    return `${base} fue entregada 📦`;
+  }
 
   switch (status) {
     case OrderStatus.CONFIRMED:
       return `${base} ha sido confirmada ✅`;
     case OrderStatus.PREPARING:
       return `${base} está siendo preparada 🧺`;
-    case OrderStatus.SHIPPED:
-      return `${base} ha sido enviada 🚚`;
-    case OrderStatus.DELIVERED:
-      return `${base} fue entregada 📦`;
     case OrderStatus.CANCELLED:
       return `${base} fue cancelada ❌`;
     default:
@@ -73,7 +110,7 @@ export class NotificationsService {
       });
     }
 
-    const content = buildOrderStatusMessage(order.orderNumber ?? null, newStatus);
+    const content = await buildOrderStatusMessage(orderId, newStatus);
 
     await prisma.message.create({
       data: {

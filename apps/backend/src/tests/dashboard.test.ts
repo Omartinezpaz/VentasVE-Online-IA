@@ -19,6 +19,8 @@ describe('Dashboard Stats', () => {
     (prisma.order.groupBy as any).mockResolvedValueOnce([
       { paymentMethod: 'ZELLE', _sum: { totalCents: 10000 }, _count: { _all: 1 } }
     ]);
+    (prisma.order.findMany as any).mockResolvedValue([]);
+    (prisma.orderItem.findMany as any).mockResolvedValue([]);
 
     const res = await request(app)
       .get('/api/v1/dashboard/stats?period=day')

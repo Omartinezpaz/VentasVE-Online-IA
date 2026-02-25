@@ -3,9 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAccessToken } from '@/lib/auth/storage';
+import { metricsApi, type DashboardStats } from '@/lib/api/metrics';
+import { settingsApi, type BusinessSettings } from '@/lib/api/settings';
 
 // ─── TIPOS ─────────────────────────────────────────────────────────────
 type TimeRange = 'hoy' | 'semana' | 'mes';
+type SeriesRange = '7d' | '30d';
 type OrderStatus = 'NUEVO' | 'CONFIRMADO' | 'PREPARANDO' | 'EN_CAMINO' | 'ENTREGADO' | 'CANCELADO';
 type PaymentMethod = 'Zelle' | 'Pago Móvil' | 'Binance' | 'Efectivo' | 'Transferencia';
 
@@ -140,11 +143,18 @@ function KpiCard({ label, value, subtext, delta, deltaUp, icon, color }: {
 export default function DashboardPage() {
   const router = useRouter();
   const [timeRange, setTimeRange] = useState<TimeRange>('hoy');
+  const [seriesRange, setSeriesRange] = useState<SeriesRange>('7d');
   const [orders] = useState<Order[]>(ORDERS);
   const [payments, setPayments] = useState<Payment[]>(PAYMENTS);
   const [activeChat, setActiveChat] = useState<string>('c1');
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const [settings, setSettings] = useState<BusinessSettings | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   // Verificar autenticación
   useEffect(() => {
@@ -152,6 +162,42 @@ export default function DashboardPage() {
     if (!token) { router.replace('/auth/login'); return; }
     setTimeout(() => setLoading(false), 400);
   }, [router]);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    const loadStats = async () => {
+      setStatsLoading(true);
+      setStatsError(null);
+      const period = timeRange === 'hoy' ? 'day' : timeRange === 'semana' ? 'week' : 'month';
+      const seriesDays = seriesRange === '7d' ? 7 : 30;
+      try {
+        const res = await metricsApi.getStats({ period, seriesDays });
+        setStats(res.data);
+      } catch {
+        setStatsError('No se pudieron cargar las métricas');
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+    loadStats();
+  }, [timeRange, seriesRange]);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) return;
+    const loadSettings = async () => {
+      setSettingsLoading(true);
+      try {
+        const res = await settingsApi.get();
+        setSettings(res.data);
+      } catch {
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
 
   // Copiar URL del catálogo
   const copyCatalogUrl = useCallback(async () => {
@@ -167,6 +213,95 @@ export default function DashboardPage() {
     setPayments(prev => prev.map(p => ({ ...p, status: 'CONFIRMED' })));
   }, []);
 
+  const handleExportCsv = useCallback(async () => {
+    const token = getAccessToken();
+    if (!token) return;
+    const period = timeRange === 'hoy' ? 'day' : timeRange === 'semana' ? 'week' : 'month';
+    const seriesDays = seriesRange === '7d' ? 7 : 30;
+    try {
+      setExportingCsv(true);
+      const response = await metricsApi.exportStats({ period, seriesDays });
+      const data = response.data;
+      const blob =
+        data instanceof Blob ? data : new Blob([data], { type: 'text/csv; charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `sales-series-${seriesDays}d-${date}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+    } finally {
+      setExportingCsv(false);
+    }
+  }, [timeRange, seriesRange]);
+
+  const formatCurrency = (cents: number) => {
+    if (!cents) return '$0';
+    const amount = cents / 100;
+    return `$${amount.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const currentPeriodKey = timeRange === 'hoy' ? 'day' : timeRange === 'semana' ? 'week' : 'month';
+  const currentSalesCents = stats?.sales?.[currentPeriodKey]?.usdCents ?? 0;
+  const overview = stats?.overview;
+  const avgTicket = overview?.avgTicketUsdCents ?? 0;
+  const marginCents = overview?.marginUsdCents ?? 0;
+
+  const chartData = stats?.salesSeries?.length
+    ? stats.salesSeries.map(entry => ({
+        day: new Date(entry.date).toLocaleDateString('es-VE', { weekday: 'short' }),
+        amount: entry.usdCents / 100
+      }))
+    : CHART_DATA;
+
+  const maxChart = Math.max(...chartData.map(d => d.amount), 1);
+  const pendingCount = payments.filter(p => p.status === 'PENDING').length;
+
+  const salesByPayment = stats?.salesByPaymentMethod ?? [];
+  const totalPaymentsCents = salesByPayment.reduce((sum, p) => sum + p.usdCents, 0);
+
+  const notifEmail = settings?.notificationSettings?.email ?? {};
+  const dailyOn = notifEmail.dailySummary === true;
+  const weeklyOn = notifEmail.weeklyReport === true;
+
+  const mapPaymentLabel = (method: string) => {
+    switch (method) {
+      case 'ZELLE':
+        return 'Zelle';
+      case 'PAGO_MOVIL':
+        return 'Pago Móvil';
+      case 'BINANCE_PAY':
+        return 'Binance';
+      case 'CASH_USD':
+        return 'Efectivo USD';
+      case 'TRANSFERENCIA_BANCARIA':
+        return 'Transferencia';
+      default:
+        return method;
+    }
+  };
+
+  const mapPaymentColor = (method: string) => {
+    switch (method) {
+      case 'ZELLE':
+        return '#7c3aed';
+      case 'PAGO_MOVIL':
+        return 'var(--blue)';
+      case 'BINANCE_PAY':
+        return '#f59e0b';
+      case 'CASH_USD':
+        return 'var(--green)';
+      case 'TRANSFERENCIA_BANCARIA':
+        return '#6b7280';
+      default:
+        return 'var(--accent)';
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-8 space-y-4">
@@ -176,9 +311,6 @@ export default function DashboardPage() {
       </div>
     );
   }
-
-  const maxChart = Math.max(...CHART_DATA.map(d => d.amount));
-  const pendingCount = payments.filter(p => p.status === 'PENDING').length;
 
   return (
     <div className="space-y-6 pb-8">
@@ -213,28 +345,95 @@ export default function DashboardPage() {
 
       {/* ─── KPI ROW ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard label="Ventas hoy" value="$1,247" subtext="vs. ayer" delta="▲ 18%" deltaUp icon="💰" color="yellow" />
-        <KpiCard label="Pedidos activos" value="12" subtext="nuevos hoy" delta="▲ 3" deltaUp icon="📦" color="green" />
-        <KpiCard label="Mensajes sin leer" value="8" subtext="urgentes" delta="⚠ 2" deltaUp={false} icon="💬" color="red" />
-        <KpiCard label="Tasa BCV" value="Bs. 36,500" subtext="Actualizado hoy" delta="✓" deltaUp icon="🏦" color="blue" />
+        <KpiCard
+          label={timeRange === 'hoy' ? 'Ventas hoy' : timeRange === 'semana' ? 'Ventas semana' : 'Ventas mes'}
+          value={formatCurrency(currentSalesCents)}
+          subtext="Confirmadas"
+          icon="💰"
+          color="yellow"
+        />
+        <KpiCard
+          label="Pedidos activos"
+          value={String(
+            stats?.ordersByStatus?.reduce((sum, o) => {
+              if (['PENDING', 'CONFIRMED', 'PREPARING', 'SHIPPED'].includes(o.status)) return sum + o.count;
+              return sum;
+            }, 0) ?? 0
+          )}
+          subtext="En curso"
+          icon="📦"
+          color="green"
+        />
+        <KpiCard
+          label="Ticket promedio"
+          value={avgTicket ? formatCurrency(avgTicket) : '—'}
+          subtext="Monto por pedido"
+          icon="🧾"
+          color="blue"
+        />
+        <KpiCard
+          label="Margen"
+          value={marginCents ? formatCurrency(marginCents) : '—'}
+          subtext={overview?.marginPercent != null ? `${Math.round(overview.marginPercent * 100)}% sobre costo` : 'Sin costo cargado'}
+          icon="📊"
+          color="red"
+        />
       </div>
 
       {/* ─── ROW 2: CHART + PAYMENTS ───────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4.5">
         {/* Chart */}
         <div className="card rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden animate-[fadeUp_0.45s_ease_both]">
-          <div className="border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
+          <div className="border-b border-[var(--border)] px-5 py-4 flex items-center justify-between gap-3">
             <div>
-              <div className="font-[var(--font-head)] font-bold text-[13.5px]">📈 Ventas — últimos 7 días</div>
-              <div className="text-[11px] text-[var(--muted)] mt-0.5">Total semana: $7,817</div>
+              <div className="font-[var(--font-head)] font-bold text-[13.5px]">
+                📈 Ventas — últimos {seriesRange === '7d' ? '7' : '30'} días
+              </div>
+              <div className="text-[11px] text-[var(--muted)] mt-0.5">
+                {statsLoading && 'Cargando...'}
+                {!statsLoading && statsError && statsError}
+                {!statsLoading &&
+                  !statsError &&
+                  stats &&
+                  `Total: ${formatCurrency(chartData.reduce((sum, d) => sum + d.amount * 100, 0))}`}
+                {!statsLoading && !statsError && !stats && 'Usando datos de ejemplo'}
+              </div>
             </div>
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/15">Esta semana</span>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1 bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-0.5">
+                {(['7d', '30d'] as SeriesRange[]).map(range => (
+                  <button
+                    key={range}
+                    type="button"
+                    onClick={() => setSeriesRange(range)}
+                    className={`px-3 py-1 text-[11px] font-medium rounded transition-colors ${
+                      seriesRange === range
+                        ? 'bg-[var(--accent)] text-black'
+                        : 'text-[var(--muted)] hover:text-[var(--text)]'
+                    }`}
+                  >
+                    {range === '7d' ? '7 días' : '30 días'}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={exportingCsv}
+                className="px-3 py-1 text-[11px] font-semibold rounded-lg border border-[var(--border)] bg-[var(--surface2)] text-[var(--text)] hover:border-[var(--accent)]/40 disabled:opacity-60"
+              >
+                {exportingCsv ? 'Exportando…' : 'Exportar CSV'}
+              </button>
+            </div>
           </div>
           <div className="p-4.5">
             <div className="flex items-end gap-2 h-35 pb-7 relative">
-              {CHART_DATA.map((d, i) => {
+              {chartData.map((d, i) => {
                 const pct = Math.round((d.amount / maxChart) * 100);
-                const amtLabel = d.amount >= 1000 ? `$${(d.amount/1000).toFixed(1)}k` : `$${d.amount}`;
+                const amtLabel =
+                  d.amount >= 1000
+                    ? `$${(d.amount / 1000).toFixed(1)}k`
+                    : `$${d.amount.toFixed(0)}`;
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center h-full relative group">
                     <span className="text-[9px] text-[var(--muted)] font-bold mb-1 absolute top-0">{amtLabel}</span>
@@ -246,7 +445,9 @@ export default function DashboardPage() {
                         {d.today && <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-[var(--accent)] shadow-[0_0_10px_rgba(245,200,66,0.6)]" />}
                       </div>
                     </div>
-                    <span className={`absolute bottom-[-22px] left-1/2 -translate-x-1/2 text-[10px] font-medium ${d.today ? 'text-[var(--accent)] font-bold' : 'text-[var(--muted)]'}`}>{d.day}</span>
+                    <span className={`absolute bottom-[-22px] left-1/2 -translate-x-1/2 text-[10px] font-medium text-[var(--muted)]`}>
+                      {d.day}
+                    </span>
                   </div>
                 );
               })}
@@ -258,35 +459,113 @@ export default function DashboardPage() {
         <div className="card rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden animate-[fadeUp_0.45s_ease_both]">
           <div className="border-b border-[var(--border)] px-5 py-4">
             <div className="font-[var(--font-head)] font-bold text-[13.5px]">💳 Distribución de pagos</div>
-            <div className="text-[11px] text-[var(--muted)] mt-0.5">Ingresos del día</div>
+            <div className="text-[11px] text-[var(--muted)] mt-0.5">
+              {timeRange === 'hoy' ? 'Ingresos del día' : timeRange === 'semana' ? 'Ingresos de la semana' : 'Ingresos del mes'}
+            </div>
           </div>
           <div className="p-4.5 space-y-3">
-            {[
-              { name: 'Zelle', icon: '💸', amt: '$620', pct: 50, color: '#7c3aed' },
-              { name: 'Pago Móvil', icon: '📱', amt: '$310', pct: 25, color: 'var(--blue)' },
-              { name: 'Binance', icon: '⚡', amt: '$187', pct: 15, color: '#f59e0b' },
-              { name: 'Efectivo USD', icon: '💵', amt: '$81', pct: 6, color: 'var(--green)' },
-              { name: 'Transferencia', icon: '🏦', amt: '$49', pct: 4, color: '#6b7280' },
-            ].map((p, i) => (
-              <div key={i} className="space-y-1.25">
-                <div className="flex items-center justify-between">
-                  <span className="text-[12.5px] font-medium flex items-center gap-1.5"><span className="text-[15px]">{p.icon}</span>{p.name}</span>
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-[var(--font-head)] font-bold text-[13px]">{p.amt}</span>
-                    <span className="text-[10px] text-[var(--muted)] w-7 text-right">{p.pct}%</span>
+            {(salesByPayment.length ? salesByPayment : [
+              { paymentMethod: 'ZELLE', orders: 0, usdCents: 0, ves: 0 }
+            ]).map((p, i) => {
+              const pct = totalPaymentsCents > 0 ? Math.round((p.usdCents / totalPaymentsCents) * 100) : 0;
+              const name = mapPaymentLabel(p.paymentMethod);
+              const color = mapPaymentColor(p.paymentMethod);
+              const amt = formatCurrency(p.usdCents);
+              return (
+                <div key={i} className="space-y-1.25">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[12.5px] font-medium flex items-center gap-1.5">
+                      <span className="text-[15px]">💳</span>
+                      {name}
+                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-[var(--font-head)] font-bold text-[13px]">{amt}</span>
+                      <span className="text-[10px] text-[var(--muted)] w-7 text-right">{pct}%</span>
+                    </div>
+                  </div>
+                  <div className="h-1.25 rounded bg-[var(--surface3)] overflow-hidden">
+                    <div
+                      className="h-full rounded transition-all duration-1000 ease-out"
+                      style={{ width: `${pct}%`, backgroundColor: color }}
+                    />
                   </div>
                 </div>
-                <div className="h-1.25 rounded bg-[var(--surface3)] overflow-hidden">
-                  <div className="h-full rounded transition-all duration-1000 ease-out" style={{ width: `${p.pct}%`, backgroundColor: p.color }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* ─── ROW 3: ORDERS + INBOX ─────────────────────────────────── */}
+      {/* ─── ROW 3: REPORTES + ORDERS + INBOX ──────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4.5">
+        {/* Reportes automáticos */}
+        <div className="card rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden animate-[fadeUp_0.45s_ease_both]">
+          <div className="border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
+            <div>
+              <div className="font-[var(--font-head)] font-bold text-[13.5px] flex items-center gap-2">
+                <span>📧</span>
+                <span>Reportes automáticos</span>
+              </div>
+              <div className="text-[11px] text-[var(--muted)] mt-0.5">
+                Estado de los resúmenes que se envían por email.
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push('/dashboard/settings#notificaciones')}
+              className="text-[11px] text-[var(--accent)] font-medium cursor-pointer hover:opacity-75 transition-opacity"
+            >
+              Configurar →
+            </button>
+          </div>
+          <div className="p-4.5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[12.5px] font-semibold text-[var(--text)]">
+                  Resumen diario de ventas
+                </span>
+                <span className="text-[11px] text-[var(--muted)]">
+                  Enviado cada mañana con las ventas de ayer.
+                </span>
+              </div>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                  settingsLoading
+                    ? 'border-[var(--border)] text-[var(--muted)]'
+                    : dailyOn
+                    ? 'border-green-500/40 text-green-400 bg-green-500/8'
+                    : 'border-[var(--border)] text-[var(--muted)] bg-[var(--surface2)]'
+                }`}
+              >
+                <span className="text-xs">{settingsLoading ? '…' : dailyOn ? '●' : '○'}</span>
+                {settingsLoading ? 'Cargando' : dailyOn ? 'Activado' : 'Desactivado'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col">
+                <span className="text-[12.5px] font-semibold text-[var(--text)]">
+                  Reporte semanal de ventas
+                </span>
+                <span className="text-[11px] text-[var(--muted)]">
+                  Resumen de los últimos 7 días con CSV de 30 días.
+                </span>
+              </div>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                  settingsLoading
+                    ? 'border-[var(--border)] text-[var(--muted)]'
+                    : weeklyOn
+                    ? 'border-green-500/40 text-green-400 bg-green-500/8'
+                    : 'border-[var(--border)] text-[var(--muted)] bg-[var(--surface2)]'
+                }`}
+              >
+                <span className="text-xs">{settingsLoading ? '…' : weeklyOn ? '●' : '○'}</span>
+                {settingsLoading ? 'Cargando' : weeklyOn ? 'Activado' : 'Desactivado'}
+              </span>
+            </div>
+          </div>
+        </div>
+
         {/* Orders Table */}
         <div className="lg:col-span-2 card rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden animate-[fadeUp_0.45s_ease_both]">
           <div className="border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
@@ -401,19 +680,49 @@ export default function DashboardPage() {
           {/* Catalog Preview */}
           <div className="card rounded-xl border border-[var(--border)] bg-[var(--surface)] overflow-hidden animate-[fadeUp_0.45s_ease_both]">
             <div className="border-b border-[var(--border)] px-5 py-4 flex items-center justify-between">
-              <div className="font-[var(--font-head)] font-bold text-[13.5px]">🛍️ Catálogo Online</div>
+              <div className="font-[var(--font-head)] font-bold text-[13.5px]">🛍️ Top productos</div>
               <button className="text-[12px] text-[var(--accent)] font-medium cursor-pointer hover:opacity-75 transition-opacity">Editar →</button>
             </div>
             <div className="p-4.5">
               <div className="grid grid-cols-3 gap-2 mb-3.5">
-                {[{ emoji:'👕', name:'Polo Classic', price:'$12', stock:24 }, { emoji:'👟', name:'Tenis Sport', price:'$45', stock:8, low:true }, { emoji:'👜', name:'Bolso Elegante', price:'$28', stock:15 }].map((p, i) => (
-                  <div key={i} className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-3 text-center transition-colors hover:border-[var(--accent)]/20 cursor-pointer">
-                    <div className="text-2xl mb-1.5">{p.emoji}</div>
-                    <div className="text-[11px] font-semibold text-[var(--text)] truncate">{p.name}</div>
-                    <div className="font-[var(--font-head)] font-bold text-[13px] text-[var(--accent)]">{p.price}</div>
-                    <div className={`text-[10px] mt-0.5 ${p.low ? 'text-amber-500' : 'text-[var(--muted)]'}`}>Stock: {p.stock}</div>
-                  </div>
-                ))}
+                {(stats?.topProducts ?? []).slice(0, 3).map((tp, i) => {
+                  const product = tp.product;
+                  if (!product) return null;
+                  const revenuePerUnit = product.priceUsdCents;
+                  const cost = product.costCents ?? 0;
+                  const marginPerUnit = cost ? revenuePerUnit - cost : 0;
+                  const marginTotal = marginPerUnit * tp.quantity;
+                  return (
+                    <div
+                      key={product.id}
+                      className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-3 text-center transition-colors hover:border-[var(--accent)]/20 cursor-pointer"
+                    >
+                      <div className="text-2xl mb-1.5">{i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}</div>
+                      <div className="text-[11px] font-semibold text-[var(--text)] truncate">{product.name}</div>
+                      <div className="font-[var(--font-head)] font-bold text-[13px] text-[var(--accent)]">
+                        {formatCurrency(product.priceUsdCents)}
+                      </div>
+                      <div className="text-[10px] mt-0.5 text-[var(--muted)]">
+                        Unidades: {tp.quantity}
+                      </div>
+                      <div className="text-[10px] mt-0.5 text-amber-500">
+                        Margen: {marginTotal ? formatCurrency(marginTotal) : '—'}
+                      </div>
+                    </div>
+                  );
+                })}
+                {(!stats?.topProducts || stats.topProducts.length === 0) && (
+                  <>
+                    {[{ emoji:'👕', name:'Polo Classic', price:'$12', stock:24 }, { emoji:'👟', name:'Tenis Sport', price:'$45', stock:8, low:true }, { emoji:'👜', name:'Bolso Elegante', price:'$28', stock:15 }].map((p, i) => (
+                      <div key={i} className="bg-[var(--surface2)] border border-[var(--border)] rounded-lg p-3 text-center transition-colors hover:border-[var(--accent)]/20 cursor-pointer">
+                        <div className="text-2xl mb-1.5">{p.emoji}</div>
+                        <div className="text-[11px] font-semibold text-[var(--text)] truncate">{p.name}</div>
+                        <div className="font-[var(--font-head)] font-bold text-[13px] text-[var(--accent)]">{p.price}</div>
+                        <div className={`text-[10px] mt-0.5 ${p.low ? 'text-amber-500' : 'text-[var(--muted)]'}`}>Stock: {p.stock}</div>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
               <button 
                 onClick={copyCatalogUrl}

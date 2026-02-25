@@ -5,10 +5,11 @@ import { productsService } from '../services/products.service';
 import { imageUploadService, upload } from '../services/image-upload.service';
 import { catalogService } from '../services/catalog.service';
 
-const productSchema = z.object({
+const productBaseSchema = z.object({
   name: z.string().min(1, 'El nombre es requerido'),
   description: z.string().optional(),
   priceUsdCents: z.number().int().nonnegative('El precio debe ser un entero positivo (centavos)'),
+  costCents: z.number().int().nonnegative('El costo debe ser un entero positivo (centavos)').optional(),
   categoryId: z.string().uuid().optional(),
   images: z.array(
     z.string().refine(
@@ -20,6 +21,18 @@ const productSchema = z.object({
   variants: z.any().optional(),
   attributes: z.any().optional(),
   isPublished: z.boolean().default(true),
+});
+
+const productSchema = productBaseSchema.superRefine((val, ctx) => {
+  if (typeof val.costCents === 'number' && typeof val.priceUsdCents === 'number') {
+    if (val.costCents > val.priceUsdCents) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['costCents'],
+        message: 'El costo no puede ser mayor que el precio'
+      });
+    }
+  }
 });
 
 const querySchema = z.object({
@@ -73,7 +86,7 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
     const authReq = req as AuthRequest;
     const businessId = authReq.user!.businessId;
     const productId = req.params.id;
-    const data = productSchema.partial().parse(req.body);
+    const data = productBaseSchema.partial().parse(req.body);
     const result = await productsService.update(businessId, productId, data);
     await catalogService.invalidateByBusinessId(businessId);
     res.json(result);

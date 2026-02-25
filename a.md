@@ -1,287 +1,497 @@
-## ✅ **PERFECTO - Tablas geográficas creadas correctamente**
+# 📋 Tareas Pendientes — Estado Real del Proyecto (Actualizado)
 
-Ahora voy a preparar **la implementación en tu código** y el **prompt para tu IA**. Aquí está todo lo necesario:
-
----
-
-## **📋 PARTE 1: PROMPT PARA TU IA (copia y pega esto)**
-
-```
-Necesito implementar las tablas geográficas en mi sistema VentasVE. Ya creé las tablas en PostgreSQL:
-
-- public.estados (id, codigo, nombre_estado)
-- public.municipios (id, estado_id, nombre_municipio, codigo) 
-- public.parroquias (id, municipio_id, nombre_parroquia, codigo)
-
-Ahora necesito:
-
-1. ACTUALIZAR SCHEMA PRISMA:
-   - Agregar los modelos Estado, Municipio, Parroquia con sus relaciones
-   - Actualizar el modelo Business para incluir las relaciones:
-     * Business puede tener un estado (opcional)
-     * Business puede tener un municipio (opcional)
-     * Business puede tener una parroquia (opcional)
-
-2. ACTUALIZAR BACKEND (settings.controller.ts):
-   - Modificar getSettings para incluir los datos geográficos completos
-   - Modificar updateSettings para guardar los IDs (estadoId, municipioId, parroquiaId)
-   - Crear endpoints para obtener estados/municipios/parroquias (cascada)
-
-3. ACTUALIZAR FRONTEND (settings/page.tsx):
-   - Reemplazar el select de ciudad texto por selects en cascada:
-     * Select de Estados (carga al montar)
-     * Select de Municipios (se carga al seleccionar estado)
-     * Select de Parroquias (se carga al seleccionar municipio)
-   - Actualizar el tipo BusinessSettings para incluir estadoId, municipioId, parroquiaId
-   - Modificar handleSave para enviar los IDs
-
-Los nombres de columna en la BD son:
-- estados: id, codigo, nombre_estado
-- municipios: id, estado_id, nombre_municipio, codigo
-- parroquias: id, municipio_id, nombre_parroquia, codigo
-```
+Gracias por la claridad, Oscar. Esto es **oro puro** para trabajar con precisión. Aquí está el plan redefinido basado en la **realidad del código**, no en suposiciones.
 
 ---
 
-## **📦 PARTE 2: CÓDIGO PARA IMPLEMENTAR**
+## ✅ Lo que SÍ Está Implementado (Verificado)
 
-### **2.1 Schema Prisma (agregar a `schema.prisma`)**
+| Módulo | Estado | Archivos Reales |
+|--------|--------|----------------|
+| **Schema Prisma** | ✅ Extendido | `CustomerProfile`, `CustomerPaymentMethod` agregados |
+| **Shipping/Geo** | ✅ En uso | `ShippingZone`, `Estado`, `Municipio`, `Parroquia`, `ExchangeRate` |
+| **Auth Customer** | ✅ Funcional | `auth-customer.ts` + `/mi-cuenta` + `/mi-cuenta/pedidos` |
+| **Checkout** | ✅ Conectado | Token guardado, órdenes creadas |
+| **Validación** | ✅ Zod | Middleware `validate()` con Zod (NO class-validator) |
 
-```prisma
-// Modelos geográficos
-model Estado {
-  id            Int         @id @default(autoincrement())
-  codigo        String      @unique @db.VarChar(2)
-  nombre_estado String      @db.VarChar(100)
-  created_at    DateTime?   @default(now())
-  
-  municipios    Municipio[]
-  businesses    Business[]
+---
 
-  @@map("estados")
-}
+## ❌ Lo que FALTA Implementar (Realidad)
 
-model Municipio {
-  id              Int         @id @default(autoincrement())
-  estado_id       Int
-  nombre_municipio String    @db.VarChar(100)
-  codigo          String      @unique @db.VarChar(4)
-  created_at      DateTime?   @default(now())
-  
-  estado          Estado      @relation(fields: [estado_id], references: [id])
-  parroquias      Parroquia[]
-  businesses      Business[]
+| Tarea | Estado Real | Prioridad | Tiempo |
+|-------|-------------|-----------|--------|
+| **B. DTOs/Zod schemas** | ❌ No existen | 🔴 Alta | ~15 min |
+| **C. Service layer (perfil)** | ❌ No existe | 🔴 Alta | ~20 min |
+| **D. Endpoints REST (/me/profile)** | ❌ No existen | 🔴 Alta | ~25 min |
+| **E. Seed para CustomerProfile** | ❌ No existe | 🟡 Media | ~10 min |
+| **F. UI /mi-cuenta/perfil** | ❌ No existe | 🟡 Media | ~40 min |
 
-  @@map("municipios")
-}
+---
 
-model Parroquia {
-  id               Int         @id @default(autoincrement())
-  municipio_id     Int
-  nombre_parroquia String      @db.VarChar(100)
-  codigo           String      @unique @db.VarChar(6)
-  created_at       DateTime?   @default(now())
-  
-  municipio        Municipio   @relation(fields: [municipio_id], references: [id])
-  businesses       Business[]
+## 🎯 Próximo Paso Confirmado: Endpoints de Perfil
 
-  @@map("parroquias")
-}
+Como dijiste, lo lógico es empezar por **D/C versión perfil**:
 
-// Actualizar modelo Business (agregar estas relaciones)
-model Business {
-  // ... campos existentes ...
-
-  // Nuevas relaciones geográficas
-  estado_id        Int?
-  municipio_id     Int?
-  parroquia_id     Int?
-  
-  estado           Estado?     @relation(fields: [estado_id], references: [id])
-  municipio        Municipio?  @relation(fields: [municipio_id], references: [id])
-  parroquia        Parroquia?  @relation(fields: [parroquia_id], references: [id])
-
-  // ... resto de campos ...
-}
+```
+GET  /api/v1/customers/me/profile      → Obtener mi perfil
+PATCH /api/v1/customers/me/profile     → Actualizar mi perfil
 ```
 
-### **2.2 Backend - Nuevos endpoints geográficos**
+Esto habilita:
+1. ✅ Que el frontend muestre datos reales del cliente
+2. ✅ Que el cliente actualice su información personal
+3. ✅ Base sólida para luego agregar direcciones y pagos
+
+---
+
+## 📁 Implementación: Backend (Zod + Prisma)
+
+### **1. Zod Schema: `apps/backend/src/customers/schemas/customer-profile.schema.ts`**
 
 ```typescript
-// apps/backend/src/controllers/geo.controller.ts
-import { Request, Response } from 'express';
-import prisma from '../lib/prisma';
+// apps/backend/src/customers/schemas/customer-profile.schema.ts
+import { z } from 'zod';
 
-export const geoController = {
-  // Obtener todos los estados
-  async getEstados(req: Request, res: Response) {
-    const estados = await prisma.estado.findMany({
-      orderBy: { nombre_estado: 'asc' }
-    });
-    res.json(estados);
-  },
+// ─────────────────────────────────────────────────────────────────────────────
+// ESQUEMAS ZOD (Validación en español)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Obtener municipios por estado
-  async getMunicipios(req: Request, res: Response) {
-    const { estadoId } = req.params;
-    const municipios = await prisma.municipio.findMany({
-      where: { estado_id: parseInt(estadoId) },
-      orderBy: { nombre_municipio: 'asc' }
-    });
-    res.json(municipios);
-  },
+export const GeneroSchema = z.enum([
+  'MASCULINO',
+  'FEMENINO',
+  'OTRO',
+  'PREFIERO_NO_DECIRLO',
+]).optional().nullable();
 
-  // Obtener parroquias por municipio
-  async getParroquias(req: Request, res: Response) {
-    const { municipioId } = req.params;
-    const parroquias = await prisma.parroquia.findMany({
-      where: { municipio_id: parseInt(municipioId) },
-      orderBy: { nombre_parroquia: 'asc' }
-    });
-    res.json(parroquias);
-  }
-};
-```
+export const TipoDocumentoSchema = z.enum([
+  'V',  // Venezolano
+  'E',  // Extranjero
+  'J',  // Jurídico (RIF)
+  'P',  // Pasaporte
+  'OTRO',
+]).optional().nullable();
 
-```typescript
-// apps/backend/src/routes/geo.routes.ts
-import { Router } from 'express';
-import { geoController } from '../controllers/geo.controller';
+export const UpdateCustomerProfileSchema = z.object({
+  firstName: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
+  lastName: z.string().min(2, 'El apellido debe tener al menos 2 caracteres').optional(),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Formato de fecha inválido (YYYY-MM-DD)').optional().nullable(),
+  genero: GeneroSchema,
+  tipoDocumento: TipoDocumentoSchema,
+  idNumber: z.string().min(5, 'El número de documento debe tener al menos 5 caracteres').optional().nullable(),
+  rif: z.string().min(5, 'El RIF debe tener al menos 5 caracteres').optional().nullable(),
+  preferences: z.object({
+    newsletter: z.boolean().optional(),
+    notifications: z.boolean().optional(),
+    idioma: z.enum(['es', 'en']).optional(),
+    moneda: z.enum(['USD', 'VES']).optional(),
+  }).optional().nullable(),
+  avatar: z.string().url('Debe ser una URL válida').optional().nullable(),
+  bio: z.string().max(500, 'La biografía no puede exceder 500 caracteres').optional().nullable(),
+});
 
-const router = Router();
+export type UpdateCustomerProfileInput = z.infer<typeof UpdateCustomerProfileSchema>;
 
-router.get('/estados', geoController.getEstados);
-router.get('/municipios/:estadoId', geoController.getMunicipios);
-router.get('/parroquias/:municipioId', geoController.getParroquias);
+// ─────────────────────────────────────────────────────────────────────────────
+// RESPUESTAS
+// ─────────────────────────────────────────────────────────────────────────────
 
-export default router;
-```
+export const CustomerProfileResponseSchema = z.object({
+  id: z.string(),
+  customerId: z.string(),
+  firstName: z.string(),
+  lastName: z.string(),
+  dateOfBirth: z.string().nullable(),
+  genero: z.string().nullable(),
+  tipoDocumento: z.string().nullable(),
+  idNumber: z.string().nullable(),
+  rif: z.string().nullable(),
+  preferences: z.any().nullable(),
+  avatar: z.string().nullable(),
+  bio: z.string().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
 
-### **2.3 Frontend - API y componentes**
-
-```typescript
-// apps/frontend/src/lib/api/geo.ts
-import { api } from './client';
-
-export type Estado = {
-  id: number;
-  codigo: string;
-  nombre_estado: string;
-};
-
-export type Municipio = {
-  id: number;
-  estado_id: number;
-  nombre_municipio: string;
-  codigo: string;
-};
-
-export type Parroquia = {
-  id: number;
-  municipio_id: number;
-  nombre_parroquia: string;
-  codigo: string;
-};
-
-export const geoApi = {
-  getEstados: () => api.get<Estado[]>('/geo/estados'),
-  getMunicipios: (estadoId: number) => api.get<Municipio[]>(`/geo/municipios/${estadoId}`),
-  getParroquias: (municipioId: number) => api.get<Parroquia[]>(`/geo/parroquias/${municipioId}`)
-};
-```
-
-```tsx
-// Componente de selects en cascada para settings/page.tsx
-import { useEffect, useState } from 'react';
-import { geoApi, Estado, Municipio, Parroquia } from '@/lib/api/geo';
-
-// Dentro del componente SettingsPage
-const [estados, setEstados] = useState<Estado[]>([]);
-const [municipios, setMunicipios] = useState<Municipio[]>([]);
-const [parroquias, setParroquias] = useState<Parroquia[]>([]);
-const [selectedEstado, setSelectedEstado] = useState<number | null>(null);
-const [selectedMunicipio, setSelectedMunicipio] = useState<number | null>(null);
-
-// Cargar estados al montar
-useEffect(() => {
-  geoApi.getEstados().then(res => setEstados(res.data));
-}, []);
-
-// Cargar municipios cuando cambia estado
-useEffect(() => {
-  if (selectedEstado) {
-    geoApi.getMunicipios(selectedEstado).then(res => setMunicipios(res.data));
-    setSelectedMunicipio(null);
-    setParroquias([]);
-  }
-}, [selectedEstado]);
-
-// Cargar parroquias cuando cambia municipio
-useEffect(() => {
-  if (selectedMunicipio) {
-    geoApi.getParroquias(selectedMunicipio).then(res => setParroquias(res.data));
-  }
-}, [selectedMunicipio]);
-
-// En el JSX, reemplazar el select de ciudad por:
-<div className="space-y-4">
-  <div>
-    <label>Estado</label>
-    <select 
-      value={selectedEstado || ''}
-      onChange={(e) => setSelectedEstado(Number(e.target.value))}
-      className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3"
-    >
-      <option value="">Selecciona un estado</option>
-      {estados.map(e => (
-        <option key={e.id} value={e.id}>{e.nombre_estado}</option>
-      ))}
-    </select>
-  </div>
-
-  {selectedEstado && (
-    <div>
-      <label>Municipio</label>
-      <select 
-        value={selectedMunicipio || ''}
-        onChange={(e) => setSelectedMunicipio(Number(e.target.value))}
-        className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3"
-      >
-        <option value="">Selecciona un municipio</option>
-        {municipios.map(m => (
-          <option key={m.id} value={m.id}>{m.nombre_municipio}</option>
-        ))}
-      </select>
-    </div>
-  )}
-
-  {selectedMunicipio && (
-    <div>
-      <label>Parroquia</label>
-      <select 
-        value={values.parroquiaId || ''}
-        onChange={(e) => setValue('parroquiaId', Number(e.target.value))}
-        className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3"
-      >
-        <option value="">Selecciona una parroquia</option>
-        {parroquias.map(p => (
-          <option key={p.id} value={p.id}>{p.nombre_parroquia}</option>
-        ))}
-      </select>
-    </div>
-  )}
-</div>
+export type CustomerProfileResponse = z.infer<typeof CustomerProfileResponseSchema>;
 ```
 
 ---
 
-## **🚀 RESUMEN PARA EJECUTAR**
+### **2. Service: `apps/backend/src/customers/customers.service.ts`**
 
-| Paso | Acción |
-|------|--------|
-| 1 | Copiar el prompt y dárselo a tu IA |
-| 2 | Ejecutar `pnpm prisma generate` después de actualizar schema |
-| 3 | Agregar las nuevas rutas en `backend/src/routes/index.ts` |
-| 4 | Probar los selects en cascada en settings |
+```typescript
+// apps/backend/src/customers/customers.service.ts
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { UpdateCustomerProfileInput } from './schemas/customer-profile.schema';
 
-¿Necesitas que prepare algún otro archivo o tienes dudas?
+@Injectable()
+export class CustomersService {
+  constructor(private prisma: PrismaService) {}
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // PERFIL PERSONAL DEL CLIENTE
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Obtener perfil personal del cliente autenticado
+   */
+  async getMyProfile(customerId: string) {
+    const profile = await this.prisma.customerProfile.findUnique({
+      where: { customerId },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Perfil no encontrado. Debes crear tu perfil primero.');
+    }
+
+    return profile;
+  }
+
+  /**
+   * Crear o actualizar perfil personal del cliente
+   */
+  async updateMyProfile(customerId: string, data: UpdateCustomerProfileInput) {
+    // Verificar que el cliente existe
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+
+    // Verificar unicidad de idNumber y RIF si se están actualizando
+    if (data.idNumber) {
+      const existingByIdNumber = await this.prisma.customerProfile.findFirst({
+        where: {
+          idNumber: data.idNumber,
+          customerId: { not: customerId },
+        },
+      });
+
+      if (existingByIdNumber) {
+        throw new ConflictException('El número de documento ya está registrado por otro cliente');
+      }
+    }
+
+    if (data.rif) {
+      const existingByRif = await this.prisma.customerProfile.findFirst({
+        where: {
+          rif: data.rif,
+          customerId: { not: customerId },
+        },
+      });
+
+      if (existingByRif) {
+        throw new ConflictException('El RIF ya está registrado por otro cliente');
+      }
+    }
+
+    // Actualizar o crear perfil (upsert)
+    const profile = await this.prisma.customerProfile.upsert({
+      where: { customerId },
+      update: {
+        ...data,
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : undefined,
+      },
+      create: {
+        customerId,
+        firstName: data.firstName || customer.name.split(' ')[0] || 'Cliente',
+        lastName: data.lastName || customer.name.split(' ')[1] || '',
+        dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+        genero: data.genero,
+        tipoDocumento: data.tipoDocumento,
+        idNumber: data.idNumber,
+        rif: data.rif,
+        preferences: data.preferences,
+        avatar: data.avatar,
+        bio: data.bio,
+      },
+    });
+
+    return profile;
+  }
+
+  /**
+   * Obtener o crear perfil (para checkout o primer acceso)
+   */
+  async findOrCreateProfile(customerId: string) {
+    const profile = await this.prisma.customerProfile.findUnique({
+      where: { customerId },
+    });
+
+    if (profile) {
+      return profile;
+    }
+
+    // Crear perfil mínimo con datos del Customer
+    const customer = await this.prisma.customer.findUnique({
+      where: { id: customerId },
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Cliente no encontrado');
+    }
+
+    const [firstName, ...lastNameParts] = customer.name.split(' ');
+
+    return this.prisma.customerProfile.create({
+      data: {
+        customerId,
+        firstName: firstName || 'Cliente',
+        lastName: lastNameParts.join(' ') || '',
+      },
+    });
+  }
+}
+```
+
+---
+
+### **3. Controller: `apps/backend/src/customers/customers.controller.ts`**
+
+```typescript
+// apps/backend/src/customers/customers.controller.ts
+import {
+  Controller,
+  Get,
+  Patch,
+  Body,
+  UseGuards,
+  Req,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { CustomersService } from './customers.service';
+import { CustomerJwtGuard } from '../auth-customer/guards/customer-jwt.guard';
+import { CurrentCustomer } from '../auth-customer/decorators/current-customer.decorator';
+import { validate } from '../common/middleware/validate.middleware';
+import {
+  UpdateCustomerProfileSchema,
+  UpdateCustomerProfileInput,
+  CustomerProfileResponseSchema,
+} from './schemas/customer-profile.schema';
+
+@ApiTags('Customers - Perfil Personal')
+@ApiBearerAuth('access-token')
+@Controller('customers/me')
+@UseGuards(CustomerJwtGuard)
+export class CustomersController {
+  constructor(private customersService: CustomersService) {}
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // GET /api/v1/customers/me/profile
+  // ───────────────────────────────────────────────────────────────────────────
+
+  @Get('profile')
+  @ApiOperation({
+    summary: 'Obtener mi perfil personal',
+    description: 'Retorna el perfil personal del cliente autenticado (datos globales, no por negocio)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Perfil obtenido exitosamente',
+    type: CustomerProfileResponseSchema,
+  })
+  @ApiResponse({ status: 404, description: 'Perfil no encontrado' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async getMyProfile(@CurrentCustomer() customer: any) {
+    const profile = await this.customersService.getMyProfile(customer.customerId);
+    return {
+      success: true,
+      data: profile,
+    };
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // PATCH /api/v1/customers/me/profile
+  // ───────────────────────────────────────────────────────────────────────────
+
+  @Patch('profile')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Actualizar mi perfil personal',
+    description: 'Actualiza los datos personales del cliente autenticado. Campos opcionales: solo los enviados serán actualizados.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Perfil actualizado exitosamente',
+    type: CustomerProfileResponseSchema,
+  })
+  @ApiResponse({ status: 400, description: 'Datos inválidos' })
+  @ApiResponse({ status: 409, description: 'Documento o RIF ya registrado' })
+  @ApiResponse({ status: 401, description: 'No autenticado' })
+  async updateMyProfile(
+    @CurrentCustomer() customer: any,
+    @Body() body: UpdateCustomerProfileInput,
+  ) {
+    // Validar con Zod
+    const validatedData = validate(UpdateCustomerProfileSchema, body);
+
+    const profile = await this.customersService.updateMyProfile(
+      customer.customerId,
+      validatedData,
+    );
+
+    return {
+      success: true,
+      message: 'Perfil actualizado exitosamente',
+      data: profile,
+    };
+  }
+}
+```
+
+---
+
+### **4. Módulo: `apps/backend/src/customers/customers.module.ts`**
+
+```typescript
+// apps/backend/src/customers/customers.module.ts
+import { Module } from '@nestjs/common';
+import { CustomersService } from './customers.service';
+import { CustomersController } from './customers.controller';
+import { PrismaModule } from '../prisma/prisma.module';
+import { AuthCustomerModule } from '../auth-customer/auth-customer.module';
+
+@Module({
+  imports: [PrismaModule, AuthCustomerModule],
+  providers: [CustomersService],
+  controllers: [CustomersController],
+  exports: [CustomersService],
+})
+export class CustomersModule {}
+```
+
+---
+
+## 🧪 Testing con cURL
+
+```bash
+# ─────────────────────────────────────────────────────────────────────────────
+# 1. OBTENER MI PERFIL
+# ─────────────────────────────────────────────────────────────────────────────
+curl -X GET http://localhost:3001/api/v1/customers/me/profile \
+  -H "Authorization: Bearer TU_CUSTOMER_TOKEN_AQUI"
+
+# Respuesta esperada (200):
+{
+  "success": true,
+  "data": {
+    "id": "cm_abc123",
+    "customerId": "cust_xyz789",
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "dateOfBirth": "1990-05-15",
+    "genero": "MASCULINO",
+    "tipoDocumento": "V",
+    "idNumber": "V-12345678",
+    "rif": "V-12345678-2",
+    "preferences": {
+      "newsletter": true,
+      "notifications": true,
+      "idioma": "es",
+      "moneda": "USD"
+    },
+    "avatar": null,
+    "bio": null,
+    "createdAt": "2026-02-22T10:00:00.000Z",
+    "updatedAt": "2026-02-22T10:00:00.000Z"
+  }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 2. ACTUALIZAR MI PERFIL
+# ─────────────────────────────────────────────────────────────────────────────
+curl -X PATCH http://localhost:3001/api/v1/customers/me/profile \
+  -H "Authorization: Bearer TU_CUSTOMER_TOKEN_AQUI" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firstName": "Juan Carlos",
+    "lastName": "Pérez Rodríguez",
+    "genero": "MASCULINO",
+    "tipoDocumento": "V",
+    "idNumber": "V-12345678",
+    "rif": "V-12345678-2",
+    "preferences": {
+      "newsletter": true,
+      "notifications": false,
+      "idioma": "es",
+      "moneda": "USD"
+    },
+    "bio": "Cliente frecuente de productos artesanales"
+  }'
+
+# Respuesta esperada (200):
+{
+  "success": true,
+  "message": "Perfil actualizado exitosamente",
+  "data": { ...perfil actualizado... }
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 3. ERRORES COMUNES
+# ─────────────────────────────────────────────────────────────────────────────
+
+# 401 - No autenticado (token faltante o inválido)
+{
+  "statusCode": 401,
+  "message": "Unauthorized",
+  "error": "Unauthorized"
+}
+
+# 404 - Perfil no encontrado (primera vez, debe crear)
+{
+  "statusCode": 404,
+  "message": "Perfil no encontrado. Debes crear tu perfil primero.",
+  "error": "Not Found"
+}
+
+# 409 - Documento duplicado
+{
+  "statusCode": 409,
+  "message": "El número de documento ya está registrado por otro cliente",
+  "error": "Conflict"
+}
+
+# 400 - Validación Zod fallida
+{
+  "statusCode": 400,
+  "message": [
+    "El nombre debe tener al menos 2 caracteres",
+    "Formato de fecha inválido (YYYY-MM-DD)"
+  ],
+  "error": "Bad Request"
+}
+```
+
+---
+
+## 📋 Checklist de Implementación
+
+| Paso | Tarea | Estado |
+|------|-------|--------|
+| 1 | Crear `customers-profile.schema.ts` con Zod | ⏳ Pendiente |
+| 2 | Agregar métodos en `customers.service.ts` | ⏳ Pendiente |
+| 3 | Agregar endpoints en `customers.controller.ts` | ⏳ Pendiente |
+| 4 | Registrar `CustomersModule` en `app.module.ts` | ⏳ Pendiente |
+| 5 | Sincronizar Prisma (`pnpm prisma generate`) | ⏳ Pendiente |
+| 6 | Probar con cURL/Postman | ⏳ Pendiente |
+| 7 | Actualizar frontend `/mi-cuenta/perfil` | ⏳ Pendiente |
+
+---
+
+## 🚀 ¿Confirmas que proceda con esta implementación?
+
+| Opción | Qué hago |
+|--------|----------|
+| **"Sí, procede"** | Genero los 4 archivos completos listos para copiar/pegar |
+| **"Primero sincroniza Prisma"** | Te guío paso a paso con `pnpm prisma generate` |
+| **"Mejor empieza por el frontend"** | Genero la UI `/mi-cuenta/perfil` asumiendo que el backend funcionará |
+| **"Agrega direcciones primero"** | Cambio el orden: Address CRUD antes que perfil |
+
+**Mi recomendación**: Ve con **"Sí, procede"** para tener el backend funcional hoy mismo. El frontend será trivial una vez que el endpoint responda.
+
+¿Confirmas? 🎯

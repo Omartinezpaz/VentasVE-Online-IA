@@ -25,7 +25,7 @@ describe('AuthService', () => {
   });
 
   it('register lanza Conflict si el email ya existe', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({ id: 'u1' });
+    (prisma.storeUser.findUnique as jest.Mock).mockResolvedValueOnce({ id: 'u1' });
 
     await expect(
       authService.register({
@@ -46,7 +46,7 @@ describe('AuthService', () => {
   });
 
   it('register lanza Conflict si el slug de negocio ya existe', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+    (prisma.storeUser.findUnique as jest.Mock).mockResolvedValueOnce(null);
     (prisma.business.findUnique as jest.Mock).mockResolvedValueOnce({ id: 'b1' });
 
     await expect(
@@ -69,7 +69,7 @@ describe('AuthService', () => {
     const bcrypt = require('bcrypt');
     const jwt = require('jsonwebtoken');
 
-    (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+    (prisma.storeUser.findUnique as jest.Mock).mockResolvedValueOnce(null);
     (prisma.business.findUnique as jest.Mock).mockResolvedValueOnce(null);
     (bcrypt.hash as jest.Mock).mockResolvedValueOnce('hashed-password');
 
@@ -84,7 +84,7 @@ describe('AuthService', () => {
             whatsapp: '+584121234567'
           })
         },
-        user: {
+        storeUser: {
           create: jest.fn().mockResolvedValue({
             id: 'u1',
             email: 'test@example.com',
@@ -137,7 +137,7 @@ describe('AuthService', () => {
   });
 
   it('login lanza Unauthorized si el usuario no existe', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce(null);
+    (prisma.storeUser.findUnique as jest.Mock).mockResolvedValueOnce(null);
 
     await expect(
       authService.login({
@@ -153,7 +153,7 @@ describe('AuthService', () => {
   it('login lanza Unauthorized si la contraseña es incorrecta', async () => {
     const bcrypt = require('bcrypt');
 
-    (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+    (prisma.storeUser.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'u1',
       email: 'test@example.com',
       name: 'Test User',
@@ -178,7 +178,7 @@ describe('AuthService', () => {
     const bcrypt = require('bcrypt');
     const jwt = require('jsonwebtoken');
 
-    (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+    (prisma.storeUser.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'u1',
       email: 'test@example.com',
       name: 'Test User',
@@ -231,7 +231,7 @@ describe('AuthService', () => {
       expiresAt: new Date(Date.now() + 60 * 60 * 1000)
     });
 
-    (prisma.user.findUnique as jest.Mock).mockResolvedValueOnce({
+    (prisma.storeUser.findUnique as jest.Mock).mockResolvedValueOnce({
       id: 'u1',
       email: 'test@example.com',
       name: 'Test User',

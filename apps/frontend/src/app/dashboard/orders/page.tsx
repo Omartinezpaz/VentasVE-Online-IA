@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ordersApi, type Order } from '@/lib/api/orders';
 import { getAccessToken } from '@/lib/auth/storage';
+import { metaApi, type PaymentMethodMeta } from '@/lib/api/meta';
 
 const formatCurrency = (cents: number) => (cents / 100).toFixed(2);
 
@@ -41,6 +42,56 @@ export default function OrdersListPage() {
   const [statusFilter, setStatusFilter] = useState<'ALL' | keyof typeof statusLabel>('ALL');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodMeta[]>([]);
+  const [paymentFilter, setPaymentFilter] = useState<'ALL' | string>('ALL');
+  const [zoneFilter, setZoneFilter] = useState('');
+  const [minAmount, setMinAmount] = useState('');
+  const [maxAmount, setMaxAmount] = useState('');
+  const [exporting, setExporting] = useState(false);
+
+  const buildParams = () => {
+    const params: {
+      page: number;
+      limit: number;
+      status?: string;
+      paymentMethod?: string;
+      shippingZoneSlug?: string;
+      minAmount?: number;
+      maxAmount?: number;
+      dateFrom?: string;
+      dateTo?: string;
+    } = { page, limit: 20 };
+
+    if (statusFilter !== 'ALL') {
+      params.status = statusFilter;
+    }
+    if (paymentFilter !== 'ALL') {
+      params.paymentMethod = paymentFilter;
+    }
+    if (zoneFilter.trim()) {
+      params.shippingZoneSlug = zoneFilter.trim();
+    }
+    const min = minAmount ? Number.parseFloat(minAmount.replace(',', '.')) : null;
+    const max = maxAmount ? Number.parseFloat(maxAmount.replace(',', '.')) : null;
+    if (min !== null && Number.isFinite(min)) {
+      params.minAmount = min;
+    }
+    if (max !== null && Number.isFinite(max)) {
+      params.maxAmount = max;
+    }
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      params.dateFrom = fromDate.toISOString();
+    }
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      params.dateTo = toDate.toISOString();
+    }
+
+    return params;
+  };
 
   useEffect(() => {
     const token = getAccessToken();
@@ -53,22 +104,37 @@ export default function OrdersListPage() {
       setLoading(true);
       setError(null);
       try {
-        const params: { page: number; limit: number; status?: string } = { page, limit: 20 };
-        if (statusFilter !== 'ALL') {
-          params.status = statusFilter;
-        }
-        const response = await ordersApi.list(params);
+        const response = await ordersApi.list(buildParams());
         setOrders(response.data.data);
         setTotalPages(response.data.meta.totalPages);
       } catch {
-        setError('No se pudieron cargar las órdenes');
+        setError('No se pudieron cargar las órdenes. Intenta de nuevo en unos segundos.');
       } finally {
         setLoading(false);
       }
     };
 
     load();
-  }, [router, page, statusFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, page, statusFilter, paymentFilter, zoneFilter, minAmount, maxAmount, dateFrom, dateTo]);
+
+  useEffect(() => {
+    let active = true;
+    metaApi
+      .getPaymentMethods()
+      .then(response => {
+        if (!active) return;
+        setPaymentMethods(response.data);
+      })
+      .catch(() => {
+        if (!active) return;
+        setPaymentMethods([]);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handlePrev = () => {
     setPage(prev => (prev > 1 ? prev - 1 : prev));
@@ -78,28 +144,49 @@ export default function OrdersListPage() {
     setPage(prev => (prev < totalPages ? prev + 1 : prev));
   };
 
-  const filteredOrders = orders.filter(order => {
-    const created = new Date(order.createdAt).getTime();
-    if (dateFrom) {
-      const fromTs = new Date(dateFrom).getTime();
-      if (created < fromTs) return false;
+  const filteredOrders = orders;
+
+  const handleExport = async () => {
+    setExporting(true);
+    setError(null);
+    try {
+      const response = await ordersApi.export(buildParams());
+      const data = response.data;
+      const blob =
+        data instanceof Blob ? data : new Blob([data], { type: 'text/csv; charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      link.href = url;
+      link.download = `orders-${date}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch {
+      setError('No se pudieron exportar las órdenes. Intenta de nuevo en unos segundos.');
+    } finally {
+      setExporting(false);
     }
-    if (dateTo) {
-      const toTs = new Date(dateTo).getTime() + 24 * 60 * 60 * 1000 - 1;
-      if (created > toTs) return false;
-    }
-    return true;
-  });
+  };
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-lg font-bold text-zinc-50">Órdenes</h1>
           <p className="mt-1 text-xs text-zinc-500">
             Lista de pedidos recientes con método, zona y costo de envío.
           </p>
         </div>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={loading || exporting}
+          className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-100 disabled:opacity-50"
+        >
+          {exporting ? 'Exportando…' : 'Exportar CSV'}
+        </button>
       </div>
 
       <div className="flex flex-wrap items-end gap-3 text-[11px] text-zinc-400">
@@ -108,7 +195,9 @@ export default function OrdersListPage() {
           <select
             value={statusFilter}
             onChange={e =>
-              setStatusFilter(e.target.value === 'ALL' ? 'ALL' : e.target.value as keyof typeof statusLabel)
+              setStatusFilter(
+                e.target.value === 'ALL' ? 'ALL' : (e.target.value as keyof typeof statusLabel)
+              )
             }
             className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100"
           >
@@ -121,22 +210,71 @@ export default function OrdersListPage() {
           </select>
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-wide">Desde</label>
+          <label className="text-[10px] uppercase tracking-wide">Método de pago</label>
+          <select
+            value={paymentFilter}
+            onChange={e => setPaymentFilter(e.target.value)}
+            className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 min-w-[140px]"
+          >
+            <option value="ALL">Todos</option>
+            {paymentMethods.map(pm => (
+              <option key={pm.id} value={pm.codigo}>
+                {pm.nombre}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] uppercase tracking-wide">Zona de envío</label>
           <input
-            type="date"
-            value={dateFrom}
-            onChange={e => setDateFrom(e.target.value)}
-            className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100"
+            type="text"
+            value={zoneFilter}
+            onChange={e => setZoneFilter(e.target.value)}
+            placeholder="Slug o etiqueta"
+            className="min-w-[150px] rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100 placeholder:text-zinc-600"
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-wide">Hasta</label>
+          <label className="text-[10px] uppercase tracking-wide">Desde (USD)</label>
           <input
-            type="date"
-            value={dateTo}
-            onChange={e => setDateTo(e.target.value)}
-            className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100"
+            type="number"
+            min="0"
+            step="0.01"
+            value={minAmount}
+            onChange={e => setMinAmount(e.target.value)}
+            placeholder="0.00"
+            className="w-24 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100"
           />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] uppercase tracking-wide">Hasta (USD)</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={maxAmount}
+            onChange={e => setMaxAmount(e.target.value)}
+            placeholder="Todo"
+            className="w-24 rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100"
+          />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-[10px] uppercase tracking-wide">Rango fecha</label>
+          <div className="flex items-center gap-1">
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={e => setDateFrom(e.target.value)}
+              className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100"
+            />
+            <span className="px-1 text-[10px] text-zinc-500">→</span>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={e => setDateTo(e.target.value)}
+              className="rounded-lg border border-zinc-800 bg-zinc-900 px-2 py-1 text-xs text-zinc-100"
+            />
+          </div>
         </div>
       </div>
 
@@ -171,7 +309,7 @@ export default function OrdersListPage() {
             {!loading && filteredOrders.length === 0 && (
               <tr>
                 <td className="px-3 py-6 text-center text-zinc-500" colSpan={7}>
-                  No hay órdenes registradas todavía.
+                  No hay órdenes que coincidan con los filtros actuales.
                 </td>
               </tr>
             )}

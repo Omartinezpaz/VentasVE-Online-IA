@@ -25,6 +25,41 @@ export type DashboardStats = {
     usdCents: number;
     ves: number;
   }>;
+  topProducts?: Array<{
+    productId: string;
+    quantity: number;
+    product: {
+      id: string;
+      name: string;
+      priceUsdCents: number;
+      costCents?: number | null;
+      stock: number;
+    } | null;
+  }>;
+  lowStock?: {
+    threshold: number;
+    products: Array<{
+      id: string;
+      name: string;
+      stock: number;
+    }>;
+  };
+  conversion?: {
+    orders: number;
+    visits: number;
+    rate: number;
+  };
+  salesSeries?: Array<{
+    date: string;
+    usdCents: number;
+  }>;
+  overview?: {
+    orders: number;
+    salesUsdCents: number;
+    avgTicketUsdCents: number;
+    marginUsdCents: number;
+    marginPercent: number | null;
+  };
 };
 
 const authHeaders = () => {
@@ -34,10 +69,20 @@ const authHeaders = () => {
 };
 
 export const metricsApi = {
-  getStats(params?: { period?: 'day' | 'week' | 'month' }) {
+  getStats(params?: { period?: 'day' | 'week' | 'month'; seriesDays?: number }) {
     return api.get<DashboardStats>('/dashboard/stats', {
       params,
       headers: authHeaders()
+    });
+  },
+  exportStats(params?: { period?: 'day' | 'week' | 'month'; seriesDays?: number }) {
+    return api.get<Blob>('/dashboard/stats/export', {
+      params,
+      headers: {
+        ...authHeaders(),
+        Accept: 'text/csv'
+      },
+      responseType: 'blob'
     });
   }
 };

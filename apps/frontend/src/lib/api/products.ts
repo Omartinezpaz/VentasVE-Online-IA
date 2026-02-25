@@ -5,6 +5,7 @@ export type Product = {
   name: string;
   description?: string;
   priceUsdCents: number;
+  costCents?: number | null;
   stock: number;
   images: string[];
   isPublished: boolean;
@@ -19,6 +20,7 @@ export type CreateProductInput = {
   name: string;
   description?: string;
   priceUsdCents: number;
+  costCents?: number | null;
   stock?: number;
   categoryId?: string;
   isPublished?: boolean;

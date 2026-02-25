@@ -72,12 +72,20 @@ export const createOrder = async (req: Request, res: Response, next: NextFunctio
 
 export const getDocumentTypes = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await prisma.$queryRaw<any[]>`
-      SELECT id, codigo, nombre, orden
-      FROM public.tipos_documento
-      WHERE activo = true
-      ORDER BY orden ASC, nombre ASC
-    `;
+    const data = await prisma.documentType.findMany({
+      where: { activo: true },
+      orderBy: [
+        { orden: 'asc' },
+        { nombre: 'asc' }
+      ],
+      select: {
+        id: true,
+        codigo: true,
+        nombre: true,
+        orden: true
+      }
+    });
+
     res.json(
       data.map((r) => ({
         id: r.id,
@@ -126,12 +134,22 @@ export const getPaymentMethods = async (req: Request, res: Response, next: NextF
       configuredCodes.push('CASH_USD');
     }
 
-    const catalogRows = await prisma.$queryRaw<any[]>`
-      SELECT id, codigo, nombre, icono, requiere_cuenta, requiere_comprobante, orden
-      FROM public.metodos_pago
-      WHERE activo = true
-      ORDER BY orden ASC, nombre ASC
-    `;
+    const catalogRows = await prisma.metodoPago.findMany({
+      where: { activo: true },
+      orderBy: [
+        { orden: 'asc' },
+        { nombre: 'asc' }
+      ],
+      select: {
+        id: true,
+        codigo: true,
+        nombre: true,
+        icono: true,
+        requiereCuenta: true,
+        requiereComprobante: true,
+        orden: true
+      }
+    });
 
     const available = catalogRows
       .filter((row) => configuredCodes.includes(row.codigo))
@@ -140,8 +158,8 @@ export const getPaymentMethods = async (req: Request, res: Response, next: NextF
         code: row.codigo,
         name: row.nombre,
         icon: row.icono,
-        requiresAccount: row.requiere_cuenta,
-        requiresProof: row.requiere_comprobante,
+        requiresAccount: row.requiereCuenta,
+        requiresProof: row.requiereComprobante,
         order: row.orden,
       }));
 

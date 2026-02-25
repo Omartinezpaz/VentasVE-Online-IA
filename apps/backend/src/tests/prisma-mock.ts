@@ -22,7 +22,8 @@ const prisma = {
     groupBy: jest.fn()
   },
   orderItem: {
-    groupBy: jest.fn()
+    groupBy: jest.fn(),
+    findMany: jest.fn()
   },
   product: {
     findMany: jest.fn()

@@ -27,12 +27,14 @@ export default function EditProductPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [priceUsd, setPriceUsd] = useState('');
+  const [costUsd, setCostUsd] = useState('');
   const [stock, setStock] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [active, setActive] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formMsg, setFormMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [newImages, setNewImages] = useState<File[]>([]);
   const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
@@ -50,6 +52,7 @@ export default function EditProductPage() {
         setName(p.name || '');
         setDescription(p.description || '');
         setPriceUsd((p.priceUsdCents / 100).toString());
+        setCostUsd(p.costCents != null ? (p.costCents / 100).toString() : '');
         setStock((p.stock ?? 0).toString());
         setCategoryId(p.categoryId || '');
         setActive(p.isPublished);
@@ -84,11 +87,20 @@ export default function EditProductPage() {
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setFormMsg(null);
     try {
+      const price = Number.parseFloat(priceUsd);
+      const cost = costUsd ? Number.parseFloat(costUsd) : NaN;
+      if (!Number.isNaN(price) && !Number.isNaN(cost) && cost > price) {
+        setFormMsg({ text: 'El costo no puede ser mayor que el precio', ok: false });
+        setSaving(false);
+        return;
+      }
       await productsApi.update(id, {
         name,
         description,
         priceUsdCents: Math.round(parseFloat(priceUsd) * 100),
+        costCents: costUsd ? Math.round(parseFloat(costUsd) * 100) : undefined,
         stock: parseInt(stock),
         categoryId: categoryId || undefined,
         isPublished: active,
@@ -122,6 +134,11 @@ export default function EditProductPage() {
       {error && (
         <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-sm text-red-200">
           {error}
+        </div>
+      )}
+      {formMsg && (
+        <div className={`p-3 rounded-lg text-xs ${formMsg.ok ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-300' : 'bg-red-500/15 border border-red-500/40 text-red-300'}`}>
+          {formMsg.text}
         </div>
       )}
 
@@ -239,6 +256,56 @@ export default function EditProductPage() {
                 className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
               />
             </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Costo (USD)</label>
+              <input
+                type="number"
+                step="0.01"
+                value={costUsd}
+                onChange={e => setCostUsd(e.target.value)}
+                className="w-full rounded-xl border-2 border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none focus:border-[var(--accent)] transition-all"
+                placeholder="Opcional"
+              />
+              <p className="text-[10px] text-zinc-500">
+                Costo interno para calcular tu margen. No se muestra a tus clientes.
+              </p>
+              {(priceUsd || costUsd) && (() => {
+                const p = Number.parseFloat(priceUsd || '0');
+                const c = Number.parseFloat(costUsd || '0');
+                const hasNums = Number.isFinite(p) && Number.isFinite(c) && !Number.isNaN(p) && !Number.isNaN(c) && (priceUsd !== '' && costUsd !== '');
+                if (!hasNums) return null;
+                const m = p - c;
+                const pct = c > 0 ? (m / c) * 100 : null;
+                const badgeClass =
+                  pct == null
+                    ? 'bg-zinc-800 text-zinc-100 border border-zinc-700'
+                    : pct > 30
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                      : pct >= 10
+                        ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
+                        : 'bg-red-500/10 text-red-400 border border-red-500/30';
+                return (
+                  <div className="mt-1 space-y-1">
+                    <div className="flex items-center gap-1 text-[10px] text-zinc-500">
+                      <span className="font-bold uppercase">Margen estimado</span>
+                      <button
+                        type="button"
+                        className="h-4 w-4 flex items-center justify-center rounded-full border border-zinc-700 text-[9px] text-zinc-500 cursor-help"
+                        title="Margen = (Precio - Costo) / Costo × 100"
+                      >
+                        ?
+                      </button>
+                    </div>
+                    <div className={`inline-flex items-center gap-2 rounded-full px-2 py-1 text-[11px] font-bold ${badgeClass}`}>
+                      <span>${m.toFixed(2)}</span>
+                      {pct != null && <span>({pct.toFixed(1)}%)</span>}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Stock</label>
               <input

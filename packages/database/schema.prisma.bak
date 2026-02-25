@@ -1,0 +1,938 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Business {
+  id               String                    @id @default(uuid())
+  slug             String                    @unique
+  name             String
+  type             BusinessType
+  plan             Plan                      @default(FREE)
+  whatsapp         String
+  city             String?
+  settings         Json                      @default("{}")
+  isActive         Boolean                   @default(true)
+  createdAt        DateTime                  @default(now())
+  catalogOptions   Json?
+  description      String?
+  instagram        String?
+  paymentMethods   Json?
+  schedule         String?
+  store_latitude   Float?
+  store_longitude  Float?
+  store_address    String?                   @db.VarChar(200)
+  categories       Category[]
+  conversations    Conversation[]
+  exchangeRates    ExchangeRate[]
+  orders           Order[]
+  payments         Payment[]
+  paymentConfig    PaymentConfig[]
+  products         Product[]
+  users            StoreUser[]
+  customerProfiles CustomerBusinessProfile[]
+  deliveryOrders   DeliveryOrder[]
+  deliveryPersons  DeliveryPerson[]
+  shippingZones    ShippingZone[]
+  supportTickets   SupportTicket[]
+}
+
+model Estado {
+  id                    Int                    @id @default(autoincrement())
+  codigo                String                 @unique @db.VarChar(2)
+  nombreEstado          String                 @map("nombre_estado") @db.VarChar(100)
+  createdAt             DateTime?              @default(now()) @map("created_at") @db.Timestamp(6)
+  municipios            Municipio[]
+  shippingZoneCoverages ShippingZoneCoverage[]
+
+  @@index([codigo], map: "idx_estados_codigo")
+  @@index([nombreEstado], map: "idx_estados_nombre")
+  @@map("estados")
+}
+
+model Municipio {
+  id                    Int                    @id @default(autoincrement())
+  estadoId              Int                    @map("estado_id")
+  nombreMunicipio       String                 @map("nombre_municipio") @db.VarChar(100)
+  codigo                String                 @unique @db.VarChar(4)
+  createdAt             DateTime?              @default(now()) @map("created_at") @db.Timestamp(6)
+  estado                Estado                 @relation(fields: [estadoId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  parroquias            Parroquia[]
+  shippingZoneCoverages ShippingZoneCoverage[]
+
+  @@index([codigo], map: "idx_municipios_codigo")
+  @@index([estadoId], map: "idx_municipios_estado_id")
+  @@map("municipios")
+}
+
+model Parroquia {
+  id                    Int                    @id @default(autoincrement())
+  municipioId           Int                    @map("municipio_id")
+  nombreParroquia       String                 @map("nombre_parroquia") @db.VarChar(100)
+  codigo                String                 @unique @db.VarChar(6)
+  createdAt             DateTime?              @default(now()) @map("created_at") @db.Timestamp(6)
+  municipio             Municipio              @relation(fields: [municipioId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  shippingZoneCoverages ShippingZoneCoverage[]
+
+  @@index([codigo], map: "idx_parroquias_codigo")
+  @@index([municipioId], map: "idx_parroquias_municipio_id")
+  @@map("parroquias")
+}
+
+model StoreUser {
+  id           String    @id(map: "User_pkey") @default(uuid())
+  businessId   String
+  email        String    @unique(map: "User_email_key")
+  passwordHash String
+  name         String
+  role         Role      @default(AGENT)
+  isVerified   Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  business     Business  @relation(fields: [businessId], references: [id], map: "User_businessId_fkey")
+
+  @@index([businessId], map: "User_businessId_idx")
+  @@map("StoreUser")
+}
+
+model Session {
+  id        String    @id @default(uuid())
+  userId    String    @map("storeUserId")
+  token     String    @unique
+  userAgent String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      StoreUser @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([userId], map: "Session_userId_idx")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  businessId  String
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  business    Business  @relation(fields: [businessId], references: [id])
+  products    Product[]
+
+  @@index([businessId])
+}
+
+model Product {
+  id            String      @id @default(uuid())
+  businessId    String
+  categoryId    String?
+  name          String
+  description   String?
+  priceUsdCents Int
+  costCents     Int?        @default(0)
+  stock         Int         @default(0)
+  images        String[]
+  variants      Json        @default("[]")
+  attributes    Json        @default("{}")
+  isPublished   Boolean     @default(true)
+  deletedAt     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orderItems    OrderItem[]
+  business      Business    @relation(fields: [businessId], references: [id])
+  category      Category?   @relation(fields: [categoryId], references: [id])
+
+  @@index([businessId])
+  @@index([businessId, isPublished])
+}
+
+model Customer {
+  id              String                    @id @default(uuid())
+  businessId      String?
+  phone           String?
+  name            String?
+  createdAt       DateTime                  @default(now())
+  updatedAt       DateTime                  @updatedAt
+  email           String?
+  identification  String?
+  passwordHash    String?
+  googleId        String?                   @unique
+  facebookId      String?                   @unique
+  oauthProvider   String?
+  isActive        Boolean                   @default(true)
+  isVerified      Boolean                   @default(false)
+  conversations   Conversation[]
+  orders          Order[]
+  addresses       CustomerAddress[]
+  profiles        CustomerBusinessProfile[]
+  profile         CustomerProfile?
+  deliveryRatings DeliveryRating[]
+  paymentMethods  CustomerPaymentMethod[]
+
+  @@map("Customer")
+}
+
+model CustomerProfile {
+  id            String    @id @default(uuid())
+  customerId    String    @unique
+  firstName     String
+  lastName      String
+  dateOfBirth   DateTime?
+  genero        String?   @db.VarChar(20)
+  tipodocumento String?   @db.VarChar(5)
+  idNumber      String?   @unique
+  rif           String?   @unique
+  preferences   Json?
+  avatar        String?
+  bio           String?   @db.VarChar(500)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+  customer      Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "customer_profiles_customerid_fkey")
+
+  @@index([customerId], map: "idx_customer_profiles_customerid")
+  @@index([idNumber], map: "idx_customer_profiles_idnumber")
+  @@index([rif], map: "idx_customer_profiles_rif")
+  @@map("customer_profiles")
+}
+
+model Order {
+  id                  String         @id @default(uuid())
+  orderNumber         Int            @default(autoincrement())
+  businessId          String
+  customerId          String
+  status              OrderStatus    @default(PENDING)
+  source              OrderSource    @default(WEB)
+  totalCents          Int
+  exchangeRate        Decimal?
+  paymentMethod       PaymentMethod
+  deliveryAddress     String?
+  notes               String?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  shippingZoneId      String?
+  shippingZoneSlug    String?        @db.VarChar(50)
+  shippingCostCents   Int?
+  shippingMethodCode  String?        @db.VarChar(20)
+  deliveryLatitude    Float?
+  deliveryLongitude   Float?
+  locationEstadoId    Int?
+  locationMunicipioId Int?
+  locationParroquiaId Int?
+  business            Business       @relation(fields: [businessId], references: [id])
+  customer            Customer       @relation(fields: [customerId], references: [id])
+  items               OrderItem[]
+  payments            Payment[]
+  deliveryOrder       DeliveryOrder?
+
+  @@index([businessId, status])
+  @@index([customerId])
+}
+
+model CustomerBusinessProfile {
+  id           String   @id @default(uuid())
+  customerId   String
+  businessId   String
+  type         String   @default("REGISTERED") @db.VarChar(20)
+  wishlist     Json?
+  internalNote String?
+  isBlocked    Boolean  @default(false)
+  totalOrders  Int      @default(0)
+  totalSpent   Decimal  @default(0) @db.Decimal(12, 2)
+  avgTicket    Decimal  @default(0) @db.Decimal(10, 2)
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  customer     Customer @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([customerId, businessId], map: "unique_customer_business")
+  @@index([businessId], map: "idx_customer_business_profiles_business")
+  @@index([customerId], map: "idx_customer_business_profiles_customer")
+  @@index([type], map: "idx_customer_business_profiles_type")
+  @@map("customer_business_profiles")
+}
+
+model OrderItem {
+  id              String  @id @default(uuid())
+  orderId         String
+  productId       String
+  quantity        Int
+  unitPriceCents  Int
+  variantSelected Json?
+  order           Order   @relation(fields: [orderId], references: [id])
+  product         Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String
+  businessId    String
+  method        PaymentMethod
+  amountCents   Int
+  currency      String
+  reference     String?
+  proofImageUrl String?
+  status        PaymentStatus @default(PENDING)
+  verifiedAt    DateTime?
+  verifiedBy    String?
+  createdAt     DateTime      @default(now())
+  notes         String?
+  business      Business      @relation(fields: [businessId], references: [id])
+  order         Order         @relation(fields: [orderId], references: [id])
+
+  @@index([businessId, status])
+}
+
+model PaymentConfig {
+  id         String        @id @default(uuid())
+  businessId String
+  method     PaymentMethod
+  details    Json          @default("{}")
+  isActive   Boolean       @default(true)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  business   Business      @relation(fields: [businessId], references: [id])
+
+  @@index([businessId])
+}
+
+model Conversation {
+  id         String     @id @default(uuid())
+  businessId String
+  customerId String
+  channel    Channel
+  status     ConvStatus @default(BOT)
+  botActive  Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  business   Business   @relation(fields: [businessId], references: [id])
+  customer   Customer   @relation(fields: [customerId], references: [id])
+  messages   Message[]
+
+  @@index([businessId, status])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  role           MsgRole
+  content        String
+  mediaUrl       String?
+  waId           String?      @unique
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
+}
+
+model ExchangeRate {
+  id         String    @id @default(uuid())
+  businessId String?
+  usdToVes   Decimal
+  source     String
+  date       DateTime  @default(now())
+  business   Business? @relation(fields: [businessId], references: [id])
+
+  @@index([date])
+}
+
+model bancos {
+  id           Int       @id @default(autoincrement())
+  codigo_ibp   String    @unique @db.VarChar(4)
+  nombre       String    @db.VarChar(100)
+  nombre_corto String?   @db.VarChar(50)
+  activo       Boolean?  @default(true)
+  orden        Int?      @default(0)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  updated_at   DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_bancos_activo", where: raw("(activo = true)"))
+}
+
+model metodos_pago {
+  id                   Int       @id @default(autoincrement())
+  codigo               String    @unique @db.VarChar(20)
+  nombre               String    @db.VarChar(50)
+  icono                String?   @db.VarChar(10)
+  descripcion          String?
+  requiere_cuenta      Boolean?  @default(true)
+  requiere_comprobante Boolean?  @default(true)
+  orden                Int?      @default(0)
+  activo               Boolean?  @default(true)
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+  updated_at           DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_metodos_pago_activo", where: raw("(activo = true)"))
+}
+
+model regimenes_islr {
+  id                   Int       @id @default(autoincrement())
+  codigo               String    @unique @db.VarChar(20)
+  nombre               String    @db.VarChar(50)
+  descripcion          String?
+  porcentaje_base      Decimal?  @db.Decimal(5, 2)
+  requiere_declaracion Boolean?  @default(true)
+  activo               Boolean?  @default(true)
+  orden                Int?      @default(0)
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_regimenes_islr_activo", where: raw("(activo = true)"))
+}
+
+model tipos_documento {
+  id                          Int       @id @default(autoincrement())
+  codigo                      String    @unique @db.VarChar(4)
+  nombre                      String    @db.VarChar(50)
+  mascara                     String?   @db.VarChar(20)
+  longitud_min                Int?      @default(7)
+  longitud_max                Int?      @default(12)
+  requiere_digito_verificador Boolean?  @default(false)
+  activo                      Boolean?  @default(true)
+  orden                       Int?      @default(0)
+  created_at                  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_tipos_documento_activo", where: raw("(activo = true)"))
+}
+
+model tipos_negocio {
+  id                Int       @id @default(autoincrement())
+  codigo            String    @unique @db.VarChar(20)
+  nombre            String    @db.VarChar(50)
+  icono             String?   @db.VarChar(10)
+  descripcion       String?
+  campos_especiales Json?
+  activo            Boolean?  @default(true)
+  orden             Int?      @default(0)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  updated_at        DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_tipos_negocio_activo", where: raw("(activo = true)"))
+}
+
+model tipos_persona {
+  id                       Int       @id @default(autoincrement())
+  codigo                   String    @unique @db.VarChar(10)
+  nombre                   String    @db.VarChar(50)
+  descripcion              String?
+  requiere_razon_social    Boolean?  @default(false)
+  requiere_nombre_completo Boolean?  @default(true)
+  campos_adicionales       Json?
+  activo                   Boolean?  @default(true)
+  orden                    Int?      @default(0)
+  created_at               DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([activo], map: "idx_tipos_persona_activo", where: raw("(activo = true)"))
+}
+
+model ShippingMethod {
+  id          Int            @id @default(autoincrement())
+  code        String         @unique @db.VarChar(20)
+  name        String         @db.VarChar(50)
+  icon        String?        @db.VarChar(10)
+  description String?
+  isActive    Boolean        @default(true) @map("isActive")
+  createdAt   DateTime       @default(now()) @map("createdAt")
+  rates       ShippingRate[]
+
+  @@index([code], map: "idx_shipping_methods_code")
+  @@map("shipping_methods")
+}
+
+model ShippingZone {
+  id           String                 @id
+  businessId   String                 @map("businessId")
+  name         String                 @db.VarChar(100)
+  price        Decimal                @default(0) @db.Decimal(10, 2)
+  free         Boolean                @default(false)
+  freeOver     Decimal?               @map("freeOver") @db.Decimal(10, 2)
+  radius       Int?
+  deliveryTime String?                @map("deliveryTime") @db.VarChar(50)
+  isActive     Boolean                @default(true) @map("isActive")
+  createdAt    DateTime               @default(now()) @map("createdAt")
+  rates        ShippingRate[]
+  coverages    ShippingZoneCoverage[]
+  business     Business               @relation(fields: [businessId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shipping_zones_businessid_fkey")
+
+  @@index([businessId], map: "idx_shipping_zones_businessid")
+  @@index([isActive], map: "idx_shipping_zones_isactive")
+  @@map("shipping_zones")
+}
+
+model ShippingRate {
+  id             String         @id
+  zoneId         String         @map("zoneId")
+  methodId       Int            @map("methodId")
+  costType       String         @default("fixed") @map("costType") @db.VarChar(10)
+  costValue      Decimal        @map("costValue") @db.Decimal(10, 2)
+  minOrderAmount Decimal        @default(0) @map("minOrderAmount") @db.Decimal(10, 2)
+  isFree         Boolean        @default(false) @map("isFree")
+  isActive       Boolean        @default(true) @map("isActive")
+  createdAt      DateTime       @default(now()) @map("createdAt")
+  method         ShippingMethod @relation(fields: [methodId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shipping_rates_methodid_fkey")
+  zone           ShippingZone   @relation(fields: [zoneId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shipping_rates_zoneid_fkey")
+
+  @@unique([zoneId, methodId, costType, costValue], map: "shipping_rates_unique")
+  @@index([methodId], map: "idx_shipping_rates_methodid")
+  @@index([zoneId, isActive], map: "idx_shipping_rates_zoneid_isactive")
+  @@map("shipping_rates")
+}
+
+model ShippingZoneCoverage {
+  id          String       @id
+  zoneId      String       @map("zoneId")
+  estadoId    Int          @map("estadoId")
+  municipioId Int?         @map("municipioId")
+  parroquiaId Int?         @map("parroquiaId")
+  createdAt   DateTime     @default(now()) @map("createdAt")
+  estado      Estado       @relation(fields: [estadoId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shipping_zone_coverage_estadoid_fkey")
+  municipio   Municipio?   @relation(fields: [municipioId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shipping_zone_coverage_municipioid_fkey")
+  parroquia   Parroquia?   @relation(fields: [parroquiaId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shipping_zone_coverage_parroquiaid_fkey")
+  zone        ShippingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "shipping_zone_coverage_zoneid_fkey")
+
+  @@unique([zoneId, estadoId, municipioId, parroquiaId], map: "shipping_zone_coverage_unique")
+  @@index([estadoId], map: "idx_shipping_zone_coverage_estadoid")
+  @@index([municipioId], map: "idx_shipping_zone_coverage_municipioid")
+  @@index([parroquiaId], map: "idx_shipping_zone_coverage_parroquiaid")
+  @@index([zoneId], map: "idx_shipping_zone_coverage_zoneid")
+  @@map("shipping_zone_coverage")
+}
+
+model DeliveryPerson {
+  id                 String             @id @default(uuid())
+  email              String             @unique
+  phone              String             @unique
+  name               String
+  idNumber           String             @unique
+  avatar             String?
+  type               String             @default("INDEPENDENT") @db.VarChar(20)
+  businessId         String?
+  vehicleType        String             @default("MOTO") @db.VarChar(20)
+  plateNumber        String?
+  vehicleModel       String?
+  isActive           Boolean            @default(true)
+  isVerified         Boolean            @default(false)
+  isAvailable        Boolean            @default(true)
+  currentLatitude    Float?
+  currentLongitude   Float?
+  lastLocationUpdate DateTime?
+  totalDeliveries    Int                @default(0)
+  rating             Decimal            @default(0) @db.Decimal(3, 2)
+  completedOrders    Int                @default(0)
+  cancelledOrders    Int                @default(0)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @default(now()) @updatedAt
+  documents          DeliveryDocument[]
+  orders             DeliveryOrder[]
+  business           Business?          @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  ratings            DeliveryRating[]
+
+  @@index([isActive, isAvailable], map: "idx_delivery_persons_active")
+  @@index([currentLatitude, currentLongitude], map: "idx_delivery_persons_location")
+  @@index([phone], map: "idx_delivery_persons_phone")
+  @@map("delivery_persons")
+}
+
+model DeliveryOrder {
+  id                 String          @id @default(uuid())
+  orderId            String          @unique
+  deliveryPersonId   String
+  businessId         String
+  status             String          @default("ASSIGNED") @db.VarChar(20)
+  pickedUpAt         DateTime?
+  deliveredAt        DateTime?
+  failedAt           DateTime?
+  failureReason      String?
+  proofOfDeliveryUrl String?
+  customerSignature  String?
+  otpCode            String?
+  pickupLatitude     Float?
+  pickupLongitude    Float?
+  deliveryLatitude   Float?
+  deliveryLongitude  Float?
+  deliveryFee        Decimal         @default(0) @db.Decimal(10, 2)
+  platformCommission Decimal         @default(0) @db.Decimal(10, 2)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @default(now()) @updatedAt
+  business           Business        @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deliveryPerson     DeliveryPerson  @relation(fields: [deliveryPersonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  order              Order           @relation(fields: [orderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rating             DeliveryRating?
+
+  @@index([businessId, status], map: "idx_delivery_orders_business")
+  @@index([orderId], map: "idx_delivery_orders_order")
+  @@index([deliveryPersonId, status], map: "idx_delivery_orders_person")
+  @@map("delivery_orders")
+}
+
+model DeliveryRating {
+  id               String         @id @default(uuid())
+  deliveryOrderId  String         @unique
+  deliveryPersonId String
+  customerId       String
+  rating           Int
+  comment          String?
+  punctuality      Int?
+  professionalism  Int?
+  createdAt        DateTime       @default(now())
+  customer         Customer       @relation(fields: [customerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deliveryOrder    DeliveryOrder  @relation(fields: [deliveryOrderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  deliveryPerson   DeliveryPerson @relation(fields: [deliveryPersonId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([deliveryPersonId, createdAt], map: "idx_delivery_ratings_person")
+  @@map("delivery_ratings")
+}
+
+model DeliveryDocument {
+  id               String         @id @default(uuid())
+  deliveryPersonId String
+  type             String         @db.VarChar(20)
+  documentUrl      String
+  expiryDate       DateTime?
+  isVerified       Boolean        @default(false)
+  verifiedBy       String?
+  verifiedAt       DateTime?
+  rejectionReason  String?
+  createdAt        DateTime       @default(now())
+  deliveryPerson   DeliveryPerson @relation(fields: [deliveryPersonId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([deliveryPersonId, type], map: "idx_delivery_documents_person")
+  @@map("delivery_documents")
+}
+
+model Pais {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  nombre    String    @unique @db.VarChar(100)
+  iso3      String    @unique @db.VarChar(3)
+  isoCode   String    @unique @map("iso_code") @db.VarChar(3)
+  iso2      String?   @db.VarChar(2)
+  phoneCode String?   @map("phone_code") @db.VarChar(10)
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([iso3], map: "idx_paises_iso3")
+  @@index([isoCode], map: "idx_paises_iso_code")
+  @@index([nombre], map: "idx_paises_nombre")
+  @@map("paises")
+}
+
+model CodigosAreaVenezuela {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  codigo          String    @unique @db.VarChar(4)
+  tipo            String    @db.VarChar(20)
+  operadora       String?   @db.VarChar(50)
+  estadoPrincipal String?   @map("estado_principal") @db.VarChar(50)
+  ciudades        String[]
+  descripcion     String?
+  activo          Boolean?  @default(true)
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([codigo], map: "idx_codigos_area_codigo")
+  @@index([estadoPrincipal], map: "idx_codigos_area_estado")
+  @@index([tipo], map: "idx_codigos_area_tipo")
+  @@map("codigos_area_venezuela")
+}
+
+model CustomerAddress {
+  id         String    @id @default(uuid())
+  customerId String
+  label      String?
+  street     String
+  city       String
+  state      String
+  postalCode String?
+  country    String    @default("VE")
+  isDefault  Boolean   @default(false)
+  latitude   Float?
+  longitude  Float?
+  timesUsed  Int       @default(0)
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now())
+  customer   Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "addresses_customerid_fkey")
+
+  @@index([customerId], map: "idx_addresses_customerid")
+  @@index([customerId, isDefault], map: "idx_addresses_default")
+  @@map("addresses")
+}
+
+model CustomerPaymentMethod {
+  id         String   @id
+  customerId String
+  tipo       String   @db.VarChar(20)
+  detalles   Json
+  nickname   String?
+  isDefault  Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "payment_methods_customerid_fkey")
+
+  @@index([isActive], map: "idx_payment_methods_active")
+  @@index([customerId], map: "idx_payment_methods_customerid")
+  @@index([customerId, isDefault], map: "idx_payment_methods_default")
+  @@index([tipo], map: "idx_payment_methods_tipo")
+  @@map("payment_methods")
+}
+
+model PlatformAuditLog {
+  id             String         @id
+  userId         String
+  action         String
+  targetType     String
+  targetId       String
+  details        Json?
+  ipAddress      String?
+  userAgent      String?
+  createdAt      DateTime       @default(now())
+  user           PlatformUser   @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([targetType, targetId], map: "idx_platform_audit_logs_target")
+  @@index([userId], map: "idx_platform_audit_logs_userid")
+  @@map("platform_audit_logs")
+}
+
+model PlatformUser {
+  id                  String                @id
+  email               String                @unique
+  password            String
+  name                String
+  avatar              String?
+  phone               String?
+  role                String                @default("SUPPORT") @db.VarChar(20)
+  isActive            Boolean               @default(true)
+  lastLoginAt         DateTime?
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @default(now())
+  auditLogs           PlatformAuditLog[]
+  supportTickets      SupportTicket[]
+
+  @@index([email], map: "idx_platform_users_email")
+  @@index([role], map: "idx_platform_users_role")
+  @@map("platform_users")
+}
+
+model SupportTicketMessage {
+  id              String        @id
+  ticketId        String
+  senderType      String        @db.VarChar(20)
+  senderId        String
+  message         String
+  attachments     Json?
+  isInternal      Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  ticket          SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([ticketId, createdAt], map: "idx_support_ticket_messages_ticket")
+  @@map("support_ticket_messages")
+}
+
+model SupportTicket {
+  id            String                 @id
+  createdByType String                 @db.VarChar(20)
+  createdById   String
+  assignedToId  String?
+  subject       String
+  description   String
+  status        String                 @default("OPEN") @db.VarChar(20)
+  priority      String                 @default("MEDIUM") @db.VarChar(20)
+  category      String                 @db.VarChar(20)
+  businessId    String?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @default(now())
+  resolvedAt    DateTime?
+  messages      SupportTicketMessage[]
+  assignedTo    PlatformUser?          @relation(fields: [assignedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  business      Business?              @relation(fields: [businessId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([assignedToId, status], map: "idx_support_tickets_assigned")
+  @@index([businessId, createdAt], map: "idx_support_tickets_business")
+  @@index([status, priority], map: "idx_support_tickets_status")
+  @@map("support_tickets")
+}
+
+model ZonasEntrega {
+  @@map("zonas_entrega")
+  id            Int       @id @default(autoincrement())
+  estado_codigo String    @db.VarChar(2)
+  estado_nombre String    @db.VarChar(100)
+  zona_codigo   String    @db.VarChar(4)
+  zona_nombre   String    @db.VarChar(150)
+  activo        Boolean?  @default(true)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([estado_codigo, zona_codigo, zona_nombre], map: "zonas_entrega_unique")
+  @@index([activo], map: "idx_zonas_activo", where: raw("(activo = true)"))
+  @@index([zona_codigo], map: "idx_zonas_codigo")
+  @@index([estado_codigo], map: "idx_zonas_estado")
+  @@index([zona_nombre], map: "idx_zonas_nombre")
+}
+
+enum DeliveryPersonType {
+  INDEPENDENT
+  STORE_DRIVER
+}
+
+enum VehicleType {
+  MOTO
+  CAR
+  BICYCLE
+  WALKER
+}
+
+enum DeliveryStatus {
+  ASSIGNED
+  PICKED_UP
+  DELIVERED
+  FAILED
+  CANCELLED
+}
+
+enum BusinessType {
+  FASHION
+  FOOD
+  BEAUTY
+  TECH
+  GROCERY
+  HOME
+  HEALTH
+  EDUCATION
+  AUTO
+  SERVICE
+  PET
+  OTHER
+}
+
+enum Plan {
+  FREE
+  PRO
+  BUSINESS
+}
+
+enum Role {
+  OWNER
+  AGENT
+  SUPER_ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum OrderSource {
+  WEB
+  WHATSAPP
+  BOT
+  MANUAL
+}
+
+enum PaymentMethod {
+  ZELLE
+  PAGO_MOVIL
+  BINANCE
+  CASH_USD
+  TRANSFER_BS
+  CRYPTO
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum Gender {
+  MALE
+  HOMBRE
+  MUJER
+  OTRO
+  PREFIERO_NO_DECIRLO @map("PREFIERO NO DECIRLO")
+}
+
+enum IdType {
+  V
+  E
+  J
+  P
+  OTRO
+}
+
+enum Channel {
+  WHATSAPP
+  INSTAGRAM
+  WEB
+}
+
+enum ConvStatus {
+  OPEN
+  BOT
+  HUMAN
+  CLOSED
+}
+
+enum MsgRole {
+  CUSTOMER
+  BOT
+  AGENT
+}
+
+/// This enum is commented in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+enum Genero {
+  MASCULINO
+  FEMENINO
+  OTRO
+  PREFIERO_NO_DECIRLO
+}
+
+enum PaymentMethodType {
+  ZELLE
+  PAGO_MOVIL
+  BINANCE
+  TRANSFERENCIAS
+  CREDITO_CARD
+  DEBITO_CARD
+}
+
+/// This enum is commented in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+enum TipoCliente {
+  INVITADO
+  REGISTRADO
+  MAYORISTA
+  VIP
+  BLOQUEADO
+}
+
+enum TipoDocumento {
+  V
+  E
+  J
+  P
+  OTRO
+}
+
+/// This enum is commented in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+enum TipoMetodoPago {
+  ZELLE
+  PAGO_MOVIL
+  BINANCE
+  TRANSFERENCIA
+  TARJETA_CREDITO
+  TARJETA_DEBITO
+}
+
+/// This enum is commented in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+enum Tipodocumento {
+  V
+  E
+  J
+  P
+  OTRO
+}

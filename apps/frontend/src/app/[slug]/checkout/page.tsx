@@ -10,13 +10,15 @@ import {
   PublicPaymentMethod,
   PublicPaymentConfig,
   ShippingZone,
-  ShippingMethodOption,
+  ShippingMethodOption
 } from '@/lib/api/catalog';
 import Link from 'next/link';
 import { DualPrice } from '@/components/ui/DualPrice';
 import { maskEmail, maskPhone, maskId } from '@/lib/mask';
 import { composeIdentification, validateIdentification } from '@/lib/identification';
 import { geoApi, Estado, Municipio, Parroquia } from '@/lib/api/geo';
+import { authCustomerApi } from '@/lib/api/auth-customer';
+import { setCustomerAccessToken } from '@/lib/auth/customer-storage';
 
 type CheckoutPageProps = {
   params: {
@@ -31,6 +33,16 @@ const FALLBACK_PAYMENT_METHODS = [
   { value: 'TRANSFER_BS', label: 'Transferencia Bs.' },
   { value: 'CRYPTO', label: 'Crypto' }
 ];
+
+const generateRandomPassword = () => {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
+  let result = '';
+  for (let i = 0; i < 24; i += 1) {
+    const index = Math.floor(Math.random() * chars.length);
+    result += chars[index];
+  }
+  return result;
+};
 
 export default function CheckoutPage({ params }: CheckoutPageProps) {
   const { slug } = params;
@@ -74,8 +86,8 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
   const [parroquiaId, setParroquiaId] = useState<number | ''>('');
   const [zoneManuallySelected, setZoneManuallySelected] = useState(false);
   const [autoSelectedZoneSlug, setAutoSelectedZoneSlug] = useState<string | null>(null);
+  const [businessId, setBusinessId] = useState<string | null>(null);
 
-  // Load document types, available payment methods and payment config once
   useEffect(() => {
     let mounted = true;
     Promise.all([
@@ -96,10 +108,30 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
         }
         setPaymentConfig(cfgRes.data);
       })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [slug]);
+
+  useEffect(() => {
+    let active = true;
+    catalogApi
+      .getBusiness(slug)
+      .then(res => {
+        if (!active) return;
+        const data = res.data as { id?: string };
+        if (data.id) {
+          setBusinessId(data.id);
+        }
+      })
       .catch(() => {
-        // silently ignore; both fields are optional / have fallback
+        if (!active) return;
+        setBusinessId(null);
       });
-    return () => { mounted = false; };
+    return () => {
+      active = false;
+    };
   }, [slug]);
 
   useEffect(() => {
@@ -340,6 +372,25 @@ export default function CheckoutPage({ params }: CheckoutPageProps) {
     try {
       const res = await catalogApi.createOrder(slug, payload);
       setOrderId(res.data.id);
+      if (businessId && email) {
+        try {
+          const password = generateRandomPassword();
+          const registerResponse = await authCustomerApi.register({
+            email,
+            password,
+            name: name || phone,
+            phone,
+            businessId
+          });
+          setCustomerAccessToken(registerResponse.data.accessToken);
+        } catch (error) {
+          const maybeAxiosError = error as { response?: { status?: number } };
+          const status = maybeAxiosError.response?.status;
+          if (status !== 409) {
+            setCustomerAccessToken(null);
+          }
+        }
+      }
       clearCart();
       setSuccess(true);
     } catch {

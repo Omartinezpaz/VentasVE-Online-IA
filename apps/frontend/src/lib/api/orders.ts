@@ -17,6 +17,7 @@ export type Order = {
   shippingZoneSlug?: string | null;
   shippingCostCents?: number | null;
   shippingMethodCode?: string | null;
+  deliveryAddress?: string | null;
 };
 
 export type OrderItem = {
@@ -25,6 +26,7 @@ export type OrderItem = {
   unitPriceCents: number;
   product?: {
     name?: string | null;
+    costCents?: number | null;
   } | null;
 };
 
@@ -72,10 +74,40 @@ const authHeaders = () => {
 };
 
 export const ordersApi = {
-  list(params?: { status?: string; page?: number; limit?: number }) {
+  list(params?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+    paymentMethod?: string;
+    shippingZoneSlug?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
     return api.get<OrderListResponse>('/orders', {
       params,
       headers: authHeaders()
+    });
+  },
+  export(params?: {
+    status?: string;
+    page?: number;
+    limit?: number;
+    paymentMethod?: string;
+    shippingZoneSlug?: string;
+    minAmount?: number;
+    maxAmount?: number;
+    dateFrom?: string;
+    dateTo?: string;
+  }) {
+    return api.get<Blob>('/orders/export', {
+      params,
+      headers: {
+        ...authHeaders(),
+        Accept: 'text/csv'
+      },
+      responseType: 'blob'
     });
   },
   getById(id: string) {

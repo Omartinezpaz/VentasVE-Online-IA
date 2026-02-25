@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { WhatsappStatusBadge } from './WhatsappStatusBadge';
@@ -15,6 +15,62 @@ import { settingsApi } from '@/lib/api/settings';
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 const apiBaseUrl = new URL(API_BASE);
 const IMAGE_BASE_ORIGIN = `${apiBaseUrl.protocol}//${apiBaseUrl.host}`;
+const SOUND_PREF_KEY = 'ventasve:dashboard:pushSound';
+
+type NewOrderEvent = {
+  id: string;
+  orderNumber: number | null;
+  totalCents: number;
+  status: string;
+  paymentMethod?: string | null;
+  customer?: {
+    name?: string | null;
+  } | null;
+};
+
+type PaymentEvent = {
+  id: string;
+  orderId?: string;
+  status?: string;
+  amountCents?: number;
+  method?: string;
+  order?: {
+    orderNumber?: number | null;
+  } | null;
+};
+
+type OrderStatusChangedEvent = {
+  orderId: string;
+  status: string;
+  order?: {
+    orderNumber?: number | null;
+    totalCents?: number;
+  } | null;
+};
+
+type ToastVariant = 'info' | 'success' | 'warning';
+
+type Toast = {
+  id: string;
+  title: string;
+  message: string;
+  variant: ToastVariant;
+};
+
+type AudioWindow = Window & {
+  webkitAudioContext?: typeof AudioContext;
+};
+
+type PushPrefs = {
+  newOrderToast: boolean;
+  newOrderSound: boolean;
+  paymentVerifiedToast: boolean;
+  paymentVerifiedSound: boolean;
+  orderStatusUpdateToast: boolean;
+  orderStatusUpdateSound: boolean;
+  newMessageToast: boolean;
+  newMessageSound: boolean;
+};
 
 const resolveLogoUrl = (url: string) => {
   if (!url) return '';
@@ -35,6 +91,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [businessName, setBusinessName] = useState<string>('Gestión comercial');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [headerImage] = useState<string>('/imagen de fondo para.png');
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [pushPrefs, setPushPrefs] = useState<PushPrefs>({
+    newOrderToast: true,
+    newOrderSound: true,
+    paymentVerifiedToast: true,
+    paymentVerifiedSound: true,
+    orderStatusUpdateToast: true,
+    orderStatusUpdateSound: false,
+    newMessageToast: false,
+    newMessageSound: false
+  });
 
   const isActive = (href: string, exact = false) => {
     if (exact) return pathname === href;
@@ -45,6 +114,44 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     'flex items-center rounded-md px-3.5 py-2.5 text-base font-medium transition-colors';
   const activeLink = 'bg-[var(--surface2)] text-[var(--foreground)]';
   const inactiveLink = 'text-[var(--muted)] hover:bg-[var(--background)]/60';
+
+  const showToast = (title: string, message: string, variant: ToastVariant = 'info') => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setToasts(prev => [...prev, { id, title, message, variant }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 5000);
+  };
+
+  const playSound = () => {
+    if (!soundEnabled) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const audioWindow = window as AudioWindow;
+      const AudioContextCtor =
+        audioWindow.AudioContext || audioWindow.webkitAudioContext;
+      if (!AudioContextCtor) return;
+      if (!audioCtxRef.current) {
+        audioCtxRef.current = new AudioContextCtor();
+      }
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 880;
+      gain.gain.value = 0.08;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      const now = ctx.currentTime;
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch {
+    }
+  };
 
   const handleLogout = () => {
     setAccessToken(null);
@@ -67,6 +174,27 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         }
         if (data.logoUrl) {
           setLogoUrl(data.logoUrl);
+        }
+        const notif = data.notificationSettings ?? {};
+        const push = (notif.push ?? {}) as Partial<PushPrefs>;
+        const merged: PushPrefs = {
+          newOrderToast: push.newOrderToast ?? true,
+          newOrderSound: push.newOrderSound ?? true,
+          paymentVerifiedToast: push.paymentVerifiedToast ?? true,
+          paymentVerifiedSound: push.paymentVerifiedSound ?? true,
+          orderStatusUpdateToast: push.orderStatusUpdateToast ?? true,
+          orderStatusUpdateSound: push.orderStatusUpdateSound ?? false,
+          newMessageToast: push.newMessageToast ?? false,
+          newMessageSound: push.newMessageSound ?? false
+        };
+        setPushPrefs(merged);
+        const soundActive = merged.newOrderSound || merged.paymentVerifiedSound;
+        setSoundEnabled(soundActive);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(
+            SOUND_PREF_KEY,
+            soundActive ? 'on' : 'off'
+          );
         }
       })
       .catch(() => {});
@@ -94,20 +222,118 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     loadCounts();
   }, []);
 
-  useWebSocket('new_order', () => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const readPref = () => {
+      const value = window.localStorage.getItem(SOUND_PREF_KEY);
+      if (value === 'off') {
+        setSoundEnabled(false);
+      } else {
+        setSoundEnabled(true);
+      }
+    };
+    readPref();
+    const handler = (event: StorageEvent) => {
+      if (event.key === SOUND_PREF_KEY) {
+        readPref();
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('storage', handler);
+    };
+  }, []);
+
+  useWebSocket<NewOrderEvent>('new_order', payload => {
     setNewOrdersCount(prev => prev + 1);
+    const code = payload.orderNumber
+      ? `#${payload.orderNumber}`
+      : payload.id.slice(0, 8).toUpperCase();
+    const customerName = payload.customer?.name || 'Cliente sin nombre';
+    const totalLabel =
+      typeof payload.totalCents === 'number'
+        ? (payload.totalCents / 100).toFixed(2)
+        : null;
+    const parts = [`De ${customerName}`];
+    if (totalLabel) {
+      parts.push(`Total $${totalLabel}`);
+    }
+    if (pushPrefs.newOrderToast) {
+      showToast(`Nueva orden ${code}`, parts.join(' · '), 'success');
+    }
+    if (pushPrefs.newOrderSound) {
+      playSound();
+    }
   });
 
   useWebSocket('new_message', () => {
     setUnreadCount(prev => prev + 1);
+    if (pushPrefs.newMessageToast) {
+      showToast('Nuevo mensaje', 'Tienes un mensaje pendiente en el inbox', 'info');
+    }
+    if (pushPrefs.newMessageSound) {
+      playSound();
+    }
   });
 
-  useWebSocket('new_payment', () => {
+  useWebSocket<PaymentEvent>('new_payment', payload => {
     setPendingPaymentsCount(prev => prev + 1);
+    const amountLabel =
+      typeof payload.amountCents === 'number'
+        ? (payload.amountCents / 100).toFixed(2)
+        : null;
+    const parts = [];
+    if (payload.method) {
+      parts.push(payload.method);
+    }
+    if (amountLabel) {
+      parts.push(`$${amountLabel}`);
+    }
+    const orderCode = payload.order?.orderNumber
+      ? ` #${payload.order.orderNumber}`
+      : '';
+    const message =
+      parts.length > 0
+        ? `${parts.join(' · ')}${orderCode}`
+        : `Pago pendiente${orderCode}`;
+    if (pushPrefs.paymentVerifiedToast) {
+      showToast('Nuevo pago registrado', message, 'info');
+    }
   });
-  useWebSocket('payment_verified', () => {
+
+  useWebSocket<PaymentEvent>('payment_verified', payload => {
     setPendingPaymentsCount(prev => Math.max(0, prev - 1));
+    const orderCode = payload.order?.orderNumber
+      ? `#${payload.order.orderNumber}`
+      : '';
+    const title = orderCode ? `Pago verificado ${orderCode}` : 'Pago verificado';
+    if (pushPrefs.paymentVerifiedToast) {
+      showToast(title, 'El pago fue verificado correctamente', 'success');
+    }
+    if (pushPrefs.paymentVerifiedSound) {
+      playSound();
+    }
   });
+
+  useWebSocket<OrderStatusChangedEvent>('order_status_changed', payload => {
+    const code = payload.order?.orderNumber
+      ? `#${payload.order.orderNumber}`
+      : payload.orderId.slice(0, 8).toUpperCase();
+    if (pushPrefs.orderStatusUpdateToast) {
+      const title = `Estado de orden actualizado ${code}`;
+      const message = `Nuevo estado: ${payload.status}`;
+      showToast(title, message, 'info');
+    }
+    if (pushPrefs.orderStatusUpdateSound) {
+      playSound();
+    }
+  });
+
+  const toastColors: Record<ToastVariant, string> = {
+    info: 'border-blue-500/40 bg-blue-950/50 text-blue-100',
+    success: 'border-emerald-500/40 bg-emerald-950/50 text-emerald-100',
+    warning: 'border-amber-500/40 bg-amber-950/60 text-amber-100'
+  };
 
   return (
     <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] transition-colors">
@@ -291,6 +517,19 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           </div>
         </main>
       </div>
+      {toasts.length > 0 && (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex max-w-xs flex-col gap-2">
+          {toasts.map(toast => (
+            <div
+              key={toast.id}
+              className={`pointer-events-auto rounded-xl border px-3 py-2 text-xs shadow-lg shadow-black/40 ${toastColors[toast.variant]}`}
+            >
+              <div className="font-semibold">{toast.title}</div>
+              <div className="mt-0.5 text-[11px] opacity-90">{toast.message}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

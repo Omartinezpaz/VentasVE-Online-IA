@@ -3,7 +3,8 @@ import { getAccessToken, setAccessToken } from '../auth/storage';
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1',
-  withCredentials: true
+  withCredentials: true,
+  validateStatus: status => status >= 200 && status < 400
 });
 
 const refreshClient = axios.create({

@@ -8,7 +8,10 @@
     "start": "node dist/server.js",
     "lint": "eslint src/**/*.ts",
     "test": "jest",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "seed:demo-my-account": "tsx src/scripts/seed-demo-my-account.ts",
+    "jobs:send-daily-summary": "tsx src/scripts/send-daily-summary.ts",
+    "jobs:send-weekly-summary": "tsx src/scripts/send-weekly-summary.ts"
   },
   "dependencies": {
     "@hapi/boom": "^10.0.1",
@@ -30,7 +33,8 @@
     "pino": "^10.3.1",
     "socket.io": "^4.8.3",
     "uuid": "^13.0.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "resend": "^6.9.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

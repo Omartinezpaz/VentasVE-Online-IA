@@ -3,20 +3,31 @@ import prisma from '@ventasve/database';
 
 export const getPaymentMethods = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await prisma.$queryRaw<any[]>`
-      SELECT id, codigo, nombre, icono, requiere_cuenta, requiere_comprobante, orden
-      FROM public.metodos_pago
-      WHERE activo = true
-      ORDER BY orden ASC, nombre ASC
-    `;
+    const data = await prisma.metodoPago.findMany({
+      where: { activo: true },
+      orderBy: [
+        { orden: 'asc' },
+        { nombre: 'asc' }
+      ],
+      select: {
+        id: true,
+        codigo: true,
+        nombre: true,
+        icono: true,
+        requiereCuenta: true,
+        requiereComprobante: true,
+        orden: true
+      }
+    });
+
     res.json(
       data.map((r) => ({
         id: r.id,
         codigo: r.codigo,
         nombre: r.nombre,
         icono: r.icono,
-        requiereCuenta: r.requiere_cuenta,
-        requiereComprobante: r.requiere_comprobante,
+        requiereCuenta: r.requiereCuenta,
+        requiereComprobante: r.requiereComprobante,
         orden: r.orden,
       }))
     );
@@ -27,12 +38,22 @@ export const getPaymentMethods = async (req: Request, res: Response, next: NextF
 
 export const getBusinessTypes = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await prisma.$queryRaw<any[]>`
-      SELECT id, codigo, nombre, icono, descripcion, orden
-      FROM public.tipos_negocio
-      WHERE activo = true
-      ORDER BY orden ASC, nombre ASC
-    `;
+    const data = await prisma.tipoNegocio.findMany({
+      where: { activo: true },
+      orderBy: [
+        { orden: 'asc' },
+        { nombre: 'asc' }
+      ],
+      select: {
+        id: true,
+        codigo: true,
+        nombre: true,
+        icono: true,
+        descripcion: true,
+        orden: true
+      }
+    });
+
     res.json(
       data.map((r) => ({
         id: r.id,
@@ -50,18 +71,28 @@ export const getBusinessTypes = async (req: Request, res: Response, next: NextFu
 
 export const getBanks = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await prisma.$queryRaw<any[]>`
-      SELECT id, codigo_ibp, nombre, nombre_corto, orden
-      FROM public.bancos
-      WHERE activo = true
-      ORDER BY orden ASC, nombre_corto ASC, nombre ASC
-    `;
+    const data = await prisma.banco.findMany({
+      where: { activo: true },
+      orderBy: [
+        { orden: 'asc' },
+        { nombreCorto: 'asc' },
+        { nombre: 'asc' }
+      ],
+      select: {
+        id: true,
+        codigoIbp: true,
+        nombre: true,
+        nombreCorto: true,
+        orden: true
+      }
+    });
+
     res.json(
       data.map((r) => ({
         id: r.id,
-        codigo_ibp: r.codigo_ibp,
+        codigo_ibp: r.codigoIbp,
         nombre: r.nombre,
-        nombre_corto: r.nombre_corto,
+        nombre_corto: r.nombreCorto,
         orden: r.orden,
       }))
     );
@@ -72,12 +103,21 @@ export const getBanks = async (req: Request, res: Response, next: NextFunction) 
 
 export const getIslrRegimens = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await prisma.$queryRaw<any[]>`
-      SELECT id, codigo, nombre, descripcion, orden
-      FROM public.regimenes_islr
-      WHERE activo = true
-      ORDER BY orden ASC, nombre ASC
-    `;
+    const data = await prisma.regimenIslr.findMany({
+      where: { activo: true },
+      orderBy: [
+        { orden: 'asc' },
+        { nombre: 'asc' }
+      ],
+      select: {
+        id: true,
+        codigo: true,
+        nombre: true,
+        descripcion: true,
+        orden: true
+      }
+    });
+
     res.json(
       data.map((r) => ({
         id: r.id,
@@ -94,20 +134,31 @@ export const getIslrRegimens = async (req: Request, res: Response, next: NextFun
 
 export const getPersonTypes = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const data = await prisma.$queryRaw<any[]>`
-      SELECT id, codigo, nombre, descripcion, requiere_razon_social, requiere_nombre_completo, orden
-      FROM public.tipos_persona
-      WHERE activo = true
-      ORDER BY orden ASC, nombre ASC
-    `;
+    const data = await prisma.tipoPersona.findMany({
+      where: { activo: true },
+      orderBy: [
+        { orden: 'asc' },
+        { nombre: 'asc' }
+      ],
+      select: {
+        id: true,
+        codigo: true,
+        nombre: true,
+        descripcion: true,
+        requiereRazonSocial: true,
+        requiereNombreCompleto: true,
+        orden: true
+      }
+    });
+
     res.json(
       data.map((r) => ({
         id: r.id,
         codigo: r.codigo,
         nombre: r.nombre,
         descripcion: r.descripcion,
-        requiereRazonSocial: r.requiere_razon_social,
-        requiereNombreCompleto: r.requiere_nombre_completo,
+        requiereRazonSocial: r.requiereRazonSocial,
+        requiereNombreCompleto: r.requiereNombreCompleto,
         orden: r.orden,
       }))
     );

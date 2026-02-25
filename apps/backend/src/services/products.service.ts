@@ -6,6 +6,7 @@ interface CreateProductInput {
   name: string;
   description?: string;
   priceUsdCents: number;
+  costCents?: number;
   categoryId?: string;
   images?: string[];
   stock?: number;
@@ -18,6 +19,7 @@ interface UpdateProductInput {
   name?: string;
   description?: string;
   priceUsdCents?: number;
+  costCents?: number;
   categoryId?: string;
   images?: string[];
   stock?: number;
@@ -53,6 +55,7 @@ export class ProductsService {
         name: data.name,
         description: data.description,
         priceUsdCents: data.priceUsdCents,
+        costCents: data.costCents,
         categoryId: data.categoryId,
         images: data.images || [],
         stock: data.stock || 0,

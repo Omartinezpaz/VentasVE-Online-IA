@@ -11,12 +11,14 @@ export default function NewProductPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [priceUsd, setPriceUsd] = useState('');
+  const [costUsd, setCostUsd] = useState('');
   const [stock, setStock] = useState('0');
   const [isPublished, setIsPublished] = useState(true);
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formMsg, setFormMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -30,15 +32,23 @@ export default function NewProductPage() {
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+    setFormMsg(null);
 
     try {
       const priceUsdCents = Math.round(parseFloat(priceUsd) * 100);
       if (isNaN(priceUsdCents)) throw new Error('Precio inválido');
+      const costCents = costUsd ? Math.round(parseFloat(costUsd) * 100) : undefined;
+      if (typeof costCents === 'number' && costCents > priceUsdCents) {
+        setFormMsg({ text: 'El costo no puede ser mayor al precio', ok: false });
+        setSubmitting(false);
+        return;
+      }
 
       const res = await productsApi.create({
         name,
         description,
         priceUsdCents,
+        costCents,
         stock: parseInt(stock),
         isPublished
       });
@@ -142,6 +152,59 @@ export default function NewProductPage() {
               </div>
             </div>
             <div className="space-y-1.5">
+              <label className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-wider">Costo (USD $)</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--muted)] font-bold">$</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={costUsd}
+                  onChange={e => setCostUsd(e.target.value)}
+                  className="w-full rounded-xl border-2 border-[var(--border)] bg-[var(--background)] pl-8 pr-4 py-3 text-sm text-[var(--foreground)] outline-none focus:border-[var(--accent)] transition-all"
+                  placeholder="Opcional"
+                />
+              </div>
+              <p className="text-[10px] text-[var(--muted)]">
+                Costo interno para calcular tu margen. No se muestra a tus clientes.
+              </p>
+              {(priceUsd || costUsd) && (() => {
+                const p = Number.parseFloat(priceUsd || '0');
+                const c = Number.parseFloat(costUsd || '0');
+                const hasNums = Number.isFinite(p) && Number.isFinite(c) && !Number.isNaN(p) && !Number.isNaN(c) && (priceUsd !== '' && costUsd !== '');
+                if (!hasNums) return null;
+                const m = p - c;
+                const pct = c > 0 ? (m / c) * 100 : null;
+                const badgeClass =
+                  pct == null
+                    ? 'bg-[var(--surface2)] text-[var(--foreground)] border border-[var(--border)]'
+                    : pct > 30
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+                      : pct >= 10
+                        ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
+                        : 'bg-red-500/10 text-red-400 border border-red-500/30';
+                return (
+                  <div className="mt-1 space-y-1">
+                    <div className="flex items-center gap-1 text-[10px] text-[var(--muted)]">
+                      <span className="font-bold uppercase">Margen estimado</span>
+                      <button
+                        type="button"
+                        className="h-4 w-4 flex items-center justify-center rounded-full border border-[var(--border)] text-[9px] text-[var(--muted)] cursor-help"
+                        title="Margen = (Precio - Costo) / Costo × 100"
+                      >
+                        ?
+                      </button>
+                    </div>
+                    <div className={`inline-flex items-center gap-2 rounded-full px-2 py-1 text-[11px] font-bold ${badgeClass}`}>
+                      <span>${m.toFixed(2)}</span>
+                      {pct != null && <span>({pct.toFixed(1)}%)</span>}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
               <label className="text-[11px] font-bold text-[var(--muted)] uppercase tracking-wider">Stock Inicial</label>
               <input
                 type="number"
@@ -168,6 +231,7 @@ export default function NewProductPage() {
           </div>
         </div>
 
+        {formMsg && <div className={`p-3 rounded-lg text-xs ${formMsg.ok ? 'bg-emerald-500/15 border border-emerald-500/40 text-emerald-300' : 'bg-red-500/15 border border-red-500/40 text-red-300'}`}>⚠ {formMsg.text}</div>}
         {error && <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold">⚠️ {error}</div>}
 
         <button

@@ -62,6 +62,19 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
+export const loginDelivery = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const data = loginSchema.parse(req.body);
+    const result = await authService.loginDelivery(data);
+    res.json({
+      user: result.user,
+      accessToken: result.accessToken,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const refresh = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const token = (req as any).cookies?.refreshToken || req.body.refreshToken;

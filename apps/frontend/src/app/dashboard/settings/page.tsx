@@ -462,7 +462,7 @@ export default function SettingsPage() {
   const [coverageMunicipios, setCoverageMunicipios] = useState<Municipio[]>([]);
   const [coverageParroquias, setCoverageParroquias] = useState<Parroquia[]>([]);
 
-  const enrichZoneCoverages = (zone: ShippingZoneAdvanced): ShippingZoneAdvanced => {
+  const enrichZoneCoverages = useCallback((zone: ShippingZoneAdvanced): ShippingZoneAdvanced => {
     if (!zone.coverages || zone.coverages.length === 0) return zone;
     if (!estados || estados.length === 0) return zone;
     const enrichedCoverages = zone.coverages.map(cov => {
@@ -475,7 +475,7 @@ export default function SettingsPage() {
       };
     });
     return { ...zone, coverages: enrichedCoverages };
-  };
+  }, [estados]);
 
   const {
     register, handleSubmit, control, watch, reset, setError,
@@ -542,7 +542,8 @@ export default function SettingsPage() {
           minOrderAmount: co.minOrderAmount ?? '', maxOrderAmount: co.maxOrderAmount ?? '',
         });
         setLogoPreview(d.logoUrl ?? null);
-        setNotifSettings(d.notificationSettings ?? {});
+        const notif = d.notificationSettings ?? {};
+        setNotifSettings(notif);
         setZones(
           sz.length
             ? sz.map((z, index) => ({
@@ -604,7 +605,13 @@ export default function SettingsPage() {
       setShippingError(null);
       try {
         const res = await shippingApi.getZones();
-        setShippingZones(res.data.zones.map(z => enrichZoneCoverages(z)));
+        if (res.status === 304 && !res.data) {
+           // 304 without body means cache usage, but if we are here, browser didn't provide body.
+           // Ideally we should reload or handle it. For now, let's treat as empty to avoid crash.
+           console.warn('Received 304 for shipping zones without data');
+        }
+        const zones = res.data?.zones || [];
+        setShippingZones(zones.map(z => enrichZoneCoverages(z)));
       } catch (err) {
         console.error('[SettingsPage] Error loading shipping zones:', err);
         setShippingError('No se pudieron cargar las zonas de envío');
@@ -613,7 +620,7 @@ export default function SettingsPage() {
       }
     };
     loadShippingZones();
-  }, [activeTab]);
+  }, [activeTab, enrichZoneCoverages]);
 
   
 
@@ -850,31 +857,42 @@ export default function SettingsPage() {
     } finally { setSaving(false); }
   };
 
+  const whatsappIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (whatsappIntervalRef.current) clearInterval(whatsappIntervalRef.current);
+    };
+  }, []);
+
   const handleWhatsappConnect = useCallback(async () => {
     setWaLoading(true);
     setWaError(null);
+    
+    if (whatsappIntervalRef.current) clearInterval(whatsappIntervalRef.current);
+
     try {
       await whatsappApi.connect();
       let attempts = 0;
       const maxAttempts = 30;
-      const interval = setInterval(async () => {
+      whatsappIntervalRef.current = setInterval(async () => {
         attempts += 1;
         try {
           const response = await whatsappApi.getStatus();
           setWhatsappStatus(response.data);
           if (response.data.connected || response.data.qr || attempts >= maxAttempts) {
-            clearInterval(interval);
+            if (whatsappIntervalRef.current) clearInterval(whatsappIntervalRef.current);
             setWaLoading(false);
           }
         } catch {
-          clearInterval(interval);
+          if (whatsappIntervalRef.current) clearInterval(whatsappIntervalRef.current);
           setWaLoading(false);
           setWaError('No se pudo obtener el QR de WhatsApp');
         }
       }, 2000);
-    } catch (error: any) {
+    } catch (error) {
       setWaLoading(false);
-      const code = error?.response?.data?.code;
+      const code = (error as any)?.response?.data?.code;
       if (code === 'WHATSAPP_PHONE_REQUIRED') {
         setWaError('Configura tu número de WhatsApp en la pestaña "Mi negocio"');
       } else {
@@ -2107,13 +2125,63 @@ export default function SettingsPage() {
                   <CardHeader title="Email" icon="📧" />
                   <div className="px-5 py-3">
                     {[
-                      ['newOrder',    'Nuevo pedido recibido'],
-                      ['weeklyReport','Reporte semanal de ventas'],
+                      ['newOrder',     'Nuevo pedido recibido'],
+                      ['dailySummary', 'Resumen diario de ventas (8 AM)'],
+                      ['weeklyReport', 'Reporte semanal de ventas'],
                     ].map(([ev, label]) => (
                       <ToggleRow key={ev} title={label as string}
                         checked={notifSettings.email?.[ev] ?? false}
                         onChange={val => handleNotif('email', ev, val)} />
                     ))}
+                  </div>
+                </Card>
+
+                <Card>
+                  <CardHeader title="Notificaciones push" icon="🔔" />
+                  <div className="px-5 py-3 space-y-2">
+                    <div className="text-[11px] text-zinc-400 mb-1">
+                      Controla qué eventos muestran toast en el dashboard y cuáles reproducen sonido.
+                    </div>
+                    <ToggleRow
+                      title="Nueva orden — mostrar toast"
+                      checked={notifSettings.push?.newOrderToast ?? true}
+                      onChange={val => handleNotif('push', 'newOrderToast', val)}
+                    />
+                    <ToggleRow
+                      title="Nueva orden — sonido"
+                      checked={notifSettings.push?.newOrderSound ?? true}
+                      onChange={val => handleNotif('push', 'newOrderSound', val)}
+                    />
+                    <ToggleRow
+                      title="Pago verificado — mostrar toast"
+                      checked={notifSettings.push?.paymentVerifiedToast ?? true}
+                      onChange={val => handleNotif('push', 'paymentVerifiedToast', val)}
+                    />
+                    <ToggleRow
+                      title="Pago verificado — sonido"
+                      checked={notifSettings.push?.paymentVerifiedSound ?? true}
+                      onChange={val => handleNotif('push', 'paymentVerifiedSound', val)}
+                    />
+                    <ToggleRow
+                      title="Cambio de estado de orden — mostrar toast"
+                      checked={notifSettings.push?.orderStatusUpdateToast ?? true}
+                      onChange={val => handleNotif('push', 'orderStatusUpdateToast', val)}
+                    />
+                    <ToggleRow
+                      title="Cambio de estado de orden — sonido"
+                      checked={notifSettings.push?.orderStatusUpdateSound ?? false}
+                      onChange={val => handleNotif('push', 'orderStatusUpdateSound', val)}
+                    />
+                    <ToggleRow
+                      title="Nuevo mensaje — mostrar toast"
+                      checked={notifSettings.push?.newMessageToast ?? false}
+                      onChange={val => handleNotif('push', 'newMessageToast', val)}
+                    />
+                    <ToggleRow
+                      title="Nuevo mensaje — sonido"
+                      checked={notifSettings.push?.newMessageSound ?? false}
+                      onChange={val => handleNotif('push', 'newMessageSound', val)}
+                    />
                   </div>
                 </Card>
               </div>

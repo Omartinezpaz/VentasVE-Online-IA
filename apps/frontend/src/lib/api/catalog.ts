@@ -108,5 +108,14 @@ export const catalogApi = {
     return api.get<{ zones: ShippingZone[]; currency: string; cartAmount: number }>(`/catalog/${encodeURIComponent(slug)}/shipping-zones`, {
       params
     });
+  },
+  createDeliveryRating(data: {
+    deliveryOrderId: string;
+    rating: number;
+    comment?: string;
+    punctuality?: number;
+    professionalism?: number;
+  }) {
+    return api.post('/catalog/delivery/ratings', data);
   }
 };

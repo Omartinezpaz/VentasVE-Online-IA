@@ -28,6 +28,12 @@ type OrderListQuery = {
   page?: number;
   limit?: number;
   status?: OrderStatus;
+  paymentMethod?: PaymentMethod;
+  shippingZoneSlug?: string;
+  minAmount?: number;
+  maxAmount?: number;
+  dateFrom?: string | Date;
+  dateTo?: string | Date;
 };
 
 type PublicCustomerInput = {
@@ -91,9 +97,9 @@ export class OrdersService {
           paymentMethod: input.paymentMethod,
           deliveryAddress: input.deliveryAddress,
           notes: input.notes,
-          shipping_zone_slug: input.shippingZoneSlug,
-          shipping_cost_cents: input.shippingCostCents,
-          shipping_method_code: input.shippingMethodCode
+          shippingZoneSlug: input.shippingZoneSlug,
+          shippingCostCents: input.shippingCostCents,
+          shippingMethodCode: input.shippingMethodCode
         }
       });
 
@@ -202,13 +208,7 @@ export class OrdersService {
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
 
-    const where: any = {
-      businessId
-    };
-
-    if (query.status) {
-      where.status = query.status;
-    }
+    const where = this.buildWhere(businessId, query);
 
     const [orders, total] = await prisma.$transaction([
       prisma.order.findMany({
@@ -234,6 +234,63 @@ export class OrdersService {
     };
   }
 
+  private buildWhere(businessId: string, query: OrderListQuery) {
+    const where: any = {
+      businessId
+    };
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.paymentMethod) {
+      where.paymentMethod = query.paymentMethod;
+    }
+
+    if (query.shippingZoneSlug) {
+      where.shippingZoneSlug = {
+        contains: query.shippingZoneSlug,
+        mode: 'insensitive'
+      };
+    }
+
+    if (query.minAmount || query.maxAmount) {
+      where.totalCents = {};
+      if (query.minAmount) {
+        where.totalCents.gte = Math.round(query.minAmount * 100);
+      }
+      if (query.maxAmount) {
+        where.totalCents.lte = Math.round(query.maxAmount * 100);
+      }
+    }
+
+    if (query.dateFrom || query.dateTo) {
+      where.createdAt = {};
+      if (query.dateFrom) {
+        where.createdAt.gte = new Date(query.dateFrom);
+      }
+      if (query.dateTo) {
+        where.createdAt.lte = new Date(query.dateTo);
+      }
+    }
+
+    return where;
+  }
+
+  async export(businessId: string, query: OrderListQuery) {
+    const where = this.buildWhere(businessId, query);
+
+    const orders = await prisma.order.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        customer: true
+      }
+    });
+
+    return orders;
+  }
+
   async getById(businessId: string, id: string) {
     const order = await prisma.order.findFirst({
       where: {
@@ -241,7 +298,11 @@ export class OrdersService {
         businessId
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: true
+          }
+        },
         customer: true,
         payments: true
       }
@@ -263,7 +324,11 @@ export class OrdersService {
         status
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            product: true
+          }
+        },
         customer: true,
         payments: true
       }

@@ -170,36 +170,28 @@ const toApiError = (error: unknown, fallbackMessage: string): ApiError => {
 export const shippingApi = {
   async getZones() {
     try {
-      return await api.get<ShippingZonesResponse>('/settings/shipping-zones', {
-        headers: authHeaders()
-      });
+      return await api.get<ShippingZonesResponse>('/settings/shipping-zones');
     } catch (error) {
       throw toApiError(error, 'No se pudieron obtener las zonas de envío');
     }
   },
   async createZone(data: CreateShippingZoneInput) {
     try {
-      return await api.post<ShippingZone>('/settings/shipping-zones', data, {
-        headers: authHeaders()
-      });
+      return await api.post<ShippingZone>('/settings/shipping-zones', data);
     } catch (error) {
       throw toApiError(error, 'No se pudo crear la zona de envío');
     }
   },
   async updateZone(id: string, data: Partial<CreateShippingZoneInput>) {
     try {
-      return await api.put<ShippingZone>(`/settings/shipping-zones/${id}`, data, {
-        headers: authHeaders()
-      });
+      return await api.put<ShippingZone>(`/settings/shipping-zones/${id}`, data);
     } catch (error) {
       throw toApiError(error, 'No se pudo actualizar la zona de envío');
     }
   },
   async deleteZone(id: string) {
     try {
-      return await api.delete(`/settings/shipping-zones/${id}`, {
-        headers: authHeaders()
-      });
+      return await api.delete(`/settings/shipping-zones/${id}`);
     } catch (error) {
       throw toApiError(error, 'No se pudo eliminar la zona de envío');
     }
@@ -213,10 +205,7 @@ export const shippingApi = {
     try {
       return await api.post<{ valid: boolean; message: string }>(
         '/settings/shipping-zones/validate-coverage',
-        coverage,
-        {
-          headers: authHeaders()
-        }
+        coverage
       );
     } catch (error) {
       throw toApiError(error, 'No se pudo validar la cobertura');

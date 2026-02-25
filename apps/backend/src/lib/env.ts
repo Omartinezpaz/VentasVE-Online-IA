@@ -15,6 +15,8 @@ const EnvSchema = z.object({
   PORT:                 z.coerce.number().default(3001),
   BCV_RATE_URL:         z.string().url().optional(),
   FRONTEND_URL:         z.string().url().optional(),
+  RESEND_API_KEY:       z.string().min(1).optional(),
+  EMAIL_FROM:           z.string().email().optional(),
 });
 
 export const env = EnvSchema.parse(process.env);

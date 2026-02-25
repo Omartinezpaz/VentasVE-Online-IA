@@ -21,6 +21,7 @@ const authWriteLimiter = rateLimit({
 
 router.post('/register', authWriteLimiter, AuthController.register);
 router.post('/login', loginLimiter, AuthController.login);
+router.post('/login-delivery', loginLimiter, AuthController.loginDelivery);
 router.post('/refresh', AuthController.refresh);
 router.post('/logout', authWriteLimiter, AuthController.logout);
 router.post('/verify-email', authWriteLimiter, AuthController.verifyEmail);

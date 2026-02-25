@@ -6,6 +6,11 @@ import { ordersApi, OrderDetail } from '@/lib/api/orders';
 import { paymentsApi } from '@/lib/api/payments';
 import { getAccessToken } from '@/lib/auth/storage';
 import { OrderTimeline } from '@/components/orders/OrderTimeline';
+import {
+  deliveryApi,
+  type DeliveryPersonSummary,
+  type DeliveryOrderStatus
+} from '@/lib/api/delivery';
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 const formatCurrency = (cents: number) => (cents / 100).toFixed(2);
@@ -56,6 +61,22 @@ const paymentStatusLabel: Record<string, string> = {
   PENDING:  'Pendiente',
 };
 
+const deliveryStatusLabel: Record<string, string> = {
+  ASSIGNED: 'Asignado',
+  PICKED_UP: 'En camino',
+  IN_TRANSIT: 'En camino',
+  DELIVERED: 'Entregado',
+  FAILED: 'Fallida'
+};
+
+const deliveryStatusColor: Record<string, string> = {
+  ASSIGNED: 'bg-amber-400/10 text-amber-300 border border-amber-400/40',
+  PICKED_UP: 'bg-blue-400/10 text-blue-300 border border-blue-400/40',
+  IN_TRANSIT: 'bg-blue-400/10 text-blue-300 border border-blue-400/40',
+  DELIVERED: 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/40',
+  FAILED: 'bg-red-400/10 text-red-300 border border-red-400/40'
+};
+
 const statusOptions = [
   'PENDING',
   'CONFIRMED',
@@ -104,6 +125,13 @@ export default function OrderDetailPage() {
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentMsg, setPaymentMsg]     = useState<{ text: string; ok: boolean } | null>(null);
   const [verifyingId, setVerifyingId]   = useState<string | null>(null);
+  const [deliveryPersons, setDeliveryPersons] = useState<DeliveryPersonSummary[]>([]);
+  const [selectedDeliveryPersonId, setSelectedDeliveryPersonId] = useState('');
+  const [assigningDelivery, setAssigningDelivery] = useState(false);
+  const [assignMsg, setAssignMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [assignedDelivery, setAssignedDelivery] = useState<{ name: string; phone: string | null } | null>(null);
+  const [deliveryOrder, setDeliveryOrder] = useState<DeliveryOrderStatus | null>(null);
+  const [showDeliveryDetails, setShowDeliveryDetails] = useState(false);
 
   // ─── LOAD ORDER ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -128,6 +156,36 @@ export default function OrderDetailPage() {
     };
     load();
   }, [router, id]);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token || !id || id === 'undefined') {
+      return;
+    }
+    const loadDeliveryOrder = async () => {
+      try {
+        const response = await deliveryApi.getOrder(id);
+        setDeliveryOrder(response.data.deliveryOrder);
+      } catch {
+      }
+    };
+    loadDeliveryOrder();
+  }, [id]);
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) {
+      return;
+    }
+    const loadPersons = async () => {
+      try {
+        const response = await deliveryApi.listPersons();
+        setDeliveryPersons(response.data.persons);
+      } catch {
+      }
+    };
+    loadPersons();
+  }, []);
 
   // ─── STATUS CHANGE ──────────────────────────────────────────────────────────
   const handleStatusChange = async (newStatus: string) => {
@@ -176,6 +234,35 @@ export default function OrderDetailPage() {
     } finally {
       setCreatingPayment(false);
       setTimeout(() => setPaymentMsg(null), 4000);
+    }
+  };
+
+  const handleAssignDelivery = async () => {
+    if (!order || !selectedDeliveryPersonId) return;
+    setAssigningDelivery(true);
+    setAssignMsg(null);
+    try {
+      const response = await deliveryApi.assign(order.id, selectedDeliveryPersonId);
+      const deliveryPerson = response.data.deliveryPerson as
+        | { id?: string; name?: string; phone?: string | null }
+        | undefined;
+      if (deliveryPerson && deliveryPerson.name) {
+        setAssignedDelivery({
+          name: deliveryPerson.name,
+          phone: deliveryPerson.phone ?? null
+        });
+      }
+      setAssignMsg({ text: '✓ Repartidor asignado', ok: true });
+      try {
+        const refreshed = await deliveryApi.getOrder(order.id);
+        setDeliveryOrder(refreshed.data.deliveryOrder);
+      } catch {
+      }
+    } catch {
+      setAssignMsg({ text: '✗ No se pudo asignar la entrega', ok: false });
+    } finally {
+      setAssigningDelivery(false);
+      setTimeout(() => setAssignMsg(null), 4000);
     }
   };
 
@@ -236,25 +323,87 @@ export default function OrderDetailPage() {
     ? (order.totalCents / 100 * order.exchangeRate).toLocaleString('es-VE', { maximumFractionDigits: 0 })
     : null;
 
+  const shippingCents = typeof order.shippingCostCents === 'number' ? order.shippingCostCents : 0;
+  const subtotalCents = Math.max(order.totalCents - shippingCents, 0);
+  const itemsCostCents = (order.items ?? []).reduce((acc, item) => {
+    const unitCost = item.product?.costCents ?? 0;
+    return acc + unitCost * item.quantity;
+  }, 0);
+  const hasCost = itemsCostCents > 0;
+  const marginCents = hasCost ? order.totalCents - itemsCostCents : 0;
+  const marginUsd = hasCost ? formatCurrency(marginCents) : null;
+  const marginPercent = hasCost && itemsCostCents > 0 ? (marginCents / itemsCostCents) * 100 : null;
+  const deliveryAverageRating =
+    deliveryOrder?.deliveryPerson?.averageRating != null
+      ? deliveryOrder.deliveryPerson.averageRating
+      : null;
+  const deliveryRatingsCount = deliveryOrder?.deliveryPerson?.ratingsCount ?? 0;
+  const deliverySingleRating = deliveryOrder?.rating ?? null;
+
   return (
     <div className="space-y-5">
       {/* ─── HEADER ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-lg font-bold text-[var(--foreground)]">{orderTitle}</h1>
-            {/* BUG FIX: badge ahora usa className directamente, no template string en className */}
-            <span className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${statusColor[order.status] ?? 'bg-[var(--background)] text-[var(--muted)] border border-[var(--border)]'}`}>
+            <span
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-bold ${
+                statusColor[order.status] ??
+                'bg-[var(--background)] text-[var(--muted)] border border-[var(--border)]'
+              }`}
+            >
               {statusLabel[order.status] ?? order.status}
             </span>
+            {deliveryOrder && (
+              <button
+                type="button"
+                onClick={() => setShowDeliveryDetails(prev => !prev)}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold border ${
+                  deliveryStatusColor[deliveryOrder.status] ??
+                  'bg-[var(--background)] text-[var(--muted)] border-[var(--border)]'
+                }`}
+              >
+                {deliveryStatusLabel[deliveryOrder.status] ?? deliveryOrder.status}
+                {deliveryOrder.deliveredAt &&
+                  ` · ${formatDateTime(deliveryOrder.deliveredAt)}`}
+              </button>
+            )}
           </div>
           <p className="mt-1 text-xs text-[var(--muted)]">
             Creada el {formatDateTime(order.createdAt)}
           </p>
         </div>
 
-        {/* Status selector + feedback */}
-        <div className="flex flex-col items-start gap-2 md:items-end">
+        {/* Status selector + resumen lateral */}
+        <div className="flex flex-col items-start gap-3 md:items-end">
+          <div className="flex flex-col items-start gap-1 text-xs text-[var(--muted)] md:items-end">
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-semibold text-[var(--foreground)]">
+                ${totalUsd}
+              </span>
+              {totalBs && (
+                <span className="text-[11px] text-[var(--muted)]">
+                  ≈ Bs. {totalBs}
+                </span>
+              )}
+            </div>
+            <div>
+              Pago:{' '}
+              <span className="font-medium text-[var(--foreground)]">
+                {order.paymentMethod || 'No definido'}
+              </span>
+            </div>
+            {(order.shippingZoneSlug || order.shippingMethodCode) && (
+              <div>
+                Envío:{' '}
+                <span className="font-medium text-[var(--foreground)]">
+                  {order.shippingMethodCode || 'Sin método'}
+                  {order.shippingZoneSlug ? ` · ${order.shippingZoneSlug}` : ''}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <label className="text-[11px] text-[var(--muted)]">Cambiar estado:</label>
             <select
@@ -327,10 +476,145 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
               )}
+              <div className="mt-3 space-y-1 rounded-lg bg-[var(--background)]/40 px-3 py-2 text-[11px]">
+                <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-[var(--foreground)]">
+                          Repartidor
+                        </span>
+                        {(deliveryOrder?.deliveryPerson || assignedDelivery) && (
+                          <span className="text-[11px] text-[var(--muted)]">
+                            Asignado a{' '}
+                            {deliveryOrder?.deliveryPerson?.name ??
+                              assignedDelivery?.name}
+                            {deliveryOrder?.deliveryPerson?.phone ||
+                            assignedDelivery?.phone
+                              ? ` · ${
+                                  deliveryOrder?.deliveryPerson?.phone ??
+                                  assignedDelivery?.phone
+                                }`
+                              : ''}
+                          </span>
+                        )}
+                      </div>
+                      {deliveryAverageRating != null && deliveryRatingsCount > 0 && (
+                        <div className="mt-1 text-[11px] text-[var(--muted)]">
+                          Rating promedio repartidor:{' '}
+                          <span className="font-semibold text-amber-300">
+                            {deliveryAverageRating.toFixed(1)} ★
+                          </span>{' '}
+                          <span className="text-[10px]">
+                            ({deliveryRatingsCount} opiniones)
+                          </span>
+                        </div>
+                    )}
+                {showDeliveryDetails && deliveryOrder && (
+                  <div className="mt-2 space-y-1 rounded-lg bg-[var(--surface)]/60 px-3 py-2">
+                    <div className="flex justify-between text-[11px]">
+                      <span className="text-[var(--muted)]">Estado</span>
+                      <span className="text-[var(--foreground)]">
+                        {deliveryStatusLabel[deliveryOrder.status] ??
+                          deliveryOrder.status}
+                      </span>
+                    </div>
+                    {deliveryOrder.pickedUpAt && (
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-[var(--muted)]">Recogido</span>
+                        <span className="text-[var(--foreground)]">
+                          {formatDateTime(deliveryOrder.pickedUpAt)}
+                        </span>
+                      </div>
+                    )}
+                    {deliveryOrder.deliveredAt && (
+                      <div className="flex justify-between text-[11px]">
+                    <span className="text-[var(--muted)]">Entregado</span>
+                    <span className="text-[var(--foreground)]">
+                      {formatDateTime(deliveryOrder.deliveredAt)}
+                    </span>
+                      </div>
+                    )}
+                    {deliveryOrder.failedAt && (
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-[var(--muted)]">Fallida</span>
+                        <span className="text-[var(--foreground)]">
+                          {formatDateTime(deliveryOrder.failedAt)}
+                        </span>
+                      </div>
+                    )}
+                    {deliveryOrder.failureReason && (
+                      <div className="mt-1 text-[11px] text-[var(--muted)]">
+                        Motivo: {deliveryOrder.failureReason}
+                      </div>
+                    )}
+                    {deliveryOrder.otpCode && (
+                      <div className="mt-1 text-[11px] text-[var(--muted)]">
+                        OTP: {deliveryOrder.otpCode}
+                      </div>
+                    )}
+                    {deliverySingleRating && (
+                      <div className="mt-2 space-y-1 rounded-lg bg-[var(--background)]/40 px-3 py-2">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-[var(--muted)]">Calificación de esta entrega</span>
+                          <span className="font-semibold text-amber-300">
+                            {deliverySingleRating.rating.toFixed(1)} ★
+                          </span>
+                        </div>
+                        {deliverySingleRating.comment && (
+                          <p className="mt-1 text-[11px] text-[var(--muted)]">
+                            “{deliverySingleRating.comment}”
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+                {deliveryPersons.length === 0 ? (
+                  <p className="mt-2 text-[11px] text-[var(--muted)]">
+                    No hay repartidores activos configurados todavía.
+                  </p>
+                ) : (
+                  <div className="mt-2 flex flex-col gap-2">
+                    <select
+                      value={selectedDeliveryPersonId}
+                      onChange={e => setSelectedDeliveryPersonId(e.target.value)}
+                      className="w-full rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-[11px] text-[var(--foreground)] outline-none focus:border-[var(--accent)]"
+                    >
+                      <option value="">Selecciona un repartidor</option>
+                      {deliveryPersons.map(person => (
+                        <option key={person.id} value={person.id}>
+                          {person.name} {person.isAvailable ? '' : '(no disponible)'}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex items-center justify-between gap-2">
+                      {assignMsg && (
+                        <span
+                          className={`text-[11px] ${
+                            assignMsg.ok ? 'text-emerald-400' : 'text-red-400'
+                          }`}
+                        >
+                          {assignMsg.text}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleAssignDelivery}
+                        disabled={
+                          assigningDelivery ||
+                          !selectedDeliveryPersonId ||
+                          !order.shippingMethodCode
+                        }
+                        className="ml-auto inline-flex items-center rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] font-bold text-black disabled:opacity-60"
+                      >
+                        {assigningDelivery ? 'Asignando...' : 'Asignar entrega'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </SectionCard>
 
-          <SectionCard title="Resumen de pago">
+          <SectionCard title="Resumen financiero">
             <div className="space-y-2">
               <div className="flex items-baseline gap-2">
                 <span className="text-2xl font-bold text-[var(--foreground)]">${totalUsd}</span>
@@ -338,21 +622,39 @@ export default function OrderDetailPage() {
                   <span className="text-sm text-[var(--muted)]">≈ Bs. {totalBs}</span>
                 )}
               </div>
-              <InfoRow label="Método" value={order.paymentMethod} />
-              {order.exchangeRate && (
-                <InfoRow label="Tasa BCV" value={`${order.exchangeRate} Bs./USD`} />
-              )}
-              {(order.shippingZoneSlug || order.shippingCostCents != null) && (
+              <InfoRow label="Subtotal" value={`$${formatCurrency(subtotalCents)}`} />
+              {typeof order.shippingCostCents === 'number' && (
                 <InfoRow
                   label="Envío"
                   value={
-                    order.shippingCostCents != null
-                      ? order.shippingCostCents === 0
-                        ? 'Gratis'
-                        : `$${formatCurrency(order.shippingCostCents)}`
-                      : undefined
+                    order.shippingCostCents === 0
+                      ? 'Gratis'
+                      : `$${formatCurrency(order.shippingCostCents)}`
                   }
                 />
+              )}
+              <InfoRow label="Total USD" value={`$${totalUsd}`} />
+              {totalBs && (
+                <InfoRow label="Total Bs" value={`Bs. ${totalBs}`} />
+              )}
+              <InfoRow label="Método de pago" value={order.paymentMethod} />
+              {order.exchangeRate && (
+                <InfoRow label="Tasa BCV" value={`${order.exchangeRate} Bs./USD`} />
+              )}
+              {hasCost && (
+                <>
+                  <InfoRow label="Costo estimado" value={`$${formatCurrency(itemsCostCents)} aproximadamente`} />
+                  {marginUsd && (
+                    <InfoRow
+                      label="Margen estimado"
+                      value={
+                        marginPercent != null
+                          ? `$${marginUsd} (${marginPercent.toFixed(1)}%)`
+                          : `$${marginUsd}`
+                      }
+                    />
+                  )}
+                </>
               )}
             </div>
           </SectionCard>

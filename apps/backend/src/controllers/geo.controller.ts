@@ -60,19 +60,26 @@ export const getParroquias = async (req: Request, res: Response, next: NextFunct
 
 export const getCountries = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const rows = await prisma.$queryRaw<any[]>`
-      SELECT id, nombre, iso3, iso_code, iso2, phone_code
-      FROM public.paises
-      ORDER BY nombre ASC
-    `;
+    const countries = await prisma.pais.findMany({
+      orderBy: { nombre: 'asc' },
+      select: {
+        id: true,
+        nombre: true,
+        iso3: true,
+        isoCode: true,
+        iso2: true,
+        phoneCode: true
+      }
+    });
+
     res.json(
-      rows.map((r) => ({
-        id: r.id,
-        nombre: r.nombre,
-        iso3: r.iso3,
-        isoCode: r.iso_code,
-        iso2: r.iso2,
-        phoneCode: r.phone_code
+      countries.map((c) => ({
+        id: c.id,
+        nombre: c.nombre,
+        iso3: c.iso3,
+        isoCode: c.isoCode,
+        iso2: c.iso2,
+        phoneCode: c.phoneCode
       }))
     );
   } catch (error) {
@@ -82,19 +89,25 @@ export const getCountries = async (req: Request, res: Response, next: NextFuncti
 
 export const getVeAreaCodes = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const rows = await prisma.$queryRaw<any[]>`
-      SELECT id, codigo, tipo, operadora, estado_principal
-      FROM public.codigos_area_venezuela
-      WHERE activo = true
-      ORDER BY codigo ASC
-    `;
+    const areaCodes = await prisma.codigosAreaVenezuela.findMany({
+      where: { activo: true },
+      orderBy: { codigo: 'asc' },
+      select: {
+        id: true,
+        codigo: true,
+        tipo: true,
+        operadora: true,
+        estadoPrincipal: true
+      }
+    });
+
     res.json(
-      rows.map((r) => ({
-        id: r.id,
-        codigo: r.codigo,
-        tipo: r.tipo,
-        operadora: r.operadora,
-        estado_principal: r.estado_principal
+      areaCodes.map((c) => ({
+        id: c.id,
+        codigo: c.codigo,
+        tipo: c.tipo,
+        operadora: c.operadora,
+        estado_principal: c.estadoPrincipal
       }))
     );
   } catch (error) {

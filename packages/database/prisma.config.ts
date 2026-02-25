@@ -1,8 +1,15 @@
-import { defineConfig, env } from '@prisma/config'
+import { defineConfig } from '@prisma/config'
 import { Pool } from 'pg'
 import { PrismaPg } from '@prisma/adapter-pg'
+import dotenv from 'dotenv'
 
-const connectionString = env('DATABASE_URL')
+dotenv.config()
+
+const connectionString = process.env.DATABASE_URL
+
+if (!connectionString) {
+  throw new Error('DATABASE_URL env var not set in packages/database/.env')
+}
 
 const pool = new Pool({
   connectionString,

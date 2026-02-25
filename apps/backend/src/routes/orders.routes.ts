@@ -7,6 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', OrdersController.getOrders);
+router.get('/export', OrdersController.exportOrders);
 router.post('/', OrdersController.createOrder);
 router.get('/:id', OrdersController.getOrderById);
 router.patch('/:id/status', OrdersController.updateOrderStatus);
