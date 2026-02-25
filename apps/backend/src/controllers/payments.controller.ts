@@ -1,7 +1,8 @@
-import { Request, Response, NextFunction } from 'express';
-import prisma, { PaymentMethod, PaymentStatus, Prisma } from '@ventasve/database';
+import { Request, Response } from 'express';
+import { PaymentMethod, PaymentStatus } from '@ventasve/database';
 import { z } from 'zod';
-import { AuthRequest } from '../middleware/auth';
+import { authed, authedWithStatus } from '../lib/handler';
+import { paymentsService } from '../services/payments.service';
 import { emitToBusiness } from '../lib/websocket';
 
 const createPaymentSchema = z.object({
@@ -9,261 +10,60 @@ const createPaymentSchema = z.object({
   method: z.nativeEnum(PaymentMethod),
   reference: z.string().optional(),
   proofImageUrl: z.string().url().optional(),
-  notes: z.string().optional()
+  notes: z.string().optional(),
 });
 
 const verifyPaymentSchema = z.object({
   status: z.nativeEnum(PaymentStatus),
-  notes: z.string().optional()
+  notes: z.string().optional(),
 });
 
-export const getPayments = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const user = authReq.user;
-    if (!user || !user.businessId) {
-      return res.status(401).json({
-        error: 'Not authenticated',
-        code: 'PAYMENTS_NOT_AUTHENTICATED'
-      });
-    }
-    const businessId = user.businessId;
-    const reqLog = (req as any).log;
+export const getPayments = authed(async (ctx) => {
+  return paymentsService.list(ctx.businessId, {
+    page: Number(ctx.query.page ?? '1'),
+    limit: Number(ctx.query.limit ?? '20'),
+    status: ctx.query.status,
+    orderId: ctx.query.orderId,
+  });
+});
 
-    const page = Number((req.query.page as string) ?? '1');
-    const limit = Number((req.query.limit as string) ?? '20');
-    const status = (req.query.status as string | undefined) ?? undefined;
-    const orderId = (req.query.orderId as string | undefined) ?? undefined;
-    const skip = (page - 1) * limit;
+export const createPayment = authedWithStatus(201, async (ctx) => {
+  const data = createPaymentSchema.parse(ctx.body);
+  const payment = await paymentsService.create(ctx.businessId, data);
+  emitToBusiness(ctx.businessId, 'new_payment', payment);
+  return { data: payment };
+});
 
-    const where: any = {
-      order: {
-        businessId
-      }
-    };
+export const verifyPayment = authed(async (ctx) => {
+  const data = verifyPaymentSchema.parse(ctx.body);
+  const { payment, confirmedOrder } = await paymentsService.verify(
+    ctx.businessId,
+    ctx.params.id,
+    ctx.userId,
+    data,
+  );
 
-    if (status) where.status = status;
-    if (orderId) where.orderId = orderId;
-
-    const [payments, total] = await Promise.all([
-      prisma.payment.findMany({
-        where,
-        include: {
-          order: {
-            select: { id: true, orderNumber: true, totalCents: true, customer: true }
-          }
-        },
-        orderBy: { createdAt: 'desc' },
-        skip,
-        take: limit
-      }),
-      prisma.payment.count({ where })
-    ]);
-
-    reqLog?.info({ total, page, limit, status, orderId }, 'Payments list');
-    res.json({
-      data: payments,
-      meta: { page, limit, total }
+  if (confirmedOrder) {
+    emitToBusiness(ctx.businessId, 'order_status_changed', {
+      orderId: confirmedOrder.id,
+      status: confirmedOrder.status,
     });
-  } catch (error) {
-    const reqLog = (req as any).log;
-    reqLog?.error({ error }, 'Error in getPayments');
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      return res.status(500).json({
-        error: 'Database error',
-        code: `PAYMENTS_DB_${error.code}`
-      });
-    }
-    next(error);
   }
-};
 
-export const createPayment = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const user = authReq.user;
-    if (!user || !user.businessId) {
-      return res.status(401).json({
-        error: 'Not authenticated',
-        code: 'PAYMENTS_NOT_AUTHENTICATED'
-      });
-    }
-    const businessId = user.businessId;
-    const data = createPaymentSchema.parse(req.body);
-    const reqLog = (req as any).log;
-    reqLog?.info({ orderId: data.orderId, method: data.method }, 'Creating payment');
+  emitToBusiness(ctx.businessId, 'payment_verified', payment);
+  return { data: payment };
+});
 
-    const order = await prisma.order.findFirst({
-      where: { id: data.orderId, businessId }
-    });
+export const rejectPayment = authed(async (ctx) => {
+  const payment = await paymentsService.reject(ctx.businessId, ctx.params.id, ctx.userId);
+  emitToBusiness(ctx.businessId, 'payment_verified', payment);
+  return { data: payment };
+});
 
-    if (!order) {
-      reqLog?.warn({ orderId: data.orderId }, 'Order not found for payment');
-      return res.status(404).json({ error: 'Orden no encontrada' });
-    }
-
-    const payment = await prisma.payment.create({
-      data: {
-        orderId: data.orderId,
-        businessId: businessId,
-        method: data.method,
-        amountCents: order.totalCents,
-        currency: 'USD',
-        reference: data.reference,
-        proofImageUrl: data.proofImageUrl,
-        notes: data.notes
-      },
-      include: {
-        order: {
-          select: { id: true, orderNumber: true, totalCents: true, customer: true }
-        }
-      }
-    });
-
-    emitToBusiness(businessId, 'new_payment', payment);
-    reqLog?.info({ paymentId: payment.id }, 'Payment created');
-
-    res.status(201).json(payment);
-  } catch (error) {
-    const reqLog = (req as any).log;
-    reqLog?.error({ error }, 'Error in createPayment');
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      return res.status(500).json({
-        error: 'Database error',
-        code: `PAYMENTS_DB_${error.code}`
-      });
-    }
-    next(error);
-  }
-};
-
-export const verifyPayment = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const user = authReq.user;
-    if (!user || !user.businessId) {
-      return res.status(401).json({
-        error: 'Not authenticated',
-        code: 'PAYMENTS_NOT_AUTHENTICATED'
-      });
-    }
-    const businessId = user.businessId;
-    const { id } = req.params;
-    const data = verifyPaymentSchema.parse(req.body);
-    const reqLog = (req as any).log;
-
-    const payment = await prisma.payment.findFirst({
-      where: { id, order: { businessId } }
-    });
-
-    if (!payment) {
-      reqLog?.warn({ paymentId: id }, 'Payment not found');
-      return res.status(404).json({ error: 'Pago no encontrado' });
-    }
-
-    const updated = await prisma.payment.update({
-      where: { id },
-      data: {
-        status: data.status,
-        verifiedBy: authReq.user!.userId,
-        verifiedAt: new Date(),
-        notes: data.notes ? `${payment.notes || ''}\nVerificación: ${data.notes}` : payment.notes
-      },
-      include: {
-        order: {
-          select: { id: true, orderNumber: true, totalCents: true, customer: true }
-        }
-      }
-    });
-
-    if (data.status === 'VERIFIED') {
-      const order = await prisma.order.update({
-        where: { id: updated.orderId },
-        data: { status: 'CONFIRMED' as any }
-      });
-
-      emitToBusiness(businessId, 'order_status_changed', {
-        orderId: order.id,
-        status: order.status
-      });
-      reqLog?.info({ paymentId: updated.id, orderId: order.id }, 'Payment verified and order confirmed');
-    }
-
-    emitToBusiness(businessId, 'payment_verified', updated);
-    reqLog?.info({ paymentId: updated.id }, 'Payment status updated');
-
-    res.json(updated);
-  } catch (error) {
-    const reqLog = (req as any).log;
-    reqLog?.error({ error }, 'Error in verifyPayment');
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      return res.status(500).json({
-        error: 'Database error',
-        code: `PAYMENTS_DB_${error.code}`
-      });
-    }
-    next(error);
-  }
-};
-
-export const rejectPayment = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const authReq = req as AuthRequest;
-    const user = authReq.user;
-    if (!user || !user.businessId) {
-      return res.status(401).json({
-        error: 'Not authenticated',
-        code: 'PAYMENTS_NOT_AUTHENTICATED'
-      });
-    }
-    const businessId = user.businessId;
-    const { id } = req.params;
-    const reqLog = (req as any).log;
-
-    const payment = await prisma.payment.findFirst({
-      where: { id, order: { businessId } }
-    });
-
-    if (!payment) {
-      reqLog?.warn({ paymentId: id }, 'Payment not found');
-      return res.status(404).json({ error: 'Pago no encontrado' });
-    }
-
-    const updated = await prisma.payment.update({
-      where: { id },
-      data: {
-        status: 'REJECTED',
-        verifiedBy: authReq.user!.userId,
-        verifiedAt: new Date()
-      },
-      include: {
-        order: {
-          select: { id: true, orderNumber: true, totalCents: true, customer: true }
-        }
-      }
-    });
-
-    emitToBusiness(businessId, 'payment_verified', updated);
-    reqLog?.info({ paymentId: updated.id }, 'Payment rejected');
-
-    res.json(updated);
-  } catch (error) {
-    const reqLog = (req as any).log;
-    reqLog?.error({ error }, 'Error in rejectPayment');
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      return res.status(500).json({
-        error: 'Database error',
-        code: `PAYMENTS_DB_${error.code}`
-      });
-    }
-    next(error);
-  }
-};
-
-export const getPaymentConfig = async (req: Request, res: Response) => {
+export const getPaymentConfig = async (_req: Request, res: Response) => {
   res.json({ message: 'Get payment config endpoint' });
 };
 
-export const updatePaymentConfig = async (req: Request, res: Response) => {
+export const updatePaymentConfig = async (_req: Request, res: Response) => {
   res.json({ message: 'Update payment config endpoint' });
 };
