@@ -6,7 +6,7 @@ dotenv.config();
 const EnvSchema = z.object({
   DATABASE_URL:         z.string().url(),
   JWT_SECRET:           z.string().min(32),
-  JWT_REFRESH_SECRET:   z.string().min(32).optional(),
+  JWT_REFRESH_SECRET:   z.string().min(32),
   REDIS_URL:            z.string().url().optional(),
   CLOUDFLARE_R2_BUCKET: z.string().optional(),
   CLOUDFLARE_R2_URL:    z.string().url().optional(),

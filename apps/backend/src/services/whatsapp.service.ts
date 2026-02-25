@@ -2,6 +2,7 @@ import makeWASocket, { DisconnectReason, useMultiFileAuthState } from '@whiskeys
 import { Boom } from '@hapi/boom';
 import prisma, { Channel, MsgRole } from '@ventasve/database';
 import { emitToBusiness } from '../lib/websocket';
+import { logger } from '../lib/logger';
 
 type ConnectionState = {
   connected: boolean;
@@ -196,7 +197,8 @@ class WhatsAppService {
         if (typeof sock.end === 'function') {
           sock.end();
         }
-      } catch {
+      } catch (err) {
+        logger.error({ err, businessId }, 'Failed to disconnect WhatsApp socket');
       }
       this.sockets.delete(businessId);
       this.states.delete(businessId);
